@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "problem_list": "NeetCode 150",
+  "problem_url": "https://leetcode.com/problems/{slug}/",
+  "plan_weeks": 12,
+  "phases": [
+    {
+      "name": "Foundations",
+      "weeks": [1, 4],
+      "goal": "Tier-one patterns to 'practicing', a plan card on every problem, daily cards, first machine-coding kata in week 3.",
+      "mix": {"new problems": 0.6, "reviews and cards": 0.25, "machine coding": 0.15}
+    },
+    {
+      "name": "Expansion",
+      "weeks": [5, 8],
+      "goal": "Heaps, backtracking, graphs, intervals, greedy and 1-D DP; timed mocks from week 6; re-solves keep the foundations alive.",
+      "mix": {"new problems": 0.45, "reviews and cards": 0.25, "machine coding": 0.15, "mocks": 0.15}
+    },
+    {
+      "name": "Interview mode",
+      "weeks": [9, 12],
+      "goal": "2-D DP and advanced graphs, machine coding, AI-assisted drills, ML coding refreshers, weekly mocks, repair of weak patterns.",
+      "mix": {"mixed problem sets and repair": 0.3, "mocks": 0.25, "machine coding": 0.15, "AI-assisted drills": 0.15, "ML coding": 0.15}
+    }
+  ],
+  "patterns": [
+    {
+      "key": "arrays-hashing", "name": "Arrays & Hashing", "tier": 1, "target": 9, "week": 1,
+      "cues": ["seen before / duplicates", "count frequencies", "group by a key", "complement lookup (target - x)"],
+      "invariant": "The map holds exactly the elements to the left of i.",
+      "template": "One pass with dict / Counter / set.",
+      "canonical": ["two-sum", "group-anagrams", "longest-consecutive-sequence"]
+    },
+    {
+      "key": "two-pointers", "name": "Two Pointers", "tier": 1, "target": 5, "week": 1,
+      "cues": ["sorted array + pair or triplet with a target", "palindrome check", "in-place partition", "maximize area between two ends"],
+      "invariant": "No pair outside [l..r] can beat the best found so far.",
+      "template": "l = 0, r = n - 1; move the pointer whose side can't improve.",
+      "canonical": ["two-sum-ii-input-array-is-sorted", "3sum", "container-with-most-water"]
+    },
+    {
+      "key": "sliding-window", "name": "Sliding Window", "tier": 1, "target": 6, "week": 2,
+      "cues": ["contiguous subarray or substring", "longest / shortest with a condition", "at most k distinct or k changes", "fixed window size k"],
+      "invariant": "s[l..r] is the best valid window ending at r, and the window state describes exactly s[l..r].",
+      "template": "Fixed size, longest valid (shrink while invalid, then record), or shortest valid (record while valid, shrinking).",
+      "canonical": ["longest-substring-without-repeating-characters", "permutation-in-string", "minimum-window-substring"]
+    },
+    {
+      "key": "prefix-sums", "name": "Prefix Sums", "tier": 1, "target": 3, "week": 2,
+      "cues": ["subarray sum equals k with negative numbers", "many range-sum queries", "count subarrays with a property"],
+      "invariant": "prefix[i] = sum(a[:i]); the map counts prefix sums seen to the left.",
+      "template": "Running sum plus a dict of counts of earlier prefix sums.",
+      "canonical": ["subarray-sum-equals-k", "range-sum-query-immutable", "continuous-subarray-sum"]
+    },
+    {
+      "key": "stack", "name": "Stack", "tier": 1, "target": 7, "week": 2,
+      "cues": ["matching brackets", "next greater or smaller element", "evaluate an expression", "histogram / temperatures"],
+      "invariant": "The stack is monotone, and every popped index has found its answer.",
+      "template": "Monotonic stack: pop while the new element resolves the top.",
+      "canonical": ["valid-parentheses", "daily-temperatures", "largest-rectangle-in-histogram"]
+    },
+    {
+      "key": "binary-search", "name": "Binary Search", "tier": 1, "target": 7, "week": 3,
+      "cues": ["sorted input", "minimum or maximum feasible value", "rotated sorted array", "O(log n) required"],
+      "invariant": "The answer is in [lo, hi), and the predicate is monotone.",
+      "template": "while lo < hi: mid; shrink the half that can't hold the answer. Also binary search on the answer.",
+      "canonical": ["binary-search", "koko-eating-bananas", "search-in-rotated-sorted-array"]
+    },
+    {
+      "key": "linked-list", "name": "Linked List", "tier": 1, "target": 11, "week": 3,
+      "cues": ["reverse", "detect a cycle", "merge lists", "k-th node from the end", "reorder in place"],
+      "invariant": "prev heads the processed part, curr the rest; nothing becomes unreachable.",
+      "template": "Dummy head; fast and slow pointers; pointer rewiring in a fixed order.",
+      "canonical": ["reverse-linked-list", "linked-list-cycle", "lru-cache"]
+    },
+    {
+      "key": "trees", "name": "Trees", "tier": 1, "target": 15, "week": 4,
+      "cues": ["depth, height or diameter", "path sums", "level by level", "BST property or k-th smallest"],
+      "invariant": "Each recursive call returns the answer for its own subtree.",
+      "template": "DFS returning values up the tree; BFS with a queue per level.",
+      "canonical": ["maximum-depth-of-binary-tree", "binary-tree-level-order-traversal", "validate-binary-search-tree"]
+    },
+    {
+      "key": "heap", "name": "Heap / Priority Queue", "tier": 1, "target": 7, "week": 5,
+      "cues": ["top k / k-th largest", "merge k sorted", "running median", "always take the earliest or cheapest next"],
+      "invariant": "The heap holds the k best seen so far; its root is the worst of them.",
+      "template": "heapq is a min-heap: push (key, tiebreak, item); negate keys for a max-heap.",
+      "canonical": ["kth-largest-element-in-an-array", "k-closest-points-to-origin", "find-median-from-data-stream"]
+    },
+    {
+      "key": "backtracking", "name": "Backtracking", "tier": 1, "target": 9, "week": 5,
+      "cues": ["all subsets, permutations or combinations", "word search on a grid", "N-Queens", "partition into valid pieces"],
+      "invariant": "The path is a valid partial solution; every choice is undone after recursing.",
+      "template": "Choose, recurse, unchoose; prune as early as possible.",
+      "canonical": ["subsets", "combination-sum", "word-search"]
+    },
+    {
+      "key": "graphs", "name": "Graphs", "tier": 1, "target": 13, "week": 6,
+      "cues": ["grid islands or regions", "connected components", "prerequisites or ordering", "shortest path in an unweighted graph"],
+      "invariant": "Visited nodes are never re-entered; BFS dequeues nodes in order of distance.",
+      "template": "BFS / DFS with a visited set; Kahn's topological sort; union-find with path compression.",
+      "canonical": ["number-of-islands", "rotting-oranges", "course-schedule"]
+    },
+    {
+      "key": "tries", "name": "Tries", "tier": 2, "target": 3, "week": 6,
+      "cues": ["prefix queries", "dictionary with wildcards", "many words searched on one grid"],
+      "invariant": "Each node represents the prefix spelled from the root to it.",
+      "template": "Nodes with a dict of children and an end-of-word flag.",
+      "canonical": ["implement-trie-prefix-tree", "design-add-and-search-words-data-structure", "word-search-ii"]
+    },
+    {
+      "key": "intervals", "name": "Intervals", "tier": 1, "target": 6, "week": 7,
+      "cues": ["merge or insert intervals", "meeting rooms", "remove overlaps"],
+      "invariant": "Intervals are processed in sorted order, and the output has no overlaps.",
+      "template": "Sort by start (or end); compare with the last merged interval; a heap of end times for rooms.",
+      "canonical": ["merge-intervals", "non-overlapping-intervals", "meeting-rooms-ii"]
+    },
+    {
+      "key": "greedy", "name": "Greedy", "tier": 2, "target": 8, "week": 7,
+      "cues": ["maximum subarray", "jump game", "gas station", "partition labels"],
+      "invariant": "An exchange argument: the greedy choice can be swapped into some optimal solution.",
+      "template": "Sort or scan once, keeping a running best; prove the choice with an exchange argument.",
+      "canonical": ["maximum-subarray", "jump-game", "gas-station"]
+    },
+    {
+      "key": "1d-dp", "name": "1-D Dynamic Programming", "tier": 2, "target": 12, "week": 7,
+      "cues": ["number of ways", "min or max cost to reach i", "can you reach or partition", "decisions along a line"],
+      "invariant": "dp[i] is the optimum of subproblem i and reads only smaller subproblems.",
+      "template": "SRTBOT: subproblems, relation, topological order, base cases, original problem, time.",
+      "canonical": ["house-robber", "coin-change", "longest-increasing-subsequence"]
+    },
+    {
+      "key": "2d-dp", "name": "2-D Dynamic Programming", "tier": 2, "target": 11, "week": 8,
+      "cues": ["two strings (LCS, edit distance)", "grid paths", "knapsack with a capacity", "interleaving"],
+      "invariant": "dp[i][j] is the answer for prefixes i and j, filled in dependency order.",
+      "template": "Table with an explicit fill order; reduce to rolling rows when only the previous row is read.",
+      "canonical": ["unique-paths", "longest-common-subsequence", "edit-distance"]
+    },
+    {
+      "key": "advanced-graphs", "name": "Advanced Graphs", "tier": 2, "target": 6, "week": 8,
+      "cues": ["weighted shortest path", "minimum spanning tree", "at most k stops", "itinerary using every edge"],
+      "invariant": "A node popped with the smallest tentative distance is final (non-negative weights).",
+      "template": "Dijkstra with a heap and stale-entry skip; Prim or Kruskal; Bellman-Ford for k stops.",
+      "canonical": ["network-delay-time", "min-cost-to-connect-all-points", "cheapest-flights-within-k-stops"]
+    },
+    {
+      "key": "math-geometry", "name": "Math & Geometry", "tier": 3, "target": 8, "week": 9,
+      "cues": ["rotate or spiral a matrix", "fast power", "digit manipulation"],
+      "invariant": "Boundaries shrink inward (top, bottom, left, right) and every cell is visited once.",
+      "template": "Careful index arithmetic; fast exponentiation by squaring.",
+      "canonical": ["rotate-image", "spiral-matrix", "powx-n"]
+    },
+    {
+      "key": "bit-manipulation", "name": "Bit Manipulation", "tier": 3, "target": 7, "week": 9,
+      "cues": ["single number among pairs", "count set bits", "add without +"],
+      "invariant": "x ^ x = 0 and x & (x - 1) clears the lowest set bit.",
+      "template": "Bit tricks; Python ints are unbounded, so mask with 0xFFFFFFFF for 32-bit behaviour.",
+      "canonical": ["single-number", "counting-bits", "sum-of-two-integers"]
+    },
+    {
+      "key": "machine-coding", "name": "Machine Coding (LLD)", "tier": 3, "target": 4, "week": 3,
+      "cues": ["design an LRU cache, rate limiter, versioned key-value store or in-memory database", "60-120 minute build round"],
+      "invariant": "Class invariants are stated and enforced; required operations meet their complexity.",
+      "template": "Clarify, define interfaces, implement, validate inputs, test, extend.",
+      "canonical": ["lru-cache", "time-based-key-value-store", "rate-limiter", "in-memory-db-with-transactions"]
+    },
+    {
+      "key": "ai-assisted", "name": "AI-Assisted Coding", "tier": 3, "target": 4, "week": 10,
+      "cues": ["AI-enabled round: fix a bug, extend a multi-file repo, optimize for larger inputs"],
+      "invariant": "Every AI suggestion is verified by a test or a trace before it is accepted.",
+      "template": "Plan card and tests first, then prompt, verify, integrate, explain.",
+      "canonical": ["bugfix-multi-file-repo", "extend-feature-with-tests", "optimize-for-larger-inputs"]
+    },
+    {
+      "key": "ml-coding", "name": "ML Coding", "tier": 3, "target": 5, "week": 10,
+      "cues": ["implement softmax, attention, k-means, logistic regression or backprop from scratch in NumPy"],
+      "invariant": "Every tensor's shape is stated, and numerics are stable (subtract the max before exp).",
+      "template": "Write shapes first, implement, test on a tiny hand-computed example.",
+      "canonical": ["softmax-and-cross-entropy", "scaled-dot-product-attention", "k-means", "logistic-regression-gd", "micrograd-backprop"]
+    }
+  ]
+}

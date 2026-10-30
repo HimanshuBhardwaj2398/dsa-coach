@@ -1,0 +1,14 @@
+[
+  {
+    "id": "x0001",
+    "concept": "sliding-window",
+    "title": "Sliding Window, Derived",
+    "url": "https://claude.ai/artifact/6CCgUJua56Mm4Jv22vwtam",
+    "file": "concepts/sliding-window/sliding-window-derived.html",
+    "version": 1,
+    "created": "2026-10-29",
+    "updated": "2026-10-29",
+    "note": "(i, j) grid walkthrough: brute force with line counts, the staircase proof, the six NeetCode 150 sliding-window problems",
+    "source": "cli"
+  }
+]

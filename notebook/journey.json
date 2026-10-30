@@ -1,0 +1,426 @@
+{
+  "generated": "2026-10-30",
+  "skill_version": "0.1.0",
+  "learner": "Himanshu",
+  "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
+  "targets": [
+    "Indian product companies and GCCs",
+    "Global / US remote AI roles",
+    "AI startups"
+  ],
+  "plan": {
+    "start_date": "2026-10-30",
+    "target_date": "2027-01-28",
+    "day": 1,
+    "total_days": 90,
+    "week": 1,
+    "plan_weeks": 12,
+    "phase": "Foundations",
+    "weekly_hours": 11
+  },
+  "focus": "sliding-window",
+  "patterns": [
+    {
+      "key": "arrays-hashing",
+      "name": "Arrays & Hashing",
+      "tier": 1,
+      "week": 1,
+      "target": 9,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "two-sum"
+    },
+    {
+      "key": "two-pointers",
+      "name": "Two Pointers",
+      "tier": 1,
+      "week": 1,
+      "target": 5,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "two-sum-ii-input-array-is-sorted"
+    },
+    {
+      "key": "sliding-window",
+      "name": "Sliding Window",
+      "tier": 1,
+      "week": 2,
+      "target": 6,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "exploring",
+      "last_activity": "2026-10-30",
+      "next_problem": "longest-substring-without-repeating-characters"
+    },
+    {
+      "key": "prefix-sums",
+      "name": "Prefix Sums",
+      "tier": 1,
+      "week": 2,
+      "target": 3,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "subarray-sum-equals-k"
+    },
+    {
+      "key": "stack",
+      "name": "Stack",
+      "tier": 1,
+      "week": 2,
+      "target": 7,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "valid-parentheses"
+    },
+    {
+      "key": "binary-search",
+      "name": "Binary Search",
+      "tier": 1,
+      "week": 3,
+      "target": 7,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "binary-search"
+    },
+    {
+      "key": "linked-list",
+      "name": "Linked List",
+      "tier": 1,
+      "week": 3,
+      "target": 11,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "reverse-linked-list"
+    },
+    {
+      "key": "trees",
+      "name": "Trees",
+      "tier": 1,
+      "week": 4,
+      "target": 15,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "maximum-depth-of-binary-tree"
+    },
+    {
+      "key": "heap",
+      "name": "Heap / Priority Queue",
+      "tier": 1,
+      "week": 5,
+      "target": 7,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "kth-largest-element-in-an-array"
+    },
+    {
+      "key": "backtracking",
+      "name": "Backtracking",
+      "tier": 1,
+      "week": 5,
+      "target": 9,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "subsets"
+    },
+    {
+      "key": "graphs",
+      "name": "Graphs",
+      "tier": 1,
+      "week": 6,
+      "target": 13,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "number-of-islands"
+    },
+    {
+      "key": "tries",
+      "name": "Tries",
+      "tier": 2,
+      "week": 6,
+      "target": 3,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "implement-trie-prefix-tree"
+    },
+    {
+      "key": "intervals",
+      "name": "Intervals",
+      "tier": 1,
+      "week": 7,
+      "target": 6,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "merge-intervals"
+    },
+    {
+      "key": "greedy",
+      "name": "Greedy",
+      "tier": 2,
+      "week": 7,
+      "target": 8,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "maximum-subarray"
+    },
+    {
+      "key": "1d-dp",
+      "name": "1-D Dynamic Programming",
+      "tier": 2,
+      "week": 7,
+      "target": 12,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "house-robber"
+    },
+    {
+      "key": "2d-dp",
+      "name": "2-D Dynamic Programming",
+      "tier": 2,
+      "week": 8,
+      "target": 11,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "unique-paths"
+    },
+    {
+      "key": "advanced-graphs",
+      "name": "Advanced Graphs",
+      "tier": 2,
+      "week": 8,
+      "target": 6,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "network-delay-time"
+    },
+    {
+      "key": "math-geometry",
+      "name": "Math & Geometry",
+      "tier": 3,
+      "week": 9,
+      "target": 8,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "rotate-image"
+    },
+    {
+      "key": "bit-manipulation",
+      "name": "Bit Manipulation",
+      "tier": 3,
+      "week": 9,
+      "target": 7,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "single-number"
+    },
+    {
+      "key": "machine-coding",
+      "name": "Machine Coding (LLD)",
+      "tier": 3,
+      "week": 3,
+      "target": 4,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "lru-cache"
+    },
+    {
+      "key": "ai-assisted",
+      "name": "AI-Assisted Coding",
+      "tier": 3,
+      "week": 10,
+      "target": 4,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "bugfix-multi-file-repo"
+    },
+    {
+      "key": "ml-coding",
+      "name": "ML Coding",
+      "tier": 3,
+      "week": 10,
+      "target": 5,
+      "attempted": 0,
+      "practicing": 0,
+      "retained": 0,
+      "ready": 0,
+      "status": "not started",
+      "last_activity": null,
+      "next_problem": "softmax-and-cross-entropy"
+    }
+  ],
+  "behind": [],
+  "this_week": [
+    "arrays-hashing",
+    "two-pointers"
+  ],
+  "ahead": [
+    "sliding-window"
+  ],
+  "problems": {},
+  "due": {
+    "resolves": [],
+    "cards": [],
+    "drafts": 6,
+    "inbox": []
+  },
+  "totals": {
+    "problems": 0,
+    "attempts": 0,
+    "unaided_solves": 0,
+    "retained": 0,
+    "ready": 0,
+    "minutes": 0,
+    "sessions": 2,
+    "questions": 3,
+    "cards_active": 0,
+    "cards_held": 0,
+    "cards_draft": 6,
+    "cards_retired": 0,
+    "explainers": 1
+  },
+  "weak_spots": [],
+  "calibration": {
+    "rated_attempts": 0,
+    "avg_conf_unaided": null,
+    "avg_conf_other": null,
+    "high_confidence_misses": []
+  },
+  "techniques": [],
+  "questions": [
+    {
+      "id": "q0001",
+      "date": "2026-10-29",
+      "concept": "python-collections",
+      "text": "Sets can be compared with < and > for subsets and supersets. Can dicts be compared the same way?",
+      "source": "cli"
+    },
+    {
+      "id": "q0002",
+      "date": "2026-10-29",
+      "concept": "python-collections",
+      "text": "Counter is a dict and accepts <= and >=. Does it implement them on .items()?",
+      "source": "cli"
+    },
+    {
+      "id": "q0003",
+      "date": "2026-10-29",
+      "concept": "sliding-window",
+      "text": "What does it mean to increment have only when a character's count reaches the required count?",
+      "source": "cli"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "x0001",
+      "concept": "sliding-window",
+      "title": "Sliding Window, Derived",
+      "url": "https://claude.ai/artifact/6CCgUJua56Mm4Jv22vwtam",
+      "file": "concepts/sliding-window/sliding-window-derived.html",
+      "version": 1,
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "note": "(i, j) grid walkthrough: brute force with line counts, the staircase proof, the six NeetCode 150 sliding-window problems",
+      "source": "cli"
+    }
+  ],
+  "sessions": [
+    {
+      "date": "2026-10-29",
+      "summary": "Studied the sliding window through the interactive (i, j) grid page (brute force with line counts, the staircase argument, the six NeetCode 150 problems). As..."
+    },
+    {
+      "date": "2026-10-30",
+      "summary": "Research on designing the coach (learning science, visualization, living notebook, interview formats). Built dsa-coach v0.1.0: skill, notebook, journey snaps..."
+    }
+  ],
+  "last_mock": null,
+  "next_steps": [
+    "Approve, edit or retire 6 draft card(s) (`coach.py card list --drafts`).",
+    "Solve longest-substring-without-repeating-characters unaided to move Sliding Window forward.",
+    "This week's plan: start Arrays & Hashing, Two Pointers."
+  ],
+  "other_concepts": [
+    "python-collections"
+  ]
+}

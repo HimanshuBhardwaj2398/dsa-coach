@@ -1,0 +1,58 @@
+{
+  "format": "dsa-coach-delta/1",
+  "platform": "claude-web",
+  "skill_version": "0.1.0",
+  "session": {
+    "date": "2026-11-02",
+    "minutes": 60,
+    "summary": "Two pointers: learned the opposite-ends template on Two Sum II, then solved 3Sum with hints."
+  },
+  "attempts": [
+    {
+      "problem": "two-sum-ii-input-array-is-sorted",
+      "pattern": "two-pointers",
+      "difficulty": "medium",
+      "mode": "learn",
+      "outcome": "solved",
+      "minutes": 18,
+      "hints": 1,
+      "assisted": false,
+      "confidence": 4,
+      "technique": "explainer-predict",
+      "mistakes": [],
+      "complexity_stated": true,
+      "note": "Moving the larger end can never miss a pair: every pair it skips is too big."
+    },
+    {
+      "problem": "3sum",
+      "pattern": "two-pointers",
+      "difficulty": "medium",
+      "mode": "practice",
+      "outcome": "solved",
+      "minutes": 35,
+      "hints": 3,
+      "assisted": false,
+      "confidence": 3,
+      "technique": "faded-example",
+      "mistakes": ["edge"],
+      "complexity_stated": true,
+      "note": "Skip duplicates after moving both pointers, not before."
+    }
+  ],
+  "questions": [
+    {"concept": "two-pointers", "text": "Why can't the left pointer ever need to move back?"}
+  ],
+  "cards": [
+    {
+      "concept": "two-pointers",
+      "type": "invariant",
+      "front": "Two Sum II (sorted): what is true about every pair outside [l..r]?",
+      "back": "It has been ruled out: each move discards a row or column of pairs that are all too small or all too big.",
+      "draft": true
+    }
+  ],
+  "card_reviews": [],
+  "artifacts": [
+    {"concept": "two-pointers", "title": "Two Pointers on the (i, j) Grid", "url": "https://claude.ai/artifact/example"}
+  ]
+}

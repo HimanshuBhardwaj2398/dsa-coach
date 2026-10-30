@@ -1,0 +1,22 @@
+{
+  "learner": "Himanshu",
+  "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
+  "targets": [
+    "Indian product companies and GCCs",
+    "Global / US remote AI roles",
+    "AI startups"
+  ],
+  "language": "Python",
+  "problem_list": "NeetCode 150",
+  "weekly_hours": 11,
+  "delay_days": 3,
+  "time_caps_min": {
+    "easy": 15,
+    "medium": 25,
+    "hard": 40
+  },
+  "review_cap_fraction": 0.3,
+  "start_date": "2026-10-30",
+  "target_date": "2027-01-28",
+  "created_with": "0.1.0"
+}

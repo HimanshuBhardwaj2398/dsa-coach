@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py\" --root \"$CLAUDE_PROJECT_DIR/notebook\" status --brief"
+          }
+        ]
+      }
+    ]
+  }
+}

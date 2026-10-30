@@ -1,0 +1,7 @@
+interface:
+  display_name: "DSA Coach"
+  short_description: "Step-by-step DSA interview coach with a learning notebook"
+  brand_color: "#2453C4"
+  default_prompt: "Where am I in my DSA journey, and what should I do today?"
+policy:
+  allow_implicit_invocation: true
