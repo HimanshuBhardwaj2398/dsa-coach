@@ -1,4 +1,5 @@
 """Tests for skills/dsa-coach/scripts/coach.py. Run: python3 -m unittest discover -s tests -v"""
+import importlib.util
 import json
 import os
 import shutil
@@ -50,6 +51,9 @@ class CoachTest(unittest.TestCase):
         if kw.get("complexity", True):
             args.append("--complexity-stated")
         return self.run_cli(*args, today=date)
+
+    def next_item(self, *args, today=None):
+        return json.loads(self.run_cli("next", "--json", *args, today=today).stdout)
 
     # ------------------------------------------------------------------ init
     def test_init_creates_layout_and_snapshot(self):
@@ -208,6 +212,56 @@ class CoachTest(unittest.TestCase):
         self.assertIn("Learner summary", pack)
         self.assertIn("dsa-coach-delta/1", pack)
         self.assertIn("Rules for every mode", pack)
+
+    # ------------------------------------------------------------------ practice pick
+    def test_next_follows_the_plan_over_recent_activity(self):
+        self.run_cli("log", "question", "--concept", "sliding-window", "--text", "why?")
+        item = self.next_item()
+        self.assertEqual((item["kind"], item["pattern"], item["problem"], item["first"]),
+                         ("new", "arrays-hashing", "two-sum", True))
+
+    def test_next_priority_order(self):
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing", hints=3)  # re-solve due 11-02
+        self.run_cli("card", "add", "--concept", "arrays-hashing", "--type", "trigger", "--front", "Q?", "--back", "A.", "--draft")
+        self.run_cli("card", "accept", "--id", "c0001")  # due 11-02
+        (self.root / "inbox" / "d.json").write_text("{}")
+        self.assertEqual(self.next_item(today="2026-11-02")["kind"], "inbox")
+        (self.root / "inbox" / "d.json").unlink()
+        item = self.next_item(today="2026-11-02")
+        self.assertEqual((item["kind"], item["problem"]), ("resolve", "two-sum"))
+        self.attempt("two-sum", "2026-11-02", pattern="arrays-hashing")
+        item = self.next_item(today="2026-11-02")
+        self.assertEqual((item["kind"], item["count"]), ("cards", 1))
+        self.run_cli("card", "review", "--id", "c0001", "--grade", "pass", "--date", "2026-11-02", today="2026-11-02")
+        item = self.next_item(today="2026-11-02")
+        self.assertEqual((item["kind"], item["problem"], item["first"]), ("new", "group-anagrams", False))
+
+    def test_next_leaves_the_choice_to_the_coach_after_named_problems(self):
+        for slug in ("two-sum", "group-anagrams", "longest-consecutive-sequence"):
+            self.attempt(slug, "2026-11-01", pattern="arrays-hashing")
+        item = self.next_item()
+        self.assertEqual((item["kind"], item["pattern"], item["problem"]), ("new", "arrays-hashing", None))
+        self.assertIn("NeetCode", self.run_cli("next").stdout)
+
+    def test_next_pattern_filter(self):
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing", hints=3)
+        item = self.next_item("--pattern", "Sliding Window", today="2026-11-02")  # skips the due re-solve
+        self.assertEqual((item["kind"], item["problem"]), ("new", "longest-substring-without-repeating-characters"))
+        bad = self.run_cli("next", "--pattern", "nope", ok=False)
+        self.assertNotEqual(bad.returncode, 0)
+        self.assertIn("arrays-hashing", bad.stderr)
+
+    def test_pick_new_skips_long_formats_and_finished_patterns(self):
+        spec = importlib.util.spec_from_file_location("coach", COACH)
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        rows = [
+            {"key": "stack", "name": "Stack", "week": 2, "tier": 1, "target": 1, "attempted": 1, "next_problem": None},
+            {"key": "machine-coding", "name": "Machine Coding", "week": 3, "tier": 3, "target": 4, "attempted": 0, "next_problem": "lru-cache"},
+            {"key": "trees", "name": "Trees", "week": 4, "tier": 1, "target": 15, "attempted": 0, "next_problem": "maximum-depth-of-binary-tree"},
+        ]
+        self.assertEqual(coach.pick_new(rows)["pattern"], "trees")
+        self.assertIsNone(coach.pick_new(rows[:2]))
 
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):

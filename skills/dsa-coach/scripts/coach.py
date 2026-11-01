@@ -51,6 +51,7 @@ TECHNIQUES = [
 CARD_TYPES = ["trigger", "invariant", "trap", "complexity", "bug", "pytrap", "trace", "salience", "other"]
 GRADES = ["pass", "fail"]
 TIMED_MODES = ("practice", "review", "mock")
+LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purpose, never picked by `next`
 DEFAULT_CONFIG = {
     "learner": "learner",
     "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -329,6 +330,28 @@ def card_held(card: dict) -> bool:
             return True
         prev = h.get("date")
     return False
+
+
+def pick_new(rows: list, pattern: str | None = None) -> dict | None:
+    """The next new problem: first pattern in plan order under its target, or the named pattern."""
+    pool = [r for r in rows if r["key"] == pattern] if pattern else [r for r in rows if r["key"] not in LONG_FORMATS]
+    for r in sorted(pool, key=lambda r: (r["week"] or 99, r["tier"] or 9)):
+        if pattern or r["attempted"] < r["target"]:
+            return {"kind": "new", "pattern": r["key"], "name": r["name"], "problem": r["next_problem"], "first": r["attempted"] == 0}
+    return None
+
+
+def pick_next(j: dict, pattern: str | None = None) -> dict:
+    """One item to practise now. A named pattern skips everything due."""
+    d = j["due"]
+    if not pattern:
+        if d["inbox"]:
+            return {"kind": "inbox", "files": d["inbox"]}
+        if d["resolves"]:
+            return dict(d["resolves"][0], kind="resolve")
+        if d["cards"]:
+            return {"kind": "cards", "count": len(d["cards"])}
+    return pick_new(j["patterns"], pattern) or {"kind": "none"}
 
 
 def compute(state: dict, on: date | None = None) -> dict:
@@ -1016,6 +1039,30 @@ def cmd_due(args) -> None:
         print(f"inbox     {len(d['inbox'])} delta(s) to import: {', '.join(d['inbox'])}")
 
 
+def render_next(item: dict) -> str:
+    kind = item["kind"]
+    if kind == "inbox":
+        return f"Import {len(item['files'])} session delta(s) waiting in inbox/: {', '.join(item['files'])}."
+    if kind == "resolve":
+        return f"Re-solve {item['problem']} ({item['pattern']}) from a blank page."
+    if kind == "cards":
+        return f"Quiz: {item['count']} due card(s)."
+    if kind == "new" and item["problem"]:
+        return f"Solve {item['problem']} ({item['name']})."
+    if kind == "new":
+        return f"Pick an unattempted problem from the NeetCode {item['name']} section."
+    return "Plan finished. Run a mock or an unlabeled mixed set."
+
+
+def cmd_next(args) -> None:
+    root = find_root(args.root)
+    pattern = slugify(args.pattern) if args.pattern else None
+    if pattern and pattern not in pattern_keys():
+        die(f"unknown pattern {pattern}. Choose from: {', '.join(pattern_keys())}")
+    item = pick_next(compute(load_state(root), parse_date(args.date)), pattern)
+    print(json.dumps(item, indent=2, ensure_ascii=False) if args.json else render_next(item))
+
+
 # artifacts ------------------------------------------------------------------
 def add_artifact(root: Path, a: dict, source: str = "cli") -> dict:
     reg = read_json(root / "artifacts" / "registry.json", [])
@@ -1455,6 +1502,12 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("due", help="list due re-solves and cards")
     s.add_argument("--date")
     s.set_defaults(func=cmd_due)
+
+    s = sub.add_parser("next", help="the one thing to practise now")
+    s.add_argument("--pattern", help="pick a new problem from this pattern, skipping anything due")
+    s.add_argument("--json", action="store_true")
+    s.add_argument("--date")
+    s.set_defaults(func=cmd_next)
 
     art = sub.add_parser("artifact", help="saved explainers and published pages").add_subparsers(dest="artifact_cmd", required=True)
     s = art.add_parser("add")
