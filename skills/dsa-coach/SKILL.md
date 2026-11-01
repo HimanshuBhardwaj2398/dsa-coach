@@ -4,7 +4,7 @@ description: Step-by-step DSA and coding-interview coach (Python) that trains pl
 license: MIT
 compatibility: Works in any agent that can read files. Scripts need Python 3.9+ (standard library only). The full loop needs a writable notebook folder (Claude Code, Codex, Claude or ChatGPT desktop, Cowork); web chats use the export and import flow in references/platforms.md.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: "Himanshu Bhardwaj"
 ---
 

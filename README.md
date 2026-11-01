@@ -29,7 +29,7 @@ python3 skills/dsa-coach/scripts/coach.py snapshot --print
 
 | Where | How |
 |---|---|
-| Claude Code | `cd ~/Desktop/dsa-coach && claude`, then "where am I?", "teach me two pointers", "review" or "quiz me". The status loads automatically at session start. |
+| Claude Code | `cd ~/Desktop/dsa-coach && claude`, then `/practice` to start right away, or "where am I?", "teach me two pointers", "review" or "quiz me". The status loads automatically at session start. |
 | Codex or ChatGPT desktop | `cd ~/Desktop/dsa-coach && codex`, then `$dsa-coach where am I?` |
 | Cowork | A "DSA Coach" project with this folder connected (setup in docs/PLATFORMS.md) |
 | Claude web or ChatGPT web | `coach.py export`, attach the pack, study, then save the session delta into `notebook/inbox/` and run `coach.py import` |
@@ -43,6 +43,7 @@ The coach runs these for you; they're here so you can check or fix things by han
 | Command | Does |
 |---|---|
 | `coach.py status` | Where you are, what's due, next steps |
+| `coach.py next` | The one thing to practise now (`--pattern` to choose one, `--json` for the coach) |
 | `coach.py due` | Due re-solves and cards |
 | `coach.py quiz` | Due card fronts (`--json` adds answers) |
 | `coach.py card list --drafts` | Cards waiting for your approval (`card accept`, `card edit`, `card retire`) |

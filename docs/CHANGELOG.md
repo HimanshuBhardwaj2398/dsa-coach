@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 · 2026-11-01
+
+One-step practice.
+
+- `/practice` command and practice mode: one item, no opening report. Takes an optional pattern or problem.
+- `coach.py next`: picks inbox, due re-solves, due cards, then a new problem in plan order. Long formats are never picked.
+- `status` and JOURNEY.md use the same pick, and practice comes before draft approval.
+
 ## 0.1.0 · 2026-10-30
 
 First version (build step 1: core).
