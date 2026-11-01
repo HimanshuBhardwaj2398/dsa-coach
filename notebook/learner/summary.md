@@ -1,7 +1,7 @@
-DSA COACH LEARNER SUMMARY · generated 2026-10-30 by coach.py snapshot · skill 0.1.0
+DSA COACH LEARNER SUMMARY · generated 2026-11-01 by coach.py snapshot · skill 0.2.0
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
-Plan: day 1 of 90, week 1 of 12, phase Foundations, target date 2027-01-28
+Plan: day 3 of 90, week 1 of 12, phase Foundations, target date 2027-01-28
 Focus: Sliding Window (exploring)
 
 Patterns started (status, attempted/unaided/retained/ready of target):
@@ -25,8 +25,8 @@ Recent questions:
 - 2026-10-29 python-collections: Sets can be compared with < and > for subsets and supersets. Can dicts be compared the same way?
 
 Next steps:
-1. Approve, edit or retire 6 draft card(s) (`coach.py card list --drafts`).
-2. Solve longest-substring-without-repeating-characters unaided to move Sliding Window forward.
+1. Solve two-sum unaided to move Arrays & Hashing forward.
+2. Approve, edit or retire 6 draft card(s) (`coach.py card list --drafts`).
 3. This week's plan: start Arrays & Hashing, Two Pointers.
 
 Coach rules: attempt before answers; predict before reveal; credit only delayed unaided success; log everything with coach.py.

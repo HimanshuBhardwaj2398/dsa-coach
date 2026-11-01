@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-30",
-  "skill_version": "0.1.0",
+  "generated": "2026-11-01",
+  "skill_version": "0.2.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -11,7 +11,7 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 1,
+    "day": 3,
     "total_days": 90,
     "week": 1,
     "plan_weeks": 12,
@@ -416,8 +416,8 @@
   ],
   "last_mock": null,
   "next_steps": [
+    "Solve two-sum unaided to move Arrays & Hashing forward.",
     "Approve, edit or retire 6 draft card(s) (`coach.py card list --drafts`).",
-    "Solve longest-substring-without-repeating-characters unaided to move Sliding Window forward.",
     "This week's plan: start Arrays & Hashing, Two Pointers."
   ],
   "other_concepts": [
