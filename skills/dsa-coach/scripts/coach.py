@@ -463,14 +463,17 @@ def compute(state: dict, on: date | None = None) -> dict:
     steps = []
     if state["inbox"]:
         steps.append(f"Import {len(state['inbox'])} session delta(s) waiting in inbox/ (`coach.py import`).")
-    if drafts:
-        steps.append(f"Approve, edit or retire {len(drafts)} draft card(s) (`coach.py card list --drafts`).")
     if due_resolves:
         steps.append("Re-solve from a blank page: " + ", ".join(d["problem"] for d in due_resolves[:3]) + " (a plan-only check is fine for the first).")
     if due_cards:
         steps.append(f"Quiz: {len(due_cards)} due card(s), about {max(2, len(due_cards))} minutes (`coach.py quiz`).")
-    if focus and by_key[focus]["status"] in ("exploring", "learning", "not started") and by_key[focus]["next_problem"]:
-        steps.append(f"Solve {by_key[focus]['next_problem']} unaided to move {by_key[focus]['name']} forward.")
+    new = pick_new(rows)
+    if new and new["problem"]:
+        steps.append(f"Solve {new['problem']} unaided to move {new['name']} forward.")
+    elif new:
+        steps.append(f"Pick an unattempted problem from the NeetCode {new['name']} section.")
+    if drafts:
+        steps.append(f"Approve, edit or retire {len(drafts)} draft card(s) (`coach.py card list --drafts`).")
     if behind:
         steps.append(f"Behind plan: start {by_key[behind[0]]['name']} (planned for week {by_key[behind[0]]['week']}).")
     elif this_week:

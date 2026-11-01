@@ -263,6 +263,13 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(coach.pick_new(rows)["pattern"], "trees")
         self.assertIsNone(coach.pick_new(rows[:2]))
 
+    def test_status_steps_match_next_and_put_practice_before_drafts(self):
+        self.run_cli("log", "question", "--concept", "sliding-window", "--text", "why?")
+        self.run_cli("card", "add", "--concept", "sliding-window", "--type", "trap", "--front", "Q?", "--back", "A.", "--draft")
+        steps = self.journey()["next_steps"]
+        self.assertTrue(steps[0].startswith("Solve two-sum"), steps)
+        self.assertTrue(steps[1].startswith("Approve"), steps)
+
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):
         out = self.run_cli("status", "--brief")
