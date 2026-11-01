@@ -35,6 +35,24 @@ Predicting outputs before coding raised correct completion from 53% to 76% in a 
 
 ## Modes in detail
 
+### practice
+
+The fast way in. Don't report status, propose a plan or ask what he wants. `coach.py next --json` returns one item. Write one line saying what it is and why, then the first prompt, in the same message.
+
+| `kind` | First prompt |
+|---|---|
+| `inbox` | Say what the deltas contain, run `coach.py import`, then run `coach.py next --json` again |
+| `resolve` | Review mode, from a blank page |
+| `cards` | Quiz mode, one card at a time |
+| `new` with `first: true` | Link the problem, then the first-step probe |
+| `new` with `first: false` | Link the problem, then stage 1 of the solve protocol |
+| `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
+| `none` | Offer a mock or an unlabeled mixed set |
+
+Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it and offer the next one in a line. The rules for every mode still apply.
+
+At the end, if draft cards are waiting, ask once: "Keep all N, or go through them?" Keeping all means `card accept` for each. Drafts never hold up practice.
+
 ### learn
 
 1. First-step probe.

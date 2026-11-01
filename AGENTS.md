@@ -3,7 +3,7 @@
 This folder is Himanshu's DSA and coding-interview workspace.
 
 - For any request to learn, practise, review, quiz, visualize or check progress on DSA, use the **dsa-coach** skill (`.agents/skills/dsa-coach`, a link to `skills/dsa-coach`).
-- At the start of every session run `python3 skills/dsa-coach/scripts/coach.py status --brief` and open from its output: where he is, what's due, a proposed plan.
+- At the start of every session run `python3 skills/dsa-coach/scripts/coach.py status --brief` and open from its output: where he is, what's due, a proposed plan. If he asks to practise, skip the opening and start on the item `coach.py next` picks.
 - All learner data lives in `notebook/`. Read and write it with `coach.py`. Never hand-edit the generated files: `JOURNEY.md`, `journey.json`, `learner/summary.md`, `learner/techniques.json`.
 - If `notebook/inbox/` has session deltas from web chats, say what they contain and import them (`coach.py import`) before anything else.
 - coach.py needs no network access and writes only inside this workspace.
