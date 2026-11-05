@@ -407,6 +407,19 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
         self.assertNotIn("## Stage notes", (self.root / "problems" / "two-sum" / "notes.md").read_text())
 
+    def test_stage_notes_split_only_at_the_lessons_heading(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "6", "--text", "line a\n## Lessons\nline b", now="10:01")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs", now="10:21")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
+        text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
+        self.assertEqual(text.count("\n## Lessons\n"), 1)
+        lessons = text.index("\n## Lessons\n")
+        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01.py)"), lessons)
+        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01-2.py)"), lessons)
+
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
         text = (self.root / self.live()["file"]).read_text()

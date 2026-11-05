@@ -1221,13 +1221,17 @@ def solve_end(root: Path, live: dict, args) -> None:
 
 def add_stage_notes(path: Path, heading: str, notes: dict) -> None:
     """A solve's stage notes go at the end of the ## Stage notes section, which sits just above ## Lessons
-    (lesson lines are appended at the end of the file), so the oldest solve stays first."""
+    (lesson lines are appended at the end of the file), so the oldest solve stays first.
+    It expects the ## Lessons heading that problem.md starts with. In a hand-edited file without one, the section
+    goes at the end of the file, and later lesson lines follow it."""
     bullets = "".join(f"- **{n}. {STAGES[int(n) - 1][0]}:** " + notes[n].strip().replace("\n", "\n  ") + "\n"
                       for n in sorted(notes, key=int))
-    head, lessons, tail = path.read_text(encoding="utf-8").partition("## Lessons\n")
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"^## Lessons[ \t\r]*$", text, re.M)  # a note's lines are indented, so none can match
+    head, rest = (text[:m.start()], text[m.start():]) if m else (text, "")
     section = "" if re.search(r"^## Stage notes\n", head, re.M) else "## Stage notes\n\n"
     head = head.rstrip("\n") + f"\n\n{section}### {heading}\n\n{bullets}"
-    path.write_text(head + ("\n" + lessons + tail if lessons else ""), encoding="utf-8")
+    path.write_text(head + ("\n" + rest if rest else ""), encoding="utf-8")
 
 
 def cmd_solve(args) -> None:
