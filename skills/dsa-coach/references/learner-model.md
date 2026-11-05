@@ -17,8 +17,9 @@ notebook/
 │   ├── techniques.json    technique ledger (generated)
 │   └── preferences.md     stated preferences: formatting defaults only
 ├── concepts/<slug>/       notes.md (core idea, plan card, FAQ, changelog) and explainer files
-├── problems/<slug>/       notes.md (plan card, lesson) and his solution files
+├── problems/<slug>/       notes.md (plan card, lesson) and one attempt file per attempt (YYYY-MM-DD.py)
 ├── sessions/YYYY-MM-DD.md session logs
+├── sessions/current.json  the live solve, if any (`coach.py solve`; deleted by `solve end`)
 ├── artifacts/registry.json saved explainers and published pages
 ├── inbox/                 session deltas from web chats, waiting for `coach.py import`
 └── exports/               context packs for web chats (`coach.py export`)

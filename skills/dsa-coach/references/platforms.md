@@ -10,6 +10,10 @@ Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connec
 - Edit notes in `notebook/concepts/` and `notebook/problems/` directly.
 - Save explainers into `notebook/concepts/<slug>/` and register them with `artifact add`.
 - At session start, `coach.py status` also reports deltas waiting in `notebook/inbox/`. Import them with `coach.py import` before anything else, after telling him what they contain.
+- Run every solve through `coach.py solve`.
+  - Claude Code adds two things on top. A PreToolUse guard (`coach.py guard`, installed by `coach.py install`) keeps your edits out of his attempt files until rung 7.
+  - The optional `dsa-coach-pane` plugin (`plugins/dsa-coach-pane/` in the workspace) shows the live solve beside the chat.
+  - Elsewhere, the same state lives in `notebook/sessions/current.json`, so the next session can resume it.
 
 ## Level B: code execution but no persistent folder
 

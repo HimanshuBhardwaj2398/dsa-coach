@@ -10,6 +10,7 @@ dsa-coach/
 ├── notebook/              my data: JOURNEY.md, attempts, cards, concepts, problems, sessions, saved explainers
 ├── docs/                  architecture, platform setup, the research behind the design
 ├── tests/                 tests for coach.py
+├── plugins/dsa-coach-pane the coach pane for Claude Code (the live solve beside the chat)
 ├── dist/dsa-coach.zip     the skill packaged for uploading to Claude
 ├── CLAUDE.md, AGENTS.md   project instructions for Claude Code and Codex
 └── .claude/, .agents/     links that make the skill visible to Claude Code and Codex
@@ -36,6 +37,29 @@ python3 skills/dsa-coach/scripts/coach.py snapshot --print
 
 Full setup for each platform: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
+## The coach pane (Claude Code)
+
+A pane beside the chat that shows:
+- the problem you're solving
+- the solve stage
+- a 25-minute focus-block timer
+- the hint rung you've used
+
+Its buttons send "check my code", "stage done", "next hint" and "block over" to the coach. You write your code in the attempt file that `coach.py solve start` creates, and a hook stops Claude from writing in it until hint rung 7.
+
+Install it once, at the Claude Code prompt in this folder:
+
+```text
+/plugin marketplace add ./
+/plugin install dsa-coach-pane@dsa-coach
+```
+
+On another machine with access to the repo: `/plugin install dsa-coach-pane --marketplace HimanshuBhardwaj2398/dsa-coach`.
+
+- **Where it opens:** it opens by itself in VS Code and the desktop app. Anywhere else, type `/coach`.
+- **How it updates:** it's read from `plugins/dsa-coach-pane/`, so after you change it, run `/reload-plugins`.
+- **Version needed:** Claude Code 2.1.317 or later.
+
 ## Everyday commands
 
 The coach runs these for you; they're here so you can check or fix things by hand.
@@ -44,6 +68,7 @@ The coach runs these for you; they're here so you can check or fix things by han
 |---|---|
 | `coach.py status` | Where you are, what's due, next steps |
 | `coach.py next` | The one thing to practise now (`--pattern` to choose one, `--json` for the coach) |
+| `coach.py solve show` | The solve in progress: stage, hint rung, focus block (`start`, `stage`, `hint`, `break`, `block`, `end`) |
 | `coach.py due` | Due re-solves and cards |
 | `coach.py quiz` | Due card fronts (`--json` adds answers) |
 | `coach.py card list --drafts` | Cards waiting for your approval (`card accept`, `card edit`, `card retire`) |

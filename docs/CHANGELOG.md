@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 · 2026-11-05
+
+Long solves, in an editor file and a pane beside the chat.
+
+- **`coach.py solve`:** start, stage, hint, break, block, show and end keep the live solve in `notebook/sessions/current.json`.
+  - `start` creates a blank attempt file, `problems/<slug>/<date>.py`, with the link, a short plan card and an examples block. A re-solve always gets a new file.
+  - `end` logs the attempt. Minutes come from the focus blocks and hints from the highest rung.
+  - `--unlabeled` keeps the pattern out of the file, `solve show` and the status.
+- **Status:** `status` prints the live solve, so the SessionStart hook brings it back after a compaction or in a new session.
+- **Guard:** `coach.py guard`, a PreToolUse hook that `install` adds, blocks Claude's Write and Edit on the live problem's `.py` files until hint rung 7. Rule 1 is now enforced, not only asked.
+- **Coach pane:** `plugins/dsa-coach-pane`, a Claude Code plugin, shows the problem, the stage, the focus-block timer and the hint rung beside the chat. Its buttons send prompts to the coach: check my code, stage done, next hint, block over.
+  - It names the pattern only for labeled problems.
+  - It announces a finished block once.
+  - It installs from the workspace's own marketplace (`.claude-plugin/marketplace.json`).
+- **Skill text:** SKILL.md, the practice mode, `/practice` and platforms.md run every solve through `coach.py solve`.
+
 ## 0.3.0 · 2026-11-05
 
 Principles from *Learning How to Learn*, *How to Solve It* and "Programming as Theory Building" (docs/research/learning-principles.md).

@@ -69,7 +69,16 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
 | `none` | Offer a mock or an unlabeled mixed set |
 
-`block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it and offer the next one in a line. The rules for every mode still apply.
+For a problem, run `coach.py solve start --problem SLUG` before the first prompt, with `--unlabeled` when `block` is false. For a re-solve, run the same command; it always creates a blank file. Then point him to the attempt file it prints.
+
+`block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it (`solve end` for a problem) and offer the next one in a line.
+
+**Prompts from the coach pane.** The pane in Claude Code sends these as his own words:
+- "I'm done with stage N": check that stage's output before `solve stage N+1`.
+- "I'm stuck at stage N": the next rung (`solve hint`).
+- "Check my attempt in ...": run it on edge cases, report what fails and don't fix it.
+- "My focus block is over": the stuck-block options in SKILL.md.
+- "Break's over": `solve block`. The rules for every mode still apply.
 
 At the end, if draft cards are waiting, ask once: "Keep all N, or go through them?" Keeping all means `card accept` for each. Drafts never hold up practice.
 

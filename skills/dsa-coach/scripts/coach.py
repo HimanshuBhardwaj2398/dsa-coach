@@ -19,7 +19,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.3.0"
+SKILL_VERSION = "0.4.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -53,6 +53,20 @@ GRADES = ["pass", "fail"]
 TIMED_MODES = ("practice", "review", "mock")
 LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purpose, never picked by `next`
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
+LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
+STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase)
+    ("Unknown, data, condition", "Understand"),
+    ("Brute force on the grid", "Devise a plan"),
+    ("Count", "Devise a plan"),
+    ("Find the repeated work", "Devise a plan"),
+    ("Classify and choose the state", "Devise a plan"),
+    ("Plan card", "Devise a plan"),
+    ("Pseudocode, then code", "Carry out the plan"),
+    ("Test and look back", "Look back"),
+]
+RUNGS = ["none", "a general question", "a nudge for this problem", "the pattern name", "the invariant or state",
+         "a skeleton with blanks", "one concrete sub-step", "the full worked solution"]
+FOCUS_MINUTES = {"easy": 15, "medium": 25, "hard": 25}  # one genuine attempt = one focused block
 DEFAULT_CONFIG = {
     "learner": "learner",
     "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -847,15 +861,21 @@ def add_attempt(root: Path, a: dict, source: str = "cli") -> dict:
     return row
 
 
+def split_codes(text: str | None) -> list:
+    return [m.strip() for m in (text or "").split(",") if m.strip()]
+
+
 def cmd_log_attempt(args) -> None:
     root = find_root(args.root)
-    a = {
+    log_and_report(root, {
         "problem": args.problem, "pattern": args.pattern, "difficulty": args.difficulty, "mode": args.mode,
         "outcome": args.outcome, "minutes": args.minutes, "hints": args.hints, "assisted": args.assisted,
-        "confidence": args.confidence, "technique": args.technique,
-        "mistakes": [m.strip() for m in (args.mistakes or "").split(",") if m.strip()],
+        "confidence": args.confidence, "technique": args.technique, "mistakes": split_codes(args.mistakes),
         "complexity_stated": args.complexity_stated, "note": args.note or "", "date": args.date,
-    }
+    })
+
+
+def log_and_report(root: Path, a: dict) -> None:
     errs = validate_attempt(a, pattern_keys())
     if errs:
         die("; ".join(errs))
@@ -1091,6 +1111,156 @@ def cmd_next(args) -> None:
     print(json.dumps(item, indent=2, ensure_ascii=False) if args.json else render_next(item))
 
 
+# live solve -----------------------------------------------------------------
+def now() -> datetime:
+    forced = os.environ.get("DSA_NOW")
+    return datetime.fromisoformat(forced) if forced else datetime.now().astimezone()
+
+
+def stamp() -> str:
+    return now().isoformat(timespec="seconds")
+
+
+def load_live(root: Path, required: bool = True) -> dict | None:
+    live = read_json(root / LIVE, None)
+    if live is None and required:
+        die("no live solve. Start one with `coach.py solve start --problem SLUG`.")
+    return live
+
+
+def block_minutes(block: dict, at: datetime) -> float:
+    end = datetime.fromisoformat(block["end"]) if block.get("end") else at
+    return max(0.0, (end - datetime.fromisoformat(block["start"])).total_seconds() / 60)
+
+
+def live_view(live: dict) -> dict:
+    """The live solve plus what follows from it: stage and rung names, minutes so far, the current block."""
+    at = now()
+    blocks = live["blocks"]
+    current = blocks[-1] if blocks and not blocks[-1].get("end") else None
+    stage, phase = STAGES[live["stage"] - 1]
+    return dict(live, stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]],
+                minutes=int(sum(block_minutes(b, at) for b in blocks) + 0.5),
+                block={"number": len(blocks), "open": current is not None, "length": live["block_minutes"],
+                       "elapsed": int(block_minutes(current, at)) if current else None})
+
+
+def describe_live(v: dict) -> str:
+    """One line. The pattern appears only when the problem is labeled: naming it is hint rung 3."""
+    b = v["block"]
+    timer = f"block {b['number']}: {b['elapsed']} of {b['length']} min" if b["open"] else f"on a break after block {b['number']}"
+    label = f" ({v['pattern_name']})" if v["labeled"] else ""
+    return (f"{v['problem']}{label} · stage {v['stage']}/8 {v['stage_name']} · hint rung {v['rung']}/7 · "
+            f"{timer} · {v['minutes']} min in all")
+
+
+def solve_start(root: Path, args) -> None:
+    if load_live(root, required=False):
+        die("a solve is already live (`coach.py solve show`). End it with `solve end --outcome ...` or `solve end --discard`.")
+    slug = slugify(args.problem)
+    roadmap = load_roadmap()
+    past = [a for a in usable_attempts(read_jsonl(root / "learner" / "attempts.jsonl")) if a["problem"] == slug]
+    canonical = next((p["key"] for p in roadmap["patterns"] if slug in p.get("canonical", [])), None)
+    pattern = args.pattern or (past[-1]["pattern"] if past else canonical)
+    if not pattern:
+        die(f"which pattern is {slug}? Pass --pattern ({', '.join(pattern_keys())}).")
+    difficulty = args.difficulty or (past[-1].get("difficulty") if past else None) or "medium"
+    on = today().isoformat()
+    folder = root / "problems" / slug
+    name, n = f"{on}.py", 2
+    while (folder / name).exists():  # every attempt starts from a blank page
+        name, n = f"{on}-{n}.py", n + 1
+    pattern_name = next(p["name"] for p in roadmap["patterns"] if p["key"] == pattern)
+    url = roadmap.get("problem_url", "https://leetcode.com/problems/{slug}/").format(slug=slug)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_text(template("solve.py").format(
+        problem=slug, url=url, date=on, pattern_line="" if args.unlabeled else f" Pattern: {pattern_name}."), encoding="utf-8")
+    started = stamp()
+    live = {
+        "problem": slug, "pattern": pattern, "pattern_name": pattern_name, "labeled": not args.unlabeled,
+        "difficulty": difficulty, "mode": args.mode, "confidence": args.confidence, "url": url,
+        "file": f"problems/{slug}/{name}", "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
+        "blocks": [{"start": started, "end": None}], "started": started, "skill_version": SKILL_VERSION,
+    }
+    write_json(root / LIVE, live)
+    print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
+
+
+def solve_end(root: Path, live: dict, args) -> None:
+    if args.discard:
+        (root / LIVE).unlink()
+        print(f"Discarded the live solve of {live['problem']}; nothing logged. {live['file']} stays.")
+        return
+    if not args.outcome:
+        die("give --outcome (solved, partial or failed), or --discard")
+    v = live_view(live)
+    log_and_report(root, {
+        "problem": live["problem"], "pattern": live["pattern"], "difficulty": live["difficulty"], "mode": live["mode"],
+        "outcome": args.outcome, "minutes": v["minutes"] if args.minutes is None else args.minutes,
+        "hints": live["rung"], "assisted": args.assisted,
+        "confidence": live.get("confidence") if args.confidence is None else args.confidence,
+        "technique": args.technique, "mistakes": split_codes(args.mistakes),
+        "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
+    })
+    (root / LIVE).unlink()
+
+
+def cmd_solve(args) -> None:
+    root = find_root(args.root)
+    action = args.solve_cmd
+    if action == "start":
+        return solve_start(root, args)
+    live = load_live(root, required=not (action == "show" or (action == "end" and args.discard)))
+    if action == "show" or live is None:
+        if live is None:
+            print("null" if getattr(args, "json", False) else "No live solve.")
+        elif args.json:
+            print(json.dumps(live_view(live), indent=2, ensure_ascii=False))
+        else:
+            print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
+        return
+    if action == "end":
+        return solve_end(root, live, args)
+    blocks = live["blocks"]
+    open_block = blocks[-1] if blocks and not blocks[-1].get("end") else None
+    if action == "stage":
+        live["stage"] = args.n
+    elif action == "hint":
+        live["rung"] = min(7, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
+    elif action in ("break", "block"):
+        if open_block:
+            open_block["end"] = stamp()
+        if action == "block":
+            blocks.append({"start": stamp(), "end": None})
+    write_json(root / LIVE, live)
+    print(f"Live solve: {describe_live(live_view(live))}")
+
+
+def cmd_guard(args) -> None:
+    """PreToolUse hook. Exit 2 blocks the edit: during a live solve, the problem's .py files are the learner's
+    until hint rung 7. Anything unexpected allows the edit, so the guard never gets in the way of other work."""
+    try:
+        event = json.loads(sys.stdin.read())
+        target = (event.get("tool_input") or {}).get("file_path")
+        root = find_root(args.root)
+        live = load_live(root, required=False)
+    except (SystemExit, Exception):
+        sys.exit(0)
+    if not target or not live or live.get("rung", 0) >= 7 or not str(target).endswith(".py"):
+        sys.exit(0)
+    path = Path(target)
+    if not path.is_absolute():
+        path = Path(event.get("cwd") or Path.cwd()) / path
+    try:
+        path.resolve().relative_to((root / "problems" / live["problem"]).resolve())
+    except ValueError:
+        sys.exit(0)
+    print(f"Blocked by dsa-coach: {live['problem']} is a live solve at hint rung {live.get('rung', 0)}/7, and its "
+          "code is the learner's to write. Give the next rung in the chat instead (`coach.py solve hint`). "
+          "If the learner asked for the full solution, record rung 7 first.", file=sys.stderr)
+    sys.exit(2)
+
+
 # artifacts ------------------------------------------------------------------
 def add_artifact(root: Path, a: dict, source: str = "cli") -> dict:
     reg = read_json(root / "artifacts" / "registry.json", [])
@@ -1167,6 +1337,9 @@ def cmd_status(args) -> None:
           + f" · week {plan['week']} · {plan['phase']} · skill {SKILL_VERSION}")
     print(f"Focus: {focus['name'] + ' (' + focus['status'] + ')' if focus else 'not set'}")
     print(f"Due: {len(d['resolves'])} re-solve(s) · {len(d['cards'])} card(s) · {d['drafts']} draft card(s) to approve · {len(d['inbox'])} inbox delta(s)")
+    live = load_live(root, required=False)
+    if live:
+        print(f"Live solve: {describe_live(live_view(live))}. Resume it: `coach.py solve show --json`.")
     if not args.brief:
         started = [r for r in j["patterns"] if r["status"] != "not started"]
         if started:
@@ -1356,16 +1529,26 @@ def cmd_install(args) -> None:
 
 
 def install_hook() -> str:
+    """The SessionStart status hook and the PreToolUse guard for attempt files."""
     path = WORKSPACE / ".claude" / "settings.json"
-    command = 'python3 "$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py" --root "$CLAUDE_PROJECT_DIR/notebook" status --brief'
-    entry = {"matcher": "startup|resume|clear|compact", "hooks": [{"type": "command", "command": command}]}
+    base = 'python3 "$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py" --root "$CLAUDE_PROJECT_DIR/notebook"'
+    wanted = [
+        ("SessionStart", "startup|resume|clear|compact", f"{base} status --brief",
+         "Claude Code loads your status at the start of each session"),
+        ("PreToolUse", "Write|Edit|MultiEdit", f"{base} guard",
+         "Claude can't write in your attempt file during a live solve"),
+    ]
     settings = read_json(path, {}) if path.exists() else {}
-    hooks = settings.setdefault("hooks", {}).setdefault("SessionStart", [])
-    if any(x.get("command") == command for h in hooks for x in h.get("hooks", [])):
-        return f"SessionStart hook already present in {path}"
-    hooks.append(entry)
+    msgs = []
+    for event, matcher, command, why in wanted:
+        hooks = settings.setdefault("hooks", {}).setdefault(event, [])
+        if any(x.get("command") == command for h in hooks for x in h.get("hooks", [])):
+            msgs.append(f"{event} hook already present in {path}")
+            continue
+        hooks.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+        msgs.append(f"{event} hook added to {path} ({why})")
     write_json(path, settings)
-    return f"SessionStart hook added to {path} (Claude Code loads your status at the start of each session)"
+    return "\n".join(msgs)
 
 
 def frontmatter(text: str) -> dict:
@@ -1536,6 +1719,38 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     s.set_defaults(func=cmd_next)
+
+    solve = sub.add_parser("solve", help="the live solve: stage, hint rung and focus blocks").add_subparsers(dest="solve_cmd", required=True)
+    s = solve.add_parser("start", help="start a solve and create a blank attempt file")
+    s.add_argument("--problem", required=True, help="LeetCode slug or a short name")
+    s.add_argument("--pattern", choices=pattern_keys(), help="default: an earlier attempt's, or the roadmap's")
+    s.add_argument("--difficulty", choices=DIFFICULTIES, help="default: an earlier attempt's, or medium")
+    s.add_argument("--mode", default="practice", choices=MODES)
+    s.add_argument("--confidence", type=int, choices=range(1, 6), help="confidence before starting, 1-5")
+    s.add_argument("--unlabeled", action="store_true", help="mixed practice: keep the pattern out of the file and the status")
+    s = solve.add_parser("stage", help="move to a solve-protocol stage")
+    s.add_argument("n", type=int, choices=range(1, 9))
+    s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
+    s.add_argument("--rung", type=int, choices=range(1, 8))
+    solve.add_parser("break", help="end the current focus block")
+    solve.add_parser("block", help="start a new focus block")
+    s = solve.add_parser("show", help="the live solve")
+    s.add_argument("--json", action="store_true")
+    s = solve.add_parser("end", help="log the attempt from the live solve, or --discard it")
+    s.add_argument("--outcome", choices=OUTCOMES)
+    s.add_argument("--discard", action="store_true", help="drop the live solve without logging")
+    s.add_argument("--minutes", type=int, help="default: the minutes in focus blocks")
+    s.add_argument("--assisted", action="store_true", help="saw a solution or used AI")
+    s.add_argument("--confidence", type=int, choices=range(1, 6), help="default: the one given at start")
+    s.add_argument("--technique", choices=TECHNIQUES)
+    s.add_argument("--mistakes", help=f"comma-separated codes: {', '.join(MISTAKES)}")
+    s.add_argument("--complexity-stated", action="store_true")
+    s.add_argument("--note")
+    for sp in solve.choices.values():
+        sp.set_defaults(func=cmd_solve)
+
+    s = sub.add_parser("guard", help="PreToolUse hook: keeps Claude out of the attempt files during a live solve")
+    s.set_defaults(func=cmd_guard)
 
     art = sub.add_parser("artifact", help="saved explainers and published pages").add_subparsers(dest="artifact_cmd", required=True)
     s = art.add_parser("add")

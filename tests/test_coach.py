@@ -25,12 +25,14 @@ class CoachTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def run_cli(self, *args, today=None, ok=True):
+    def run_cli(self, *args, today=None, ok=True, now=None, stdin=None):
         env = dict(self.env)
         if today:
             env["DSA_TODAY"] = today
+        if now:
+            env["DSA_NOW"] = f"2026-11-01T{now}:00+05:30"
         proc = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), *args],
-                              capture_output=True, text=True, env=env, cwd=self.tmp)
+                              capture_output=True, text=True, env=env, cwd=self.tmp, input=stdin)
         if ok and proc.returncode != 0:
             self.fail(f"coach {' '.join(args)} failed:\n{proc.stdout}\n{proc.stderr}")
         return proc
@@ -295,6 +297,86 @@ class CoachTest(unittest.TestCase):
         self.assertTrue(steps[0].startswith("Solve two-sum"), steps)
         self.assertTrue(steps[1].startswith("Approve"), steps)
 
+    # ------------------------------------------------------------------ live solve
+    def live(self):
+        path = self.root / "sessions" / "current.json"
+        return json.loads(path.read_text()) if path.exists() else None
+
+    def attempts(self):
+        text = (self.root / "learner" / "attempts.jsonl").read_text()
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+    def test_solve_start_scaffolds_the_attempt_file(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
+        live = self.live()
+        self.assertEqual((live["pattern"], live["stage"], live["rung"], live["block_minutes"]), ("arrays-hashing", 1, 0, 15))
+        self.assertEqual(live["file"], "problems/two-sum/2026-11-01.py")
+        text = (self.root / live["file"]).read_text()
+        self.assertIn("https://leetcode.com/problems/two-sum/", text)
+        self.assertIn("Arrays & Hashing", text)
+        self.assertIn("Invariant:", text)
+        again = self.run_cli("solve", "start", "--problem", "valid-anagram", "--pattern", "arrays-hashing", ok=False)
+        self.assertNotEqual(again.returncode, 0)
+        self.assertIn("already live", again.stderr)
+
+    def test_solve_needs_a_pattern_for_unknown_problems(self):
+        proc = self.run_cli("solve", "start", "--problem", "my-own-puzzle", ok=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("--pattern", proc.stderr)
+
+    def test_solve_end_logs_one_attempt_from_blocks_and_rung(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
+        self.run_cli("solve", "stage", "3", now="10:05")
+        self.run_cli("solve", "hint", now="10:10")
+        self.run_cli("solve", "hint", "--rung", "3", now="10:12")
+        self.run_cli("solve", "hint", "--rung", "2", now="10:13")  # the highest rung stays
+        self.assertEqual((self.live()["stage"], self.live()["rung"]), (3, 3))
+        self.run_cli("solve", "break", now="10:20")
+        self.run_cli("solve", "block", now="10:30")
+        self.run_cli("solve", "end", "--outcome", "solved", "--note", "complement lookup", now="10:42")
+        self.assertIsNone(self.live())
+        [a] = self.attempts()
+        self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
+        self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (32, 3, 3, "solved"))
+
+    def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
+        text = (self.root / self.live()["file"]).read_text()
+        shown = self.run_cli("solve", "show", now="10:07").stdout
+        status = [line for line in self.run_cli("status", "--brief", now="10:07").stdout.splitlines()
+                  if line.startswith("Live solve")][0]
+        for out in (text, shown, status):
+            self.assertNotIn("Arrays & Hashing", out)
+            self.assertNotIn("arrays-hashing", out)
+        self.assertIn("Live solve: two-sum", status)
+        self.assertIn("block 1: 7 of 25 min", status)
+        self.assertEqual(json.loads(self.run_cli("solve", "show", "--json").stdout)["pattern"], "arrays-hashing")
+
+    def test_solve_again_gets_a_blank_file_and_discard_logs_nothing(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        self.run_cli("solve", "end", "--discard", now="10:01")
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:02")
+        self.assertEqual(self.live()["file"], "problems/two-sum/2026-11-01-2.py")
+        self.assertEqual(self.attempts(), [])
+        self.assertIn("No live solve", self.run_cli("solve", "end", "--discard").stdout + self.run_cli("solve", "show").stdout)
+
+    def test_guard_blocks_edits_to_the_live_problem_until_rung_7(self):
+        def guard(path, tool="Edit"):
+            event = {"tool_name": tool, "tool_input": {"file_path": str(path)}, "cwd": str(self.tmp)}
+            return self.run_cli("guard", stdin=json.dumps(event), ok=False).returncode
+
+        attempt = self.root / "problems" / "two-sum" / "2026-11-01.py"
+        self.assertEqual(guard(attempt), 0)  # no live solve
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        self.assertEqual(guard(attempt), 2)
+        self.assertEqual(guard(self.root / "problems" / "two-sum" / "solution.py", tool="Write"), 2)
+        self.assertEqual(guard("notebook/problems/two-sum/2026-11-01.py"), 2)  # relative to the hook's cwd
+        self.assertEqual(guard(self.root / "problems" / "two-sum" / "notes.md"), 0)
+        self.assertEqual(guard(self.root / "problems" / "valid-anagram" / "2026-11-01.py"), 0)
+        self.assertEqual(self.run_cli("guard", stdin="not json", ok=False).returncode, 0)
+        self.run_cli("solve", "hint", "--rung", "7")
+        self.assertEqual(guard(attempt), 0)
+
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):
         out = self.run_cli("status", "--brief")
@@ -329,6 +411,8 @@ class CoachTest(unittest.TestCase):
         self.assertTrue((ws / ".claude/skills/dsa-coach").is_symlink())
         settings = json.loads((ws / ".claude/settings.json").read_text())
         self.assertIn("status --brief", json.dumps(settings))
+        self.assertEqual(settings["hooks"]["PreToolUse"][0]["matcher"], "Write|Edit|MultiEdit")
+        self.assertIn(" guard", json.dumps(settings["hooks"]["PreToolUse"]))
         again = subprocess.run([sys.executable, str(coach), "install"], capture_output=True, text=True, env=self.env, cwd=ws)
         self.assertIn("already linked", again.stdout)
         self.assertIn("already present", again.stdout)

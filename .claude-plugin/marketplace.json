@@ -1,0 +1,11 @@
+{
+  "name": "dsa-coach",
+  "owner": { "name": "Himanshu Bhardwaj" },
+  "plugins": [
+    {
+      "name": "dsa-coach-pane",
+      "source": "./plugins/dsa-coach-pane",
+      "description": "The live solve beside the chat: stage, focus-block timer, hint rung, and buttons that talk to the coach"
+    }
+  ]
+}

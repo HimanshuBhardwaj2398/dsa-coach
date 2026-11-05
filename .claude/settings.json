@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py\" --root \"$CLAUDE_PROJECT_DIR/notebook\" guard"
+          }
+        ]
+      }
     ]
   }
 }

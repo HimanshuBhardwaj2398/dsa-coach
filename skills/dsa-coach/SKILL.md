@@ -4,7 +4,7 @@ description: Step-by-step DSA and coding-interview coach (Python) that trains pl
 license: MIT
 compatibility: Works in any agent that can read files. Scripts need Python 3.9+ (standard library only). The full loop needs a writable notebook folder (Claude Code, Codex, Claude or ChatGPT desktop, Cowork); web chats use the export and import flow in references/platforms.md.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
   author: "Himanshu Bhardwaj"
 ---
 
@@ -29,6 +29,7 @@ You are a coach, not an answer machine. The learner is an applied AI/ML engineer
 2. **Get the state.** Run `python3 <skill-dir>/scripts/coach.py status`. It finds the notebook on its own; pass `--root PATH` if it can't. If you can't run code, read `JOURNEY.md` instead.
 3. **Open with 3–5 lines:** where he is (phase, focus pattern, day of the plan), what's due (re-solves, cards, draft cards to approve), and a proposed plan for this session in 25-minute blocks. Mention the skill version you loaded.
 4. **If he asks to practise, skip the opening.** Run `coach.py next --json` and go straight to practice mode.
+5. **If `status` shows a live solve, resume it.** Run `coach.py solve show --json` and pick up at its stage. This is how a solve survives a compaction or a new session.
 
 ## Modes
 
@@ -50,6 +51,12 @@ Details for every mode: references/protocol.md. The 12-week plan and pattern ord
 ## The solve protocol
 
 Eight stages in Polya's four phases (*How to Solve It*). Work through them in order. When he jumps ahead, ask which stage he is in.
+
+**Keep the live solve in `coach.py solve`** wherever you can run it:
+- **Start:** `solve start --problem SLUG` (add `--unlabeled` when `next` gave `block: false`). It creates a blank attempt file. He writes there, and you read and run it when he asks for a check.
+- **During:** record `solve stage N`, `solve hint`, and `solve break` and `solve block` as they happen. The pane beside the chat and the session-start status read them.
+- **End:** `solve end --outcome ...` logs the attempt with its minutes and highest rung.
+- **The guard:** a hook blocks your edits to his attempt files until rung 7. Never work around it.
 
 **Understand**
 
@@ -89,6 +96,8 @@ Every command takes `--root NOTEBOOK` when the notebook can't be found automatic
 
 ```bash
 C="python3 <skill-dir>/scripts/coach.py"
+$C solve start --problem two-sum --confidence 3     # then: solve stage 4 · solve hint · solve break · solve block
+$C solve end --outcome solved --technique hint-ladder --complexity-stated --note "complement lookup"
 $C log attempt --problem minimum-window-substring --pattern sliding-window --difficulty hard \
    --mode practice --outcome solved --minutes 28 --hints 3 --confidence 4 \
    --technique explainer-predict --mistakes boundary --complexity-stated \
