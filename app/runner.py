@@ -3,6 +3,7 @@
     python3 app/runner.py FILE     prints the result as JSON
 
 The child imports the file under a name other than __main__, so the file's own test loop doesn't run.
+It prints a JSON line as each example starts and ends, so a time limit can name the example it stopped.
 """
 import contextlib
 import copy
@@ -21,15 +22,45 @@ def run(path, timeout: float = TIMEOUT_S) -> dict:
     """{"ok", "method", "rows": [{"ok", "args", "expected", "got", "stdout", "error"}], "error"}"""
     try:
         proc = subprocess.run([sys.executable, "-I", str(Path(__file__).resolve()), "--child", str(path)],
-                              capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "method": None, "rows": [],
-                "error": f"timed out after {timeout:g} s: an infinite loop, or too slow for these inputs"}
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        return {"ok": False, "method": None, "rows": [],
-                "error": (proc.stderr or proc.stdout or "the runner stopped without a result").strip()[-3000:]}
+                              stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        return _timed_out(_messages(e.stdout), timeout)
+    messages = _messages(proc.stdout)
+    if messages and "result" in messages[-1]:
+        return messages[-1]["result"]
+    return {"ok": False, "method": None, "rows": [],
+            "error": (proc.stderr.decode(errors="replace").strip() or "the runner stopped without a result")[-3000:]}
+
+
+def _messages(stdout) -> list:
+    """The child's complete JSON lines; anything else the attempt wrote to stdout is skipped."""
+    messages = []
+    for line in (stdout or b"").decode(errors="replace").split("\n")[:-1]:
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(message, dict):
+            messages.append(message)
+    return messages
+
+
+def _timed_out(messages: list, timeout: float) -> dict:
+    """The rows that finished in time, then the example that was still running, if one had started."""
+    rows = [m["row"] for m in messages if "row" in m]
+    started = messages[-1].get("start") if messages else None
+    where = ""
+    if started:
+        rows.append({"ok": False, "args": started["args"], "expected": started["expected"], "got": None,
+                     "stdout": "", "error": "timed out on this example"})
+        where = f" on the example ({started['args']}) -> {started['expected']}"
+    return {"ok": False, "method": None, "rows": rows,
+            "error": f"timed out after {timeout:g} s{where}: an infinite loop, or too slow for these inputs"}
+
+
+def _say(**message) -> None:
+    """One JSON line for the parent, flushed so it gets there even if the time limit kills the child."""
+    print(json.dumps(message), flush=True)
 
 
 def _trace() -> str:
@@ -45,12 +76,13 @@ def run_row(solution: type, name: str, row) -> dict:
                 "error": "Each example must be ((args, ...), expected)."}
     result = {"ok": False, "args": ", ".join(map(repr, args)), "expected": repr(expected), "got": "",
               "stdout": "", "error": None}
+    _say(start={"args": result["args"], "expected": result["expected"]})
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
             got = getattr(solution(), name)(*copy.deepcopy(args))
         result.update(ok=bool(got == expected), got=repr(got))
-    except Exception:
+    except BaseException:  # sys.exit() and exit() too, so the other rows still run
         result["error"] = _trace()
     result["stdout"] = buf.getvalue()[-2000:]
     return result
@@ -76,14 +108,16 @@ def child(path: str) -> dict:
     if not examples:
         out["error"] = "No examples yet. Add them in stage 1."
         return out
-    out["rows"] = [run_row(solution, out["method"], row) for row in examples]
+    for row in examples:
+        out["rows"].append(run_row(solution, out["method"], row))
+        _say(row=out["rows"][-1])
     out["ok"] = all(r["ok"] for r in out["rows"])
     return out
 
 
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--child":
-        print(json.dumps(child(sys.argv[2])))
+        _say(result=child(sys.argv[2]))
     elif len(sys.argv) == 2:
         print(json.dumps(run(sys.argv[1]), indent=2))
     else:
