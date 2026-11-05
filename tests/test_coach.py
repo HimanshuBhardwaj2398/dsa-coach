@@ -478,6 +478,22 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(os.listdir(path.parent), ["current.json"])  # no temp files left behind
         self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {"note": "seen → index"})
 
+    def test_write_json_writes_through_a_symlink_and_keeps_the_mode(self):
+        """e.g. .claude/settings.json linked from a dotfiles repo."""
+        spec = importlib.util.spec_from_file_location("coach", COACH)
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        target = self.tmp / "dotfiles" / "settings.json"
+        target.parent.mkdir()
+        target.write_text("{}\n")
+        target.chmod(0o600)
+        link = self.tmp / "settings.json"
+        link.symlink_to(target)
+        coach.write_json(link, {"hooks": 1})
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(json.loads(target.read_text()), {"hooks": 1})
+        self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):
         out = self.run_cli("status", "--brief")

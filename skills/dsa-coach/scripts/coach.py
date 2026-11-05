@@ -117,13 +117,17 @@ def read_json(path: Path, default):
 
 
 def write_json(path: Path, data) -> None:
-    """Write a temp file beside `path`, then rename it over `path`, so a reader never sees half a file."""
+    """Write a temp file beside `path`, then rename it over `path`, so a reader never sees half a file.
+    A symlinked `path` stays a link (the real file is replaced), and an existing file keeps its mode."""
+    path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     tmp = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
     try:
-        with open(tmp, "x", encoding="utf-8") as fh:  # not mkstemp: that makes the file 0600, this keeps the umask's mode
+        with open(tmp, "x", encoding="utf-8") as fh:  # a new file gets the umask's mode; mkstemp would make it 0600
             fh.write(text)
+        if path.exists():
+            shutil.copymode(path, tmp)
         os.replace(tmp, path)
     except BaseException:
         tmp.unlink(missing_ok=True)
