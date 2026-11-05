@@ -38,6 +38,29 @@ class PlanCardTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             af.write_plan_card("class Solution:\n    pass\n", {"State": "x"})
 
+    def test_a_one_line_docstring_has_no_plan_card(self):
+        # Without a multi-line docstring, a class attribute named like a field is code, not the plan card.
+        text = '"""binary-search"""\n\n\nclass Solution:\n    State: str = "x"\n\n    def f(self):\n        """Helper."""\n'
+        self.assertEqual(af.read_plan_card(text), {})
+        with self.assertRaisesRegex(ValueError, "no docstring"):
+            af.write_plan_card(text, {"State": "lo, hi"})
+
+    def test_a_field_with_no_line_in_the_docstring_is_refused(self):
+        old = blank().replace("    Hand trace:\n", "")  # a file from the 0.4.0 template
+        with self.assertRaisesRegex(ValueError, "Hand trace"):
+            af.write_plan_card(old, {"State": "lo, hi", "Hand trace": "[5], 5: found"})
+        self.assertEqual(af.read_plan_card(af.write_plan_card(old, {"State": "lo, hi", "Hand trace": ""}))["State"],
+                         "lo, hi")
+
+    def test_values_that_would_break_the_docstring_are_refused(self):
+        for value in ['say """hi"""', "\\N", "\\x4", "\\u12", "\\U0001"]:
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "Hand trace"):
+                af.write_plan_card(blank(), {"Hand trace": value})
+        fine = 'lo\\nhi and a "quote"'
+        text = af.write_plan_card(blank(), {"Hand trace": fine})
+        compile(text, "attempt.py", "exec")
+        self.assertEqual(af.read_plan_card(text)["Hand trace"], fine)
+
 
 class ExamplesTest(unittest.TestCase):
     rows = [{"args": "[-1, 0, 3, 5, 9, 12], 9", "expected": "4", "edge": False},
@@ -67,6 +90,45 @@ class ExamplesTest(unittest.TestCase):
         self.assertEqual(af.read_examples("x = 1\n"), [])
         with self.assertRaises(ValueError):
             af.write_examples("x = 1\n", self.rows)
+
+    def test_a_row_that_wouldnt_read_back_as_written_is_refused(self):
+        for args, expected in [("[2, 7], 9", "0, 1"), ("[2, 7], 9", "4  # note"), ("1,), (2", "0"), ("[1,\n2]", "0")]:
+            with self.subTest(args=args, expected=expected), self.assertRaises(ValueError):
+                af.write_examples(blank(), [{"args": args, "expected": expected, "edge": False}])
+        with self.assertRaises(ValueError) as cm:
+            af.format_row({"args": "[2, 7], 9", "expected": "0, 1"})
+        self.assertEqual(str(cm.exception),
+                         "write the inputs and the output as Python values, such as [1, 2], 3 or 'abc': got '0, 1'")
+        with self.assertRaisesRegex(ValueError, r"got 'nums'$"):
+            af.format_row({"args": "nums", "expected": "4"})
+
+    def test_rows_the_table_cant_show_are_never_dropped(self):
+        bad = blank().replace("EXAMPLES = [\n]", "EXAMPLES = [\n    (([1, 2]), 3),\n    (([5],), 0),\n]")
+        with self.assertRaisesRegex(ValueError, r"\(\(\[1, 2\]\), 3\)"):
+            af.read_examples(bad)
+        with self.assertRaises(ValueError):
+            af.write_examples(bad, self.rows)
+
+    def test_examples_must_be_one_list_that_parses(self):
+        cases = {"runs on": "EXAMPLES = [((1,), 1)]  # one line\n\nMORE = [\n]",
+                 "not a list": "EXAMPLES = [((1,), 1)] + [((2,), 2)]",
+                 "syntax error": "EXAMPLES = [\n    ((1,), 1\n]"}
+        for case, block in cases.items():
+            text = blank().replace("EXAMPLES = [\n]", block)
+            with self.subTest(case):
+                with self.assertRaises(ValueError):
+                    af.read_examples(text)
+                with self.assertRaises(ValueError):
+                    af.write_examples(text, self.rows)
+        with self.assertRaisesRegex(ValueError, "EXAMPLES has a syntax error"):
+            af.read_examples(blank().replace("EXAMPLES = [\n]", cases["syntax error"]))
+
+    def test_the_edge_marker_is_read_loosely(self):
+        marks = ["  #edge", "  # Edge", "  # edge case", "  # edge: empty", ""]
+        block = "EXAMPLES = [\n" + "".join(f"    (({i},), {i}),{m}\n" for i, m in enumerate(marks))
+        block += '    (("# edge",), 5),\n    (("éééééééééé",), 6),  # edge\n]'  # only a comment after the row counts
+        rows = af.read_examples(blank().replace("EXAMPLES = [\n]", block))
+        self.assertEqual([r["edge"] for r in rows], [True, True, True, True, False, False, True])
 
 
 class TemplateTest(unittest.TestCase):
