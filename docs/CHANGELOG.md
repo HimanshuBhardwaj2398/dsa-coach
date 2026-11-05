@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 · 2026-11-05
+
+Package the existing DSA coach for reuse outside this workspace.
+
+- Move runtime requirements from `compatibility` frontmatter into the skill body so both the notebook and skill-creator validators accept the package.
+- Include `$dsa-coach` in the Codex default prompt.
+- Document explicit notebook selection and initialization for an extracted skill, and distinguish the optional project hook from the skill's teaching instructions.
+- Preserve the teaching protocol and separate notebook data, as described in `docs/research/`; no changes to learning schedules or scoring.
+
 ## 0.4.0 · 2026-11-05
 
 Long solves, in an editor file and a pane beside the chat.

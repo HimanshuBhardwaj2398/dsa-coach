@@ -6,14 +6,27 @@ The skill follows the open Agent Skills format (agentskills.io), so the same fol
 
 Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connected, ChatGPT desktop with local skills.
 
-- Run `scripts/coach.py` directly. It finds the notebook through `$DSA_NOTEBOOK`, `./notebook`, or the workspace the skill is installed in.
+- Run `scripts/coach.py` directly. It finds the notebook through `--root`, `$DSA_NOTEBOOK`, `./notebook`, the current directory, `~/.config/dsa-coach/notebook.txt`, then the original workspace's `notebook/`, in that order.
 - Edit notes in `notebook/concepts/` and `notebook/problems/` directly.
 - Save explainers into `notebook/concepts/<slug>/` and register them with `artifact add`.
 - At session start, `coach.py status` also reports deltas waiting in `notebook/inbox/`. Import them with `coach.py import` before anything else, after telling him what they contain.
 - Run every solve through `coach.py solve`.
-  - Claude Code adds two things on top. A PreToolUse guard (`coach.py guard`, installed by `coach.py install`) keeps your edits out of his attempt files until rung 7.
+  - Claude Code adds two things on top. A PreToolUse guard (`coach.py guard`, installed by project-level `coach.py install`, not `install --user`) keeps your edits out of his attempt files until rung 7. Copying or unzipping the skill alone does not install this hook.
   - The optional `dsa-coach-pane` plugin (`plugins/dsa-coach-pane/` in the workspace) shows the live solve beside the chat.
   - Elsewhere, the same state lives in `notebook/sessions/current.json`, so the next session can resume it.
+
+### Standalone setup
+
+The ZIP contains the `dsa-coach/` skill folder, without learner data or the optional pane plugin. Extract it into the host's skills directory and run its `scripts/coach.py` from there.
+
+For an existing notebook, pass `--root /absolute/path/to/notebook` before the command, or set `DSA_NOTEBOOK` to that path. For a new notebook, use the location chosen by the learner explicitly; plain `init` assumes the original repository layout:
+
+```bash
+python3 /path/to/dsa-coach/scripts/coach.py --root /path/to/notebook init --name Himanshu
+python3 /path/to/dsa-coach/scripts/coach.py --root /path/to/notebook status --brief
+```
+
+When reusing this repository's notebook from other projects, run `python3 skills/dsa-coach/scripts/coach.py install --user --codex` from the repository. It links the skill into `~/.agents/skills` and saves the notebook location for discovery.
 
 ## Level B: code execution but no persistent folder
 

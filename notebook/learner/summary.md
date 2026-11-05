@@ -1,4 +1,4 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-05 by coach.py snapshot · skill 0.4.0
+DSA COACH LEARNER SUMMARY · generated 2026-11-05 by coach.py snapshot · skill 0.4.1
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
 Plan: day 7 of 90, week 1 of 12, phase Foundations, target date 2027-01-28
