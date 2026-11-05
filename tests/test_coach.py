@@ -331,7 +331,10 @@ class CoachTest(unittest.TestCase):
         text = path.read_text()
         self.assertIn("class Solution:", text)
         self.assertIn("    Hand trace:", text)
-        method = ("    def twoSum(self, nums, target):\n"
+        run = lambda: subprocess.run([sys.executable, str(path)], capture_output=True, text=True, timeout=10).stdout
+        self.assertEqual(run(), "Write the method inside class Solution first.\n")
+        method = ("    MOD = 10**9 + 7  # a constant before the method: the examples still call the method\n"
+                  "    def twoSum(self, nums: List[int], target: int) -> List[int]:  # LeetCode's stub, typing unimported\n"
                   "        seen = {}\n"
                   "        for i, x in enumerate(nums):\n"
                   "            if target - x in seen:\n"
@@ -344,8 +347,7 @@ class CoachTest(unittest.TestCase):
                             "    (([1, 2], 3), [1, 0]),\n"
                             "]")
         path.write_text(text)
-        out = subprocess.run([sys.executable, str(path)], capture_output=True, text=True).stdout.splitlines()
-        self.assertEqual([line[:4] for line in out], ["ok  ", "ok  ", "FAIL"])
+        self.assertEqual([line[:4] for line in run().splitlines()], ["ok  ", "ok  ", "FAIL"])
 
     def test_solve_needs_a_pattern_for_unknown_problems(self):
         proc = self.run_cli("solve", "start", "--problem", "my-own-puzzle", ok=False)
