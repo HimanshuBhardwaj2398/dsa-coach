@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-01",
-  "skill_version": "0.2.0",
+  "generated": "2026-11-05",
+  "skill_version": "0.4.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -11,14 +11,14 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 3,
+    "day": 7,
     "total_days": 90,
     "week": 1,
     "plan_weeks": 12,
     "phase": "Foundations",
     "weekly_hours": 11
   },
-  "focus": "sliding-window",
+  "focus": "stack",
   "patterns": [
     {
       "key": "arrays-hashing",
@@ -32,6 +32,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "two-sum"
     },
     {
@@ -46,6 +47,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "two-sum-ii-input-array-is-sorted"
     },
     {
@@ -60,6 +62,7 @@
       "ready": 0,
       "status": "exploring",
       "last_activity": "2026-10-30",
+      "last_attempt": null,
       "next_problem": "longest-substring-without-repeating-characters"
     },
     {
@@ -74,6 +77,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "subarray-sum-equals-k"
     },
     {
@@ -86,8 +90,9 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-05",
+      "last_attempt": null,
       "next_problem": "valid-parentheses"
     },
     {
@@ -102,6 +107,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "binary-search"
     },
     {
@@ -116,6 +122,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "reverse-linked-list"
     },
     {
@@ -130,6 +137,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "maximum-depth-of-binary-tree"
     },
     {
@@ -144,6 +152,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "kth-largest-element-in-an-array"
     },
     {
@@ -158,6 +167,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "subsets"
     },
     {
@@ -172,6 +182,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "number-of-islands"
     },
     {
@@ -186,6 +197,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "implement-trie-prefix-tree"
     },
     {
@@ -200,6 +212,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "merge-intervals"
     },
     {
@@ -214,6 +227,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "maximum-subarray"
     },
     {
@@ -228,6 +242,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "house-robber"
     },
     {
@@ -242,6 +257,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "unique-paths"
     },
     {
@@ -256,6 +272,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "network-delay-time"
     },
     {
@@ -270,6 +287,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "rotate-image"
     },
     {
@@ -284,6 +302,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "single-number"
     },
     {
@@ -298,6 +317,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "lru-cache"
     },
     {
@@ -312,6 +332,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "bugfix-multi-file-repo"
     },
     {
@@ -326,6 +347,7 @@
       "ready": 0,
       "status": "not started",
       "last_activity": null,
+      "last_attempt": null,
       "next_problem": "softmax-and-cross-entropy"
     }
   ],
@@ -335,13 +357,14 @@
     "two-pointers"
   ],
   "ahead": [
-    "sliding-window"
+    "sliding-window",
+    "stack"
   ],
   "problems": {},
   "due": {
     "resolves": [],
     "cards": [],
-    "drafts": 6,
+    "drafts": 7,
     "inbox": []
   },
   "totals": {
@@ -352,12 +375,12 @@
     "ready": 0,
     "minutes": 0,
     "sessions": 2,
-    "questions": 3,
+    "questions": 4,
     "cards_active": 0,
     "cards_held": 0,
-    "cards_draft": 6,
+    "cards_draft": 7,
     "cards_retired": 0,
-    "explainers": 1
+    "explainers": 2
   },
   "weak_spots": [],
   "calibration": {
@@ -388,6 +411,13 @@
       "concept": "sliding-window",
       "text": "What does it mean to increment have only when a character's count reaches the required count?",
       "source": "cli"
+    },
+    {
+      "id": "q0004",
+      "date": "2026-11-05",
+      "concept": "stack",
+      "text": "Does the page cover all relevant LeetCode examples? Asked for more examples, animations, and the math or rules that make a stack solution complete and efficient.",
+      "source": "cli"
     }
   ],
   "artifacts": [
@@ -401,6 +431,18 @@
       "created": "2026-10-29",
       "updated": "2026-10-29",
       "note": "(i, j) grid walkthrough: brute force with line counts, the staircase proof, the six NeetCode 150 sliding-window problems",
+      "source": "cli"
+    },
+    {
+      "id": "x0002",
+      "concept": "stack",
+      "title": "Stack, Derived",
+      "url": "https://claude.ai/artifact/J5gJdWTsW5sjZb4aJFJNsN",
+      "file": "concepts/stack/stack-derived.html",
+      "version": 3,
+      "created": "2026-11-04",
+      "updated": "2026-11-05",
+      "note": "v3: one counting method (runs x cost; the line with the biggest runs x cost decides) used in every chapter; count sheets for 4 problems with formulas checked on 24,582 inputs; asteroid bound tightened to 2n; Decode String's quadratic copying measured; question 10; template rule numbers fixed",
       "source": "cli"
     }
   ],
@@ -417,7 +459,7 @@
   "last_mock": null,
   "next_steps": [
     "Solve two-sum unaided to move Arrays & Hashing forward.",
-    "Approve, edit or retire 6 draft card(s) (`coach.py card list --drafts`).",
+    "Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).",
     "This week's plan: start Arrays & Hashing, Two Pointers."
   ],
   "other_concepts": [

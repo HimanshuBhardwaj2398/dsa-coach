@@ -10,5 +10,17 @@
     "updated": "2026-10-29",
     "note": "(i, j) grid walkthrough: brute force with line counts, the staircase proof, the six NeetCode 150 sliding-window problems",
     "source": "cli"
+  },
+  {
+    "id": "x0002",
+    "concept": "stack",
+    "title": "Stack, Derived",
+    "url": "https://claude.ai/artifact/J5gJdWTsW5sjZb4aJFJNsN",
+    "file": "concepts/stack/stack-derived.html",
+    "version": 3,
+    "created": "2026-11-04",
+    "updated": "2026-11-05",
+    "note": "v3: one counting method (runs x cost; the line with the biggest runs x cost decides) used in every chapter; count sheets for 4 problems with formulas checked on 24,582 inputs; asteroid bound tightened to 2n; Decode String's quadratic copying measured; question 10; template rule numbers fixed",
+    "source": "cli"
   }
 ]

@@ -82,5 +82,19 @@
     "due": null,
     "history": [],
     "source": "cli"
+  },
+  {
+    "id": "c0007",
+    "concept": "stack",
+    "type": "trace",
+    "front": "Valid Parentheses stack walk on s = \"({[]}[(\": what is on the stack, bottom to top, right after reading index 5? (No visual: trace it on paper.)",
+    "back": "\"([\". ( { [ go on, ] pops [, } pops {, then [ goes on. At the end \"([(\" is still waiting, so is_valid returns False.",
+    "status": "draft",
+    "created": "2026-11-04",
+    "accepted": null,
+    "step": 0,
+    "due": null,
+    "history": [],
+    "source": "cli"
   }
 ]
