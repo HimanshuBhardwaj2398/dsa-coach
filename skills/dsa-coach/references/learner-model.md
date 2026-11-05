@@ -47,7 +47,9 @@ Write through `scripts/coach.py` so IDs, dates and schedules stay consistent. Ha
 | note | text | One-line lesson |
 | skill_version | text | Version of this skill when logged |
 
-An attempt is **unaided** when it is solved, not assisted, and used hint rung 0 or 1.
+An attempt is **unaided** when it is solved, not assisted, and used hint rung 0 or 1. Rung 1 is a general question he could have asked himself.
+
+A **parked** attempt is one he stepped away from after a focused block (see the hint ladder in SKILL.md). Log it as `partial`, with the rung reached so far and a note starting `parked:`. The schedule brings it back the next day as a due re-solve, and a later unaided solve counts as usual.
 
 ## Statuses
 

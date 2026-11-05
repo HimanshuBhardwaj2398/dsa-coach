@@ -3,6 +3,8 @@ Pattern + cue:         (which words in the problem pointed here)
 State (one sentence):
 Invariant:             (true every time the loop condition is checked)
   diagram:
+Relies on:             (the datum or property that makes it work: sorted, all positive, a monotone predicate)
+Breaks if:             (the change that breaks it, and what you'd use instead)
 Initialization:        (slide the boundaries back: what makes the invariant true at the start?)
 Loop guard:            (slide them forward: when is the unknown part empty?)
 Body:                  (one step of progress that restores the invariant)

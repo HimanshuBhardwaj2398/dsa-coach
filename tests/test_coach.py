@@ -239,9 +239,34 @@ class CoachTest(unittest.TestCase):
     def test_next_leaves_the_choice_to_the_coach_after_named_problems(self):
         for slug in ("two-sum", "group-anagrams", "longest-consecutive-sequence"):
             self.attempt(slug, "2026-11-01", pattern="arrays-hashing")
-        item = self.next_item()
+        item = self.next_item("--pattern", "arrays-hashing")
         self.assertEqual((item["kind"], item["pattern"], item["problem"]), ("new", "arrays-hashing", None))
-        self.assertIn("NeetCode", self.run_cli("next").stdout)
+        self.assertIn("NeetCode", self.run_cli("next", "--pattern", "arrays-hashing").stdout)
+
+    def test_next_keeps_a_block_of_three_then_starts_the_next_pattern(self):
+        item = self.next_item()
+        self.assertEqual((item["pattern"], item["problem"], item["first"], item.get("block")),
+                         ("arrays-hashing", "two-sum", True, True))
+        for slug in ("two-sum", "group-anagrams", "longest-consecutive-sequence"):
+            self.attempt(slug, "2026-11-01", pattern="arrays-hashing")
+        item = self.next_item()  # block done; Two Pointers is also planned for week 1
+        self.assertEqual((item["kind"], item["pattern"], item["problem"], item["first"], item.get("block")),
+                         ("new", "two-pointers", "two-sum-ii-input-array-is-sorted", True, True))
+
+    def test_next_mixes_started_patterns_until_the_next_week(self):
+        for slug in ("two-sum", "group-anagrams", "longest-consecutive-sequence"):
+            self.attempt(slug, "2026-11-06", pattern="arrays-hashing")
+        for slug in ("two-sum-ii-input-array-is-sorted", "3sum", "container-with-most-water"):
+            self.attempt(slug, "2026-11-07", pattern="two-pointers")
+        item = self.next_item(today="2026-11-07")  # still week 1: the least recently practised pattern
+        self.assertEqual((item["kind"], item["pattern"], item["first"], item.get("block")),
+                         ("new", "arrays-hashing", False, False))
+        step = self.journey()["next_steps"][0]
+        self.assertIn("pattern unlabeled", step)
+        self.assertNotIn("Arrays", step)
+        item = self.next_item(today="2026-11-08")  # week 2: Sliding Window starts its own block
+        self.assertEqual((item["kind"], item["pattern"], item["first"], item.get("block")),
+                         ("new", "sliding-window", True, True))
 
     def test_next_pattern_filter(self):
         self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing", hints=3)

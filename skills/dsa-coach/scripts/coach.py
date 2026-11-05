@@ -19,7 +19,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.2.0"
+SKILL_VERSION = "0.3.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -52,6 +52,7 @@ CARD_TYPES = ["trigger", "invariant", "trap", "complexity", "bug", "pytrap", "tr
 GRADES = ["pass", "fail"]
 TIMED_MODES = ("practice", "review", "mock")
 LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purpose, never picked by `next`
+BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 DEFAULT_CONFIG = {
     "learner": "learner",
     "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -332,12 +333,31 @@ def card_held(card: dict) -> bool:
     return False
 
 
-def pick_new(rows: list, pattern: str | None = None) -> dict | None:
-    """The next new problem: first pattern in plan order under its target, or the named pattern."""
-    pool = [r for r in rows if r["key"] == pattern] if pattern else [r for r in rows if r["key"] not in LONG_FORMATS]
-    for r in sorted(pool, key=lambda r: (r["week"] or 99, r["tier"] or 9)):
-        if pattern or r["attempted"] < r["target"]:
-            return {"kind": "new", "pattern": r["key"], "name": r["name"], "problem": r["next_problem"], "first": r["attempted"] == 0}
+def pick_new(rows: list, pattern: str | None = None, week: int | None = None) -> dict | None:
+    """The next new problem, or the named pattern's next problem.
+
+    Finish a started pattern's block of BLOCK problems first. Then start the next pattern in plan
+    order once its week has come. Otherwise mix: the started pattern practised least recently.
+    `block` is false after a pattern's block, and the coach then presents the problem unlabeled.
+    """
+    def item(r):
+        return {"kind": "new", "pattern": r["key"], "name": r["name"], "problem": r["next_problem"],
+                "first": r["attempted"] == 0, "block": r["attempted"] < BLOCK}
+
+    if pattern:
+        named = [r for r in rows if r["key"] == pattern]
+        return item(named[0]) if named else None
+    open_rows = [r for r in sorted(rows, key=lambda r: (r["week"] or 99, r["tier"] or 9))
+                 if r["key"] not in LONG_FORMATS and r["attempted"] < r["target"]]
+    started = [r for r in open_rows if r["attempted"]]
+    in_block = next((r for r in started if r["attempted"] < BLOCK), None)
+    if in_block:
+        return item(in_block)
+    fresh = next((r for r in open_rows if not r["attempted"]), None)
+    if fresh and (not started or week is None or (fresh["week"] or 99) <= week):
+        return item(fresh)
+    if started:
+        return item(min(started, key=lambda r: r.get("last_attempt") or ""))
     return None
 
 
@@ -351,7 +371,7 @@ def pick_next(j: dict, pattern: str | None = None) -> dict:
             return dict(d["resolves"][0], kind="resolve")
         if d["cards"]:
             return {"kind": "cards", "count": len(d["cards"])}
-    return pick_new(j["patterns"], pattern) or {"kind": "none"}
+    return pick_new(j["patterns"], pattern, j["plan"]["week"]) or {"kind": "none"}
 
 
 def compute(state: dict, on: date | None = None) -> dict:
@@ -418,6 +438,7 @@ def compute(state: dict, on: date | None = None) -> dict:
             "key": key, "name": p["name"], "tier": p.get("tier"), "week": p.get("week"), "target": target_n,
             "attempted": len(probs), "practicing": practicing, "retained": retained, "ready": ready,
             "status": status, "last_activity": activity.get(key, "") or None,
+            "last_attempt": max((v["last"] for v in probs), default=None),
             "next_problem": next((s for s in p.get("canonical", []) if s not in problems), None),
         })
     by_key = {r["key"]: r for r in rows}
@@ -467,8 +488,11 @@ def compute(state: dict, on: date | None = None) -> dict:
         steps.append("Re-solve from a blank page: " + ", ".join(d["problem"] for d in due_resolves[:3]) + " (a plan-only check is fine for the first).")
     if due_cards:
         steps.append(f"Quiz: {len(due_cards)} due card(s), about {max(2, len(due_cards))} minutes (`coach.py quiz`).")
-    new = pick_new(rows)
-    if new and new["problem"]:
+    new = pick_new(rows, week=week)
+    if new and not new["block"]:
+        steps.append(f"Solve {new['problem']} unaided (mixed practice: name the pattern yourself)." if new["problem"]
+                     else "Mixed practice: one new problem with the pattern unlabeled (`coach.py next` picks it).")
+    elif new and new["problem"]:
         steps.append(f"Solve {new['problem']} unaided to move {new['name']} forward.")
     elif new:
         steps.append(f"Pick an unattempted problem from the NeetCode {new['name']} section.")
@@ -1050,10 +1074,11 @@ def render_next(item: dict) -> str:
         return f"Re-solve {item['problem']} ({item['pattern']}) from a blank page."
     if kind == "cards":
         return f"Quiz: {item['count']} due card(s)."
+    mixed = "" if item.get("block", True) else " Mixed practice: present it without the pattern name."
     if kind == "new" and item["problem"]:
-        return f"Solve {item['problem']} ({item['name']})."
+        return f"Solve {item['problem']} ({item['name']}).{mixed}"
     if kind == "new":
-        return f"Pick an unattempted problem from the NeetCode {item['name']} section."
+        return f"Pick an unattempted problem from the NeetCode {item['name']} section.{mixed}"
     return "Plan finished. Run a mock or an unlabeled mixed set."
 
 

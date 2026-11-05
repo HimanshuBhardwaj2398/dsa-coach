@@ -10,6 +10,8 @@ LLMs left to themselves write shallow term-and-definition cards. Write cards in 
 
 - the cue that should trigger the pattern
 - the invariant or state definition
+- what the solution relies on, and what to use when that's missing (the plan card's Relies on and Breaks if lines)
+- a changed constraint from the look-back step, and what it changes
 - an edge case he missed
 - the reason behind a complexity
 - a bug from his own attempt (mistake code)
@@ -72,4 +74,4 @@ A card that survives a gap of 5 days or more is very likely to be remembered lat
 
 ## Later (build step 2)
 
-Quiz and test pages will be generated from `cards.json` and published as interactive pages that store his answers, plus timed "retention tests" mixing unlabeled problems from several patterns (interleaving helps most when similar patterns sit side by side).
+Quiz and test pages will be generated from `cards.json` and published as interactive pages that store his answers. New problems already mix: `coach.py next` interleaves patterns after each pattern's first three problems. Timed "retention tests" will add unlabeled sets of problems he has seen, drawn from several patterns (interleaving helps most when similar patterns sit side by side).

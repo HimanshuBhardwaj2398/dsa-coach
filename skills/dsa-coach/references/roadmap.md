@@ -1,6 +1,6 @@
 # Roadmap: 12 weeks to interview-ready
 
-The plan assumes interviews in one to three months at about 11 hours a week (the Tech Interview Handbook's three-month plan uses the same budget). Dates live in `notebook/config.json`; pattern data (tiers, target counts, start weeks, cues, invariants, canonical problems) lives in `assets/roadmap.json`. The snapshot compares progress with this plan every time it runs. Treat the split below as a starting point to adjust, not a sourced prescription.
+The plan assumes interviews in one to three months at about 11 hours a week (the Tech Interview Handbook's three-month plan uses the same budget). Dates live in `notebook/config.json`; pattern data (tiers, target counts, start weeks, cues, invariants, canonical problems) lives in `assets/roadmap.json`. The snapshot compares progress with this plan every time it runs. Treat the split below as a starting point to adjust, not a sourced prescription. Spread the hours over five or six days in 25-minute blocks rather than one or two long sittings: spacing, and the sleep between sessions, do part of the learning.
 
 ## What the target interviews test
 
@@ -51,7 +51,12 @@ A pattern is interview-ready when at least three of its problems are "ready" (se
 
 ## Interleaving
 
-Learn a new pattern in a short block (worked example, faded example, solo problem), then mix it unlabeled with confusable patterns. Blocked practice looks better during practice but lost 20–63% a week later in one study. Useful contrastive pairs:
+Learn a new pattern in a short block (worked example, faded example, solo problem), then mix it unlabeled with confusable patterns. Blocked practice looks better during practice but lost 20–63% a week later in one study. `coach.py next` does this:
+- A pattern's first three problems come together, with the pattern named.
+- After that, new problems rotate across the started patterns, least recently practised first, and are presented without the pattern name.
+- A new pattern starts when its week arrives.
+
+Useful contrastive pairs:
 
 - Subarray sum equals k with negatives (prefix sums + hash map) vs all positive (sliding window)
 - Two Sum on unsorted input (hash map) vs sorted (two pointers)

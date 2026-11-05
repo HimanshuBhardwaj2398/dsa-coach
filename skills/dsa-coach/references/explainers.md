@@ -1,6 +1,6 @@
 # Interactive explainers
 
-Build an explainer when a pattern is new to him, when a question or a prediction error shows a misconception, or when he asks to see something. The reference example is the "Sliding Window, Derived" page saved in `notebook/concepts/sliding-window/`.
+Build an explainer when a pattern is new to him, when a question or a prediction error shows a misconception, or when he asks to see something. When he asks for more examples or more animation of a pattern he has already seen, offer one problem to attempt first, and build more only for what the attempt shows he's missing. More watching feels like progress but adds little (an illusion of competence). If he still wants it, build it. The reference example is the "Sliding Window, Derived" page saved in `notebook/concepts/sliding-window/`.
 
 ## What the evidence says, in one paragraph
 
@@ -14,7 +14,7 @@ How the learner uses a visualization matters more than what it shows: studies th
 4. **Permanent history.** A trace table beside the stepper (one row per iteration, only the variables that change), so nothing he needs is transient.
 5. **Faded stretch.** Some state cells show "?" for him to fill before he can step on.
 6. **Edge case or comparison.** An edge-case preset, or brute force and the optimized algorithm in lockstep on the same input (the (i, j) grid is ideal for this).
-7. **Check with the visual hidden.** Reproduce the state after step k, state the invariant, or trace a fresh input on paper. Then add a `trace` card so the check repeats days later.
+7. **Check with the visual hidden.** Reproduce the state after step k, state the invariant, or trace a fresh input on paper, then say the core idea in his own words (save it as the Core idea in the concept notes). Then add a `trace` card so the check repeats days later.
 
 Completion must depend on answers, not clicks: in one e-textbook, a quarter of slideshows were clicked through at under a second per slide.
 
