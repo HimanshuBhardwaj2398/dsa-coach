@@ -325,6 +325,28 @@ class CoachTest(unittest.TestCase):
         self.assertNotEqual(again.returncode, 0)
         self.assertIn("already live", again.stderr)
 
+    def test_solve_template_runs_its_examples(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        path = self.root / self.live()["file"]
+        text = path.read_text()
+        self.assertIn("class Solution:", text)
+        self.assertIn("    Hand trace:", text)
+        method = ("    def twoSum(self, nums, target):\n"
+                  "        seen = {}\n"
+                  "        for i, x in enumerate(nums):\n"
+                  "            if target - x in seen:\n"
+                  "                return [seen[target - x], i]\n"
+                  "            seen[x] = i\n")
+        text = text.replace("    pass\n", method, 1)
+        text = text.replace("EXAMPLES = [\n]", "EXAMPLES = [\n"
+                            "    (([2, 7, 11, 15], 9), [0, 1]),\n"
+                            "    (([3, 3], 6), [0, 1]),  # edge\n"
+                            "    (([1, 2], 3), [1, 0]),\n"
+                            "]")
+        path.write_text(text)
+        out = subprocess.run([sys.executable, str(path)], capture_output=True, text=True).stdout.splitlines()
+        self.assertEqual([line[:4] for line in out], ["ok  ", "ok  ", "FAIL"])
+
     def test_solve_needs_a_pattern_for_unknown_problems(self):
         proc = self.run_cli("solve", "start", "--problem", "my-own-puzzle", ok=False)
         self.assertNotEqual(proc.returncode, 0)
