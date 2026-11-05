@@ -1205,15 +1205,20 @@ def solve_end(root: Path, live: dict, args) -> None:
         "technique": args.technique, "mistakes": split_codes(args.mistakes),
         "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
     })
-    notes = live.get("notes") or {}
-    if notes:
-        lines = [f"\n### Stage notes, {today().isoformat()} ({live['file']})\n\n"]
-        for n in sorted(notes, key=int):
-            text = notes[n].strip().replace("\n", "\n  ")
-            lines.append(f"- **{n}. {STAGES[int(n) - 1][0]}:** {text}\n")
-        with (root / "problems" / live["problem"] / "notes.md").open("a", encoding="utf-8") as fh:
-            fh.writelines(lines)
+    if live.get("notes"):
+        add_stage_notes(root / "problems" / live["problem"] / "notes.md", f"{today().isoformat()} ({live['file']})", live["notes"])
     (root / LIVE).unlink()
+
+
+def add_stage_notes(path: Path, heading: str, notes: dict) -> None:
+    """A solve's stage notes go at the end of the ## Stage notes section, which sits just above ## Lessons
+    (lesson lines are appended at the end of the file), so the oldest solve stays first."""
+    bullets = "".join(f"- **{n}. {STAGES[int(n) - 1][0]}:** " + notes[n].strip().replace("\n", "\n  ") + "\n"
+                      for n in sorted(notes, key=int))
+    head, lessons, tail = path.read_text(encoding="utf-8").partition("## Lessons\n")
+    section = "" if re.search(r"^## Stage notes\n", head, re.M) else "## Stage notes\n\n"
+    head = head.rstrip("\n") + f"\n\n{section}### {heading}\n\n{bullets}"
+    path.write_text(head + ("\n" + lessons + tail if lessons else ""), encoding="utf-8")
 
 
 def cmd_solve(args) -> None:

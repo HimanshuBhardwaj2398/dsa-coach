@@ -378,11 +378,23 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(shown["notes"], {"1": "- return i != j with nums[i] + nums[j] == target",
                                           "6": "seen maps value -> index\nfor every j < i"})
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.run_cli("log", "attempt", "--problem", "two-sum", "--pattern", "arrays-hashing", "--outcome", "solved",
+                     "--note", "complement lookup")  # a lesson line, appended under ## Lessons
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs, O(n^2)", now="10:21")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
         text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
-        self.assertIn("### Stage notes, 2026-11-01 (problems/two-sum/2026-11-01.py)", text)
-        self.assertIn("- **1. Unknown, data, condition:** - return i != j", text)
-        self.assertIn("- **6. Plan card:** seen maps value -> index\n  for every j < i", text)
+        self.assertIn("## Stage notes\n\n### 2026-11-01 (problems/two-sum/2026-11-01.py)\n\n"
+                      "- **1. Unknown, data, condition:** - return i != j", text)
+        self.assertIn("- **6. Plan card:** seen maps value -> index\n  for every j < i\n\n"
+                      "### 2026-11-01 (problems/two-sum/2026-11-01-2.py)\n\n"
+                      "- **2. Brute force on the grid:** all pairs, O(n^2)\n\n## Lessons\n", text)
         self.assertNotIn("first draft", text)
+        self.assertEqual(text.count("## Stage notes"), 1)
+        lessons = text.index("## Lessons\n")
+        self.assertLess(text.index("**1."), text.index("**6."))
+        self.assertLess(text.index("**6."), lessons)
+        self.assertGreater(text.index("complement lookup"), lessons)
 
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
