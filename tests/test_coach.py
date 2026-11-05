@@ -345,6 +345,21 @@ class CoachTest(unittest.TestCase):
         self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
         self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (32, 3, 3, "solved"))
 
+    def test_solve_note_is_kept_and_written_to_problem_notes(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "1", "--text", "first draft", now="10:01")
+        self.run_cli("solve", "note", "--stage", "1", "--text=- return i != j with nums[i] + nums[j] == target", now="10:02")
+        self.run_cli("solve", "note", "--stage", "6", "--text", "seen maps value -> index\nfor every j < i", now="10:03")
+        shown = json.loads(self.run_cli("solve", "show", "--json", now="10:04").stdout)
+        self.assertEqual(shown["notes"], {"1": "- return i != j with nums[i] + nums[j] == target",
+                                          "6": "seen maps value -> index\nfor every j < i"})
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
+        self.assertIn("### Stage notes, 2026-11-01 (problems/two-sum/2026-11-01.py)", text)
+        self.assertIn("- **1. Unknown, data, condition:** - return i != j", text)
+        self.assertIn("- **6. Plan card:** seen maps value -> index\n  for every j < i", text)
+        self.assertNotIn("first draft", text)
+
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
         text = (self.root / self.live()["file"]).read_text()

@@ -1205,6 +1205,14 @@ def solve_end(root: Path, live: dict, args) -> None:
         "technique": args.technique, "mistakes": split_codes(args.mistakes),
         "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
     })
+    notes = live.get("notes") or {}
+    if notes:
+        lines = [f"\n### Stage notes, {today().isoformat()} ({live['file']})\n\n"]
+        for n in sorted(notes, key=int):
+            text = notes[n].strip().replace("\n", "\n  ")
+            lines.append(f"- **{n}. {STAGES[int(n) - 1][0]}:** {text}\n")
+        with (root / "problems" / live["problem"] / "notes.md").open("a", encoding="utf-8") as fh:
+            fh.writelines(lines)
     (root / LIVE).unlink()
 
 
@@ -1230,6 +1238,8 @@ def cmd_solve(args) -> None:
         live["stage"] = args.n
     elif action == "hint":
         live["rung"] = min(7, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
+    elif action == "note":
+        live.setdefault("notes", {})[str(args.stage)] = args.text
     elif action in ("break", "block"):
         if open_block:
             open_block["end"] = stamp()
@@ -1736,6 +1746,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("n", type=int, choices=range(1, 9))
     s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
     s.add_argument("--rung", type=int, choices=range(1, 8))
+    s = solve.add_parser("note", help="save the learner's note for a stage (replaces that stage's note)")
+    s.add_argument("--stage", type=int, required=True, choices=range(1, 9))
+    s.add_argument("--text", required=True)
     solve.add_parser("break", help="end the current focus block")
     solve.add_parser("block", help="start a new focus block")
     s = solve.add_parser("show", help="the live solve")
