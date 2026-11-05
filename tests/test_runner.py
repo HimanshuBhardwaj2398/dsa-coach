@@ -143,6 +143,36 @@ class RunnerTest(unittest.TestCase):
         r = self.run_text("while True:\n    pass\n", timeout=1)  # stuck before any example starts
         self.assertEqual((r["rows"], r["error"]), ([], "timed out after 1 s: an infinite loop, or too slow for these inputs"))
 
+    def test_a_crash_names_the_example_it_stopped(self):
+        r = self.run_text('''
+            import os
+            class Solution:
+                def f(self, x):
+                    if x == 2:
+                        os._exit(3)
+                    return x
+            EXAMPLES = [((1,), 1), ((2,), 2), ((3,), 3)]
+        ''')
+        self.assertEqual(set(r), {"ok", "method", "rows", "error"})
+        self.assertFalse(r["ok"])
+        self.assertEqual(len(r["rows"]), 2)
+        self.assertTrue(r["rows"][0]["ok"])
+        self.assertEqual(r["rows"][1], {"ok": False, "args": "2", "expected": "2", "got": None, "stdout": "",
+                                        "error": "the runner stopped without a result"})
+        self.assertEqual(r["error"], "crashed on the example (2) -> 2: the runner stopped without a result")
+        r = self.run_text('''
+            import os
+            import sys
+            class Solution:
+                def f(self, x):
+                    print("boom", file=sys.stderr, flush=True)
+                    os._exit(3)
+            EXAMPLES = [((1,), 1)]
+        ''')
+        self.assertEqual((r["rows"][0]["error"], r["error"]), ("boom", "crashed on the example (1) -> 1: boom"))
+        r = self.run_text("import os\nos._exit(3)\n")  # before any example starts
+        self.assertEqual((r["rows"], r["error"]), ([], "the runner stopped without a result"))
+
     def test_input_fails_fast_instead_of_waiting_for_the_time_limit(self):
         read_end, write_end = os.pipe()  # a stdin nobody types into, like a terminal left alone
         saved = os.dup(0)

@@ -102,6 +102,15 @@ class ExamplesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"got 'nums'$"):
             af.format_row({"args": "nums", "expected": "4"})
 
+    def test_one_trailing_comma_in_the_inputs_is_allowed(self):
+        # The template teaches (([7, 1, 5],), 4), so he may type that comma himself.
+        for typed, plain in (("[5],", "[5]"), ("1, 2,", "1, 2"), ("[5] , ", "[5]")):
+            with self.subTest(typed=typed):
+                self.assertEqual(af.format_row({"args": typed, "expected": "0"}),
+                                 af.format_row({"args": plain, "expected": "0"}))
+        with self.assertRaisesRegex(ValueError, r"got '\[5\],,'$"):
+            af.format_row({"args": "[5],,", "expected": "0"})
+
     def test_rows_the_table_cant_show_are_never_dropped(self):
         bad = blank().replace("EXAMPLES = [\n]", "EXAMPLES = [\n    (([1, 2]), 3),\n    (([5],), 0),\n]")
         with self.assertRaisesRegex(ValueError, r"\(\(\[1, 2\]\), 3\)"):

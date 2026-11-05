@@ -24,12 +24,15 @@ def run(path, timeout: float = TIMEOUT_S) -> dict:
         proc = subprocess.run([sys.executable, "-I", str(Path(__file__).resolve()), "--child", str(path)],
                               stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
     except subprocess.TimeoutExpired as e:
-        return _timed_out(_messages(e.stdout), timeout)
+        rows, where = _partial(_messages(e.stdout), "timed out on this example")
+        return {"ok": False, "method": None, "rows": rows,
+                "error": f"timed out after {timeout:g} s{where}: an infinite loop, or too slow for these inputs"}
     messages = _messages(proc.stdout)
     if messages and "result" in messages[-1]:
         return messages[-1]["result"]
-    return {"ok": False, "method": None, "rows": [],
-            "error": (proc.stderr.decode(errors="replace").strip() or "the runner stopped without a result")[-3000:]}
+    crash = (proc.stderr.decode(errors="replace").strip() or "the runner stopped without a result")[-3000:]
+    rows, where = _partial(messages, crash)  # a segfault, or os._exit
+    return {"ok": False, "method": None, "rows": rows, "error": f"crashed{where}: {crash}" if where else crash}
 
 
 def _messages(stdout) -> list:
@@ -45,17 +48,16 @@ def _messages(stdout) -> list:
     return messages
 
 
-def _timed_out(messages: list, timeout: float) -> dict:
-    """The rows that finished in time, then the example that was still running, if one had started."""
+def _partial(messages: list, unfinished: str) -> tuple:
+    """(rows, where) when the child stopped early: the rows that finished, then the example it stopped in,
+    if one had started, with `unfinished` as its error; where names that example for the top-level error."""
     rows = [m["row"] for m in messages if "row" in m]
     started = messages[-1].get("start") if messages else None
-    where = ""
-    if started:
-        rows.append({"ok": False, "args": started["args"], "expected": started["expected"], "got": None,
-                     "stdout": "", "error": "timed out on this example"})
-        where = f" on the example ({started['args']}) -> {started['expected']}"
-    return {"ok": False, "method": None, "rows": rows,
-            "error": f"timed out after {timeout:g} s{where}: an infinite loop, or too slow for these inputs"}
+    if not started:
+        return rows, ""
+    rows.append({"ok": False, "args": started["args"], "expected": started["expected"], "got": None,
+                 "stdout": "", "error": unfinished})
+    return rows, f" on the example ({started['args']}) -> {started['expected']}"
 
 
 def _say(**message) -> None:

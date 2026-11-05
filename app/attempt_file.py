@@ -123,11 +123,12 @@ def _fits(args: str, expected: str) -> bool:
 
 def format_row(row: dict) -> str:
     """The EXAMPLES line for a row; ValueError, quoting what was typed, unless it reads back as that row."""
-    args, expected = str(row.get("args", "")).strip(), str(row.get("expected", "")).strip()
+    typed, expected = str(row.get("args", "")).strip(), str(row.get("expected", "")).strip()
+    args = typed.removesuffix(",").rstrip()  # one comma is fine: the template teaches (([7, 1, 5],), 4)
     if not _fits(args, expected):
-        bad = [typed for typed, ok in ((args, _fits(args, "0")), (expected, _fits("0", expected))) if not ok]
+        bad = [text for text, ok in ((typed, _fits(args, "0")), (expected, _fits("0", expected))) if not ok]
         raise ValueError("write the inputs and the output as Python values, such as [1, 2], 3 or 'abc': got "
-                         + " and ".join(map(repr, bad or [args, expected])))
+                         + " and ".join(map(repr, bad or [typed, expected])))
     return f"    (({args},), {expected}),{'  # edge' if row.get('edge') else ''}"
 
 
