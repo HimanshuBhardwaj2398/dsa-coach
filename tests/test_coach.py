@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from pathlib import Path
 
@@ -443,6 +444,26 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(self.run_cli("guard", stdin="not json", ok=False).returncode, 0)
         self.run_cli("solve", "hint", "--rung", "7")
         self.assertEqual(guard(attempt), 0)
+
+    def test_write_json_replaces_the_file_whole(self):
+        """The page polls `solve show --json` while the chat and the app write current.json."""
+        spec = importlib.util.spec_from_file_location("coach", COACH)
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        path = self.tmp / "sessions" / "current.json"
+        coach.write_json(path, {"stage": 1})
+        with path.open(encoding="utf-8") as reader:  # opened before the next write: it never sees a cut-off file
+            coach.write_json(path, {"note": "seen → index"})
+            self.assertEqual(reader.read(), '{\n  "stage": 1\n}\n')
+        self.assertEqual(path.read_bytes(), '{\n  "note": "seen → index"\n}\n'.encode("utf-8"))
+        plain = path.with_name("plain.json")
+        plain.write_text("{}\n")  # the permissions the old in-place write gave
+        self.assertEqual(path.stat().st_mode, plain.stat().st_mode)
+        plain.unlink()
+        with unittest.mock.patch.object(coach.os, "replace", side_effect=OSError("disk full")):
+            self.assertRaises(OSError, coach.write_json, path, {"stage": 2})
+        self.assertEqual(os.listdir(path.parent), ["current.json"])  # no temp files left behind
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {"note": "seen → index"})
 
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):

@@ -117,8 +117,17 @@ def read_json(path: Path, default):
 
 
 def write_json(path: Path, data) -> None:
+    """Write a temp file beside `path`, then rename it over `path`, so a reader never sees half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    tmp = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
+    try:
+        with open(tmp, "x", encoding="utf-8") as fh:  # not mkstemp: that makes the file 0600, this keeps the umask's mode
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def read_jsonl(path: Path) -> list:
