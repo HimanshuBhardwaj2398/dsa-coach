@@ -396,6 +396,16 @@ class CoachTest(unittest.TestCase):
         self.assertLess(text.index("**6."), lessons)
         self.assertGreater(text.index("complement lookup"), lessons)
 
+    def test_solve_blank_note_clears_the_stage_and_writes_nothing(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "1", "--text", "a draft", now="10:01")
+        self.run_cli("solve", "note", "--stage", "3", "--text", "n^2 pairs", now="10:01")
+        self.run_cli("solve", "note", "--stage", "1", "--text=", now="10:02")  # the page sends a blank box like this
+        self.assertEqual(self.live()["notes"], {"3": "n^2 pairs"})
+        self.run_cli("solve", "note", "--stage", "3", "--text", " \n ", now="10:03")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.assertNotIn("## Stage notes", (self.root / "problems" / "two-sum" / "notes.md").read_text())
+
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
         text = (self.root / self.live()["file"]).read_text()

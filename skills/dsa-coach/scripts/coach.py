@@ -1243,8 +1243,12 @@ def cmd_solve(args) -> None:
         live["stage"] = args.n
     elif action == "hint":
         live["rung"] = min(7, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
-    elif action == "note":
-        live.setdefault("notes", {})[str(args.stage)] = args.text
+    elif action == "note":  # a blank note clears the stage's note
+        notes = live.setdefault("notes", {})
+        if args.text.strip():
+            notes[str(args.stage)] = args.text
+        else:
+            notes.pop(str(args.stage), None)
     elif action in ("break", "block"):
         if open_block:
             open_block["end"] = stamp()
