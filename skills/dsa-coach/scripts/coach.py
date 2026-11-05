@@ -1074,6 +1074,9 @@ def cmd_due(args) -> None:
     root = find_root(args.root)
     j = compute(load_state(root), parse_date(args.date))
     d = j["due"]
+    if args.json:
+        print(json.dumps(d, indent=2, ensure_ascii=False))
+        return
     if not d["resolves"] and not d["cards"]:
         print("Nothing due.")
     for r in d["resolves"]:
@@ -1711,6 +1714,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_quiz)
 
     s = sub.add_parser("due", help="list due re-solves and cards")
+    s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     s.set_defaults(func=cmd_due)
 

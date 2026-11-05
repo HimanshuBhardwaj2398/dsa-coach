@@ -297,6 +297,12 @@ class CoachTest(unittest.TestCase):
         self.assertTrue(steps[0].startswith("Solve two-sum"), steps)
         self.assertTrue(steps[1].startswith("Approve"), steps)
 
+    def test_due_json(self):
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing", hints=3)  # not unaided: due the next day
+        d = json.loads(self.run_cli("due", "--json", today="2026-11-02").stdout)
+        self.assertEqual([r["problem"] for r in d["resolves"]], ["two-sum"])
+        self.assertEqual((d["cards"], d["drafts"], d["inbox"]), ([], 0, []))
+
     # ------------------------------------------------------------------ live solve
     def live(self):
         path = self.root / "sessions" / "current.json"
