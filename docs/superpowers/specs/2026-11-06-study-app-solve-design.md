@@ -1,6 +1,6 @@
 # Study app, version 1: the Solve tab
 
-Date: 2026-11-06 · Status: approved in brainstorming, awaiting spec review · Target release: dsa-coach 0.5.0
+Date: 2026-11-06 · Status: approved; implementation plan in `docs/plans/2026-11-06-study-app-solve.md` (where they differ, the plan's decisions win) · Target release: dsa-coach 0.5.0
 
 ## Goal
 
@@ -40,7 +40,7 @@ Units:
 - **`coach.py`** is the only owner of state. The server never writes `current.json`, `attempts.jsonl` or the other JSON files directly; it calls `coach.py` as a subprocess and passes `--json` where a command supports it.
 - **`app/server.py`**: `http.server` from the standard library, bound to `127.0.0.1` only. `python3 app/server.py [--root NOTEBOOK] [--port 8765]` starts it and opens the browser. It serves `app/static/` and the JSON endpoints above. The only files it reads and writes itself are the attempt file and `problem.md`.
 - **`app/runner.py`**: runs one attempt file in a child process with a 5-second timeout. It imports the file, takes the first public method defined on `Solution` (helpers starting with `_` are skipped), calls it with each `EXAMPLES` row and returns JSON: per row the input, expected, got, ok, and an error with traceback if the call raised.
-- **`app/static/index.html`, `app.js`, `app.css`**: the page. CodeMirror 6 from a CDN with a pinned version; if it doesn't load, the editor falls back to a `<textarea>`.
+- **`app/static/index.html`, `app.js`, `app.css`**: the page. CodeMirror 5 (5.65.16) from cdnjs, one script tag and no build step; if it doesn't load, the editor falls back to a `<textarea>`.
 
 ### The attempt file
 
