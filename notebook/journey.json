@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-05",
+  "generated": "2026-11-06",
   "skill_version": "0.4.1",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -11,14 +11,14 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 7,
+    "day": 8,
     "total_days": 90,
-    "week": 1,
+    "week": 2,
     "plan_weeks": 12,
     "phase": "Foundations",
     "weekly_hours": 11
   },
-  "focus": "stack",
+  "focus": "binary-search",
   "patterns": [
     {
       "key": "arrays-hashing",
@@ -26,14 +26,14 @@
       "tier": 1,
       "week": 1,
       "target": 9,
-      "attempted": 0,
-      "practicing": 0,
+      "attempted": 8,
+      "practicing": 1,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
-      "last_attempt": null,
-      "next_problem": "two-sum"
+      "status": "practicing",
+      "last_activity": "2026-11-05",
+      "last_attempt": "2026-11-05",
+      "next_problem": null
     },
     {
       "key": "two-pointers",
@@ -41,13 +41,13 @@
       "tier": 1,
       "week": 1,
       "target": 5,
-      "attempted": 0,
+      "attempted": 3,
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
-      "last_attempt": null,
+      "status": "learning",
+      "last_activity": "2026-11-05",
+      "last_attempt": "2026-11-05",
       "next_problem": "two-sum-ii-input-array-is-sorted"
     },
     {
@@ -56,14 +56,14 @@
       "tier": 1,
       "week": 2,
       "target": 6,
-      "attempted": 0,
+      "attempted": 4,
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "exploring",
-      "last_activity": "2026-10-30",
-      "last_attempt": null,
-      "next_problem": "longest-substring-without-repeating-characters"
+      "status": "learning",
+      "last_activity": "2026-11-05",
+      "last_attempt": "2026-11-05",
+      "next_problem": "permutation-in-string"
     },
     {
       "key": "prefix-sums",
@@ -86,14 +86,14 @@
       "tier": 1,
       "week": 2,
       "target": 7,
-      "attempted": 0,
+      "attempted": 1,
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "exploring",
+      "status": "learning",
       "last_activity": "2026-11-05",
-      "last_attempt": null,
-      "next_problem": "valid-parentheses"
+      "last_attempt": "2026-11-05",
+      "next_problem": "daily-temperatures"
     },
     {
       "key": "binary-search",
@@ -101,14 +101,14 @@
       "tier": 1,
       "week": 3,
       "target": 7,
-      "attempted": 0,
+      "attempted": 1,
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
-      "last_attempt": null,
-      "next_problem": "binary-search"
+      "status": "learning",
+      "last_activity": "2026-11-06",
+      "last_attempt": "2026-11-06",
+      "next_problem": "koko-eating-bananas"
     },
     {
       "key": "linked-list",
@@ -353,28 +353,388 @@
   ],
   "behind": [],
   "this_week": [
-    "arrays-hashing",
-    "two-pointers"
+    "prefix-sums"
   ],
   "ahead": [
-    "sliding-window",
-    "stack"
+    "binary-search"
   ],
-  "problems": {},
+  "problems": {
+    "two-sum": {
+      "problem": "two-sum",
+      "pattern": "arrays-hashing",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 1,
+      "next_due": "2026-11-08",
+      "status": "practicing",
+      "ids": [
+        "a0001"
+      ]
+    },
+    "contains-duplicate": {
+      "problem": "contains-duplicate",
+      "pattern": "arrays-hashing",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0002"
+      ]
+    },
+    "valid-anagram": {
+      "problem": "valid-anagram",
+      "pattern": "arrays-hashing",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0003"
+      ]
+    },
+    "group-anagrams": {
+      "problem": "group-anagrams",
+      "pattern": "arrays-hashing",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0004"
+      ]
+    },
+    "top-k-frequent-elements": {
+      "problem": "top-k-frequent-elements",
+      "pattern": "arrays-hashing",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0005"
+      ]
+    },
+    "encode-and-decode-strings": {
+      "problem": "encode-and-decode-strings",
+      "pattern": "arrays-hashing",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0006"
+      ]
+    },
+    "product-of-array-except-self": {
+      "problem": "product-of-array-except-self",
+      "pattern": "arrays-hashing",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0007"
+      ]
+    },
+    "longest-consecutive-sequence": {
+      "problem": "longest-consecutive-sequence",
+      "pattern": "arrays-hashing",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0008"
+      ]
+    },
+    "valid-palindrome": {
+      "problem": "valid-palindrome",
+      "pattern": "two-pointers",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0009"
+      ]
+    },
+    "3sum": {
+      "problem": "3sum",
+      "pattern": "two-pointers",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0010"
+      ]
+    },
+    "container-with-most-water": {
+      "problem": "container-with-most-water",
+      "pattern": "two-pointers",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0011"
+      ]
+    },
+    "best-time-to-buy-and-sell-stock": {
+      "problem": "best-time-to-buy-and-sell-stock",
+      "pattern": "sliding-window",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0012"
+      ]
+    },
+    "longest-substring-without-repeating-characters": {
+      "problem": "longest-substring-without-repeating-characters",
+      "pattern": "sliding-window",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0013"
+      ]
+    },
+    "longest-repeating-character-replacement": {
+      "problem": "longest-repeating-character-replacement",
+      "pattern": "sliding-window",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0014"
+      ]
+    },
+    "minimum-window-substring": {
+      "problem": "minimum-window-substring",
+      "pattern": "sliding-window",
+      "difficulty": "hard",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0015"
+      ]
+    },
+    "valid-parentheses": {
+      "problem": "valid-parentheses",
+      "pattern": "stack",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-05",
+      "last": "2026-11-05",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-06",
+      "status": "learning",
+      "ids": [
+        "a0016"
+      ]
+    },
+    "binary-search": {
+      "problem": "binary-search",
+      "pattern": "binary-search",
+      "difficulty": "easy",
+      "attempts": 1,
+      "first": "2026-11-06",
+      "last": "2026-11-06",
+      "last_outcome": "solved",
+      "streak": 0,
+      "next_due": "2026-11-07",
+      "status": "learning",
+      "ids": [
+        "a0017"
+      ]
+    }
+  },
   "due": {
-    "resolves": [],
+    "resolves": [
+      {
+        "problem": "contains-duplicate",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "valid-anagram",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "group-anagrams",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "top-k-frequent-elements",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "encode-and-decode-strings",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "product-of-array-except-self",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "longest-consecutive-sequence",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "valid-palindrome",
+        "pattern": "two-pointers",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "3sum",
+        "pattern": "two-pointers",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "container-with-most-water",
+        "pattern": "two-pointers",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "best-time-to-buy-and-sell-stock",
+        "pattern": "sliding-window",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "longest-substring-without-repeating-characters",
+        "pattern": "sliding-window",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "longest-repeating-character-replacement",
+        "pattern": "sliding-window",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "minimum-window-substring",
+        "pattern": "sliding-window",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      },
+      {
+        "problem": "valid-parentheses",
+        "pattern": "stack",
+        "due": "2026-11-06",
+        "overdue_days": 0,
+        "status": "learning"
+      }
+    ],
     "cards": [],
     "drafts": 7,
     "inbox": []
   },
   "totals": {
-    "problems": 0,
-    "attempts": 0,
-    "unaided_solves": 0,
+    "problems": 17,
+    "attempts": 17,
+    "unaided_solves": 1,
     "retained": 0,
     "ready": 0,
-    "minutes": 0,
-    "sessions": 2,
+    "minutes": 20,
+    "sessions": 3,
     "questions": 4,
     "cards_active": 0,
     "cards_held": 0,
@@ -382,11 +742,22 @@
     "cards_retired": 0,
     "explainers": 2
   },
-  "weak_spots": [],
+  "weak_spots": [
+    {
+      "code": "boundary",
+      "count": 1,
+      "meaning": "off-by-one or loop bounds"
+    },
+    {
+      "code": "process",
+      "count": 1,
+      "meaning": "skipped a stage"
+    }
+  ],
   "calibration": {
-    "rated_attempts": 0,
+    "rated_attempts": 1,
     "avg_conf_unaided": null,
-    "avg_conf_other": null,
+    "avg_conf_other": 3.0,
     "high_confidence_misses": []
   },
   "techniques": [],
@@ -454,13 +825,18 @@
     {
       "date": "2026-10-30",
       "summary": "Research on designing the coach (learning science, visualization, living notebook, interview formats). Built dsa-coach v0.1.0: skill, notebook, journey snaps..."
+    },
+    {
+      "date": "2026-11-06",
+      "summary": "Logged 16 prior Blind 75 solves (two-sum unaided, 15 assisted); started Binary Search: binary-search solved with rung 2 (left < right missed the last candida..."
     }
   ],
   "last_mock": null,
   "next_steps": [
-    "Solve two-sum unaided to move Arrays & Hashing forward.",
+    "Re-solve from a blank page: contains-duplicate, valid-anagram, group-anagrams (a plan-only check is fine for the first).",
+    "Solve daily-temperatures unaided to move Stack forward.",
     "Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).",
-    "This week's plan: start Arrays & Hashing, Two Pointers."
+    "This week's plan: start Prefix Sums."
   ],
   "other_concepts": [
     "python-collections"
