@@ -15,9 +15,9 @@ const PLAN_FIELDS = ["State", "Invariant", "Relies on", "Breaks if", "Terminatio
 const LOOK_BACK = ["Why it works, in one sentence",
   "Time and space complexity, and why",
   "One more question: another approach and its trade-off, a changed constraint and what it breaks, or another problem this method solves"];
-const OFFLINE = "The app's server isn't answering. Is <code>python3 app/server.py</code> still running?";
 
 const $ = (id) => document.getElementById(id);
+const elem = (tag, text = "") => Object.assign(document.createElement(tag), {textContent: text});
 let state = null;        // the last /api/state
 let attempt = null;      // the last /api/attempt: {file, path, text, mtime, plan_card, examples, examples_error}
 let problemText = null;  // problems/<slug>/problem.md, or null before it's pasted
@@ -27,11 +27,15 @@ let editor = null;       // CodeMirror, or null when the CDN didn't load and the
 let dirty = false;       // the editor has code that isn't in the file
 let panelDirty = false;  // the stage's boxes have text that isn't saved (an unsaved statement: statementDraft)
 let savePanel = null;    // saves the panel shown: its parts of the attempt file, then its stage note
+let focusNext = false;   // after Done: focus the next stage's first box once it's drawn
+let barFile = null;      // the solve the bar's problem link and stage buttons were built for
+let lastPick = null;     // the start screen's pick when the slug box was last filled from it
 let blockBanner = null;  // the block number the "block is over" banner was shown for
 let warnedMtime = null;  // the disk mtime we already warned about
 let busy = false;        // a refresh is running
 let chain = Promise.resolve();  // the page's state changes (its POSTs and PUTs), one at a time, in click order
 let pending = 0;         // state changes waiting or in flight
+let finished = 0;        // state changes done: a poll that was out while one finished may predate it
 
 // --- plumbing ----------------------------------------------------------------
 async function api(method, path, body) {
@@ -57,35 +61,35 @@ async function api(method, path, body) {
   return data;
 }
 
-const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-
-// kind: "solve" for a banner whose buttons act on the live solve, "offline" while the server isn't answering
-function banner(html, actions = [], kind = "") {
-  const el = $("banner");
-  el.innerHTML = "";
-  el.dataset.kind = kind;
-  const text = document.createElement("span");
-  text.innerHTML = html;
-  el.append(text);
-  for (const [label, fn] of actions) {
-    el.append(button(label, () => { el.hidden = true; return change(fn); }));
-  }
-  const close = button("×", () => { el.hidden = true; });
+function closeButton(box) {
+  const close = button("×", () => { box.hidden = true; });
   close.className = "close";
   close.setAttribute("aria-label", "Dismiss");
-  el.append(close);
+  return close;
+}
+
+// text is plain text; code, if given, follows it as a snippet to copy.
+// kind: "solve" for a banner whose buttons act on the live solve, "offline" while the server isn't answering
+function banner(text, actions = [], kind = "", code = "") {
+  const el = $("banner");
+  const span = elem("span", text);
+  if (code) span.append(" ", elem("code", code));
+  el.replaceChildren(span, ...actions.map(([label, fn]) => button(label, () => { el.hidden = true; return change(fn); })),
+    closeButton(el));
+  el.dataset.kind = kind;
   el.hidden = false;
 }
 
 function fail(e) {
   if (e.gone) { solveGone(); refresh(); }
-  if (!e.shown) banner(e.offline ? OFFLINE : escapeHtml(e.message), [], e.offline ? "offline" : "");
+  if (e.shown) return;
+  if (e.offline) banner("The app's server isn't answering. Check that this still runs in a terminal:", [], "offline", "python3 app/server.py");
+  else banner(e.message);
 }
 
 // changes: the click sends a POST or PUT, so it goes through change()
 function button(label, fn, changes = false) {
-  const b = document.createElement("button");
-  b.textContent = label;
+  const b = elem("button", label);
   b.onclick = changes ? () => change(fn, b) : () => Promise.resolve().then(fn).catch(fail);
   return b;
 }
@@ -97,54 +101,77 @@ function change(fn, btn) {
   if (btn) btn.disabled = true;
   const run = chain.then(fn).catch(fail).finally(() => {
     pending--;
+    finished++;
     if (btn) { btn.disabled = false; if (btn.gate) btn.gate(); }
+    gateStart();  // Start waits for every change, not only its own
   });
   chain = run;
   return run;
 }
 
+function labelled(parent, label, control) {
+  const l = elem("label", label);
+  l.append(control);
+  parent.append(l);
+  return control;
+}
+
 function field(parent, label, value, multiline) {
-  const l = document.createElement("label");
-  l.textContent = label;
   const input = document.createElement(multiline ? "textarea" : "input");
   if (multiline) input.rows = 3;
   input.setAttribute("autocomplete", "off");
   input.value = value || "";
-  l.append(input);
-  parent.append(l);
-  return input;
+  return labelled(parent, label, input);
 }
 
 async function copyPrompt(text) {
   try {
     await navigator.clipboard.writeText(text);
-    banner("Copied. Paste it into the coach chat: <code>" + escapeHtml(text) + "</code>");
-  } catch {
-    banner("Copy this into the coach chat: <code>" + escapeHtml(text) + "</code>");
+    banner("Copied. Paste it into the coach chat:", [], "", text);
+  } catch {  // no clipboard, or Safari's, which refuses a copy that comes after the saves
+    banner("Copy this into the coach chat:", [], "", text);
   }
 }
 
 // --- editor and the attempt file ---------------------------------------------
 function setupEditor() {
-  const saveKey = () => change(save, $("save-btn"));
   if (window.CodeMirror) {
     $("editor-host").innerHTML = "";
     editor = CodeMirror($("editor-host"), {
       mode: "python", lineNumbers: true, indentUnit: 4, tabSize: 4, indentWithTabs: false,
       extraKeys: {
-        Tab: (cm) => (cm.somethingSelected() ? cm.execCommand("indentMore") : cm.replaceSelection("    ")),
-        "Cmd-S": saveKey, "Ctrl-S": saveKey,
+        Tab: (cm) => cm.execCommand(cm.somethingSelected() ? "indentMore" : "insertSoftTab"),
+        "Shift-Tab": "indentLess",
       },
     });
     editor.on("change", () => markDirty(true));
   } else {
     const ta = $("editor-fallback");
     ta.addEventListener("input", () => markDirty(true));
-    ta.addEventListener("keydown", (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveKey(); }
+    ta.addEventListener("keydown", (e) => {  // Tab indents, as in the editor, rather than leaving the box
+      if (e.key !== "Tab" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      if (!document.execCommand("insertText", false, "    ")) {  // insertText keeps undo, and fires input
+        ta.setRangeText("    ", ta.selectionStart, ta.selectionEnd, "end");
+        markDirty(true);
+      }
     });
   }
-  $("save-btn").onclick = saveKey;
+  $("save-btn").onclick = () => change(save, $("save-btn"));
+}
+
+// Cmd-S or Ctrl-S anywhere saves the code, rather than opening the browser's Save dialog. In the stage panel it
+// saves what he typed there too.
+function saveKey(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey || String(e.key).toLowerCase() !== "s") return;
+  e.preventDefault();
+  if (!attempt) return;
+  const inPanel = $("panel").contains(e.target);
+  change(async () => {
+    if (!inPanel) return save();
+    if (dirty && !(await save())) return;
+    if (savePanel) await savePanel();
+  }, $("save-btn"));
 }
 const getCode = () => (editor ? editor.getValue() : $("editor-fallback").value);
 function setCode(text) {
@@ -172,17 +199,17 @@ function solveGone() {
   if (attempt && dirty) rescue(getCode());
   if ($("banner").dataset.kind === "solve") $("banner").hidden = true;  // its buttons were for that solve
   attempt = problemText = view = lastStage = blockBanner = warnedMtime = savePanel = null;
-  panelDirty = false;
-  $("panel").innerHTML = "";  // nothing in it may act on, or carry over into, the next solve
-  markDirty(false);
+  panelDirty = focusNext = false;
+  // nothing of that solve may stay on screen to act on the next one, or to be typed into while it loads
+  $("panel").innerHTML = "";
+  setCode("");
+  $("file").textContent = "";
   $("results").innerHTML = "";
 }
 
 function rescue(code) {
   const el = $("rescue");
-  el.innerHTML = "";
-  const text = document.createElement("span");
-  text.textContent = "The solve ended (from the chat?). Your unsaved code isn't in any file.";
+  const text = elem("span", "The solve ended (from the chat?). Your unsaved code isn't in any file.");
   const copy = button("Copy my code", async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -193,16 +220,14 @@ function rescue(code) {
         ta.readOnly = true;
         ta.rows = 10;
         ta.value = code;
+        ta.setAttribute("aria-label", "Your unsaved code");
         el.append(ta);
       }
       el.querySelector("textarea").select();
       text.textContent = "The solve ended (from the chat?). The clipboard isn't available: copy your unsaved code from the box below.";
     }
   });
-  const close = button("×", () => { el.hidden = true; });
-  close.className = "close";
-  close.setAttribute("aria-label", "Dismiss");
-  el.append(text, copy, close);
+  el.replaceChildren(text, copy, closeButton(el));
   el.hidden = false;
 }
 
@@ -294,21 +319,30 @@ function renderResults(r) {
 function renderBar() {
   const live = state.live;
   const stages = $("stages");
-  stages.innerHTML = "";
   $("block-btn").hidden = !live || live.block.open;
   if (!live) {
+    barFile = null;
+    stages.replaceChildren();
     $("problem").textContent = "DSA Coach";
     $("rung").textContent = $("timer").textContent = "";
     return;
   }
-  $("problem").innerHTML = `<a href="${escapeHtml(live.url)}" target="_blank" rel="noopener">${escapeHtml(live.problem)}</a>` +
-    (live.labeled ? ` <span class="muted">${escapeHtml(live.pattern_name)}</span>` : "");
-  STAGES.forEach(([name], i) => {
+  if (barFile !== live.file) {  // once per solve: built again on every poll, they'd lose clicks and keyboard focus
+    barFile = live.file;
+    const link = Object.assign(elem("a", live.problem), {href: live.url, target: "_blank", rel: "noopener"});
+    $("problem").replaceChildren(link);
+    if (live.labeled) $("problem").append(" ", Object.assign(elem("span", live.pattern_name), {className: "muted"}));
+    stages.replaceChildren(...STAGES.map(([name], i) => {
+      const b = button(String(i + 1), () => goTo(i + 1));
+      b.title = name;
+      b.setAttribute("aria-label", `Stage ${i + 1}: ${name}`);
+      return b;
+    }));
+  }
+  [...stages.children].forEach((b, i) => {
     const n = i + 1;
-    const b = button(String(n), () => goTo(n));
-    b.title = name;
     b.className = (n === live.stage ? "current" : n < live.stage ? "done" : "") + (n === view ? " viewing" : "");
-    stages.append(b);
+    if (n === live.stage) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
   });
   $("rung").textContent = `hint rung ${live.rung}/7`;
   const blk = live.block;
@@ -330,7 +364,7 @@ function goTo(n) {
       view = n; renderPanel(); renderBar();
     });
   }
-  banner(`Which stage are you in? The solve is at stage ${live.stage} (${escapeHtml(STAGES[live.stage - 1][0])}).`, [
+  banner(`Which stage are you in? The solve is at stage ${live.stage} (${STAGES[live.stage - 1][0]}).`, [
     [`Move to stage ${n} anyway`, async () => {
       if (panelDirty && savePanel) await savePanel();
       await api("POST", "/api/solve/stage", {n});
@@ -376,6 +410,7 @@ function problemBlock(draft = "") {
     ta.rows = 8;
     ta.value = draft;
     ta.placeholder = "Paste the problem statement from LeetCode. You only do this once per problem.";
+    ta.setAttribute("aria-label", "Problem statement");
     box.append(ta, button("Save statement", async () => {
       problemText = (await api("PUT", "/api/problem", {slug, text: ta.value})).text;
       box.replaceWith(problemBlock());  // only this box: what he's typed in the rest of the panel stays
@@ -404,12 +439,15 @@ function stageOne(panel, note, done) {
   done.gate = gate;
   const addRow = (r = {args: "", expected: "", edge: false}) => {
     const tr = table.insertRow();
-    tr.innerHTML = '<td><input class="args" autocomplete="off" spellcheck="false"></td>' +
-      '<td><input class="expected" autocomplete="off" spellcheck="false"></td><td><input type="checkbox" class="edge"></td><td></td>';
+    tr.innerHTML = '<td><input class="args" aria-label="inputs, as Python values" autocomplete="off" spellcheck="false"></td>' +
+      '<td><input class="expected" aria-label="predicted output" autocomplete="off" spellcheck="false"></td>' +
+      '<td><input type="checkbox" class="edge" aria-label="edge case"></td><td></td>';
     tr.querySelector(".args").value = r.args;
     tr.querySelector(".expected").value = r.expected;
     tr.querySelector(".edge").checked = r.edge;
-    tr.cells[3].append(button("×", () => { tr.remove(); panelDirty = true; gate(); }));
+    const remove = button("×", () => { tr.remove(); panelDirty = true; gate(); });
+    remove.setAttribute("aria-label", "Remove this example");
+    tr.cells[3].append(remove);
     tr.addEventListener("input", gate);
     tr.addEventListener("change", gate);
   };
@@ -501,6 +539,7 @@ function renderPanel() {
     if (n === 8) return endForm(panel);
     if (n >= state.live.stage) await api("POST", "/api/solve/stage", {n: n + 1});
     view = n + 1;
+    focusNext = true;
     await refresh(true);
   }, true);
   collect = ({1: stageOne, 6: stageSix, 8: stageEight}[n] || textStage)(panel, note, done, n);
@@ -521,26 +560,33 @@ function renderPanel() {
   };
   actions.append(button("Save", saveNote, true), done, button("Ask the coach", ask, true));
   panel.append(actions);
+  if (focusNext) {  // drawn by Done: he goes on typing in the next stage
+    focusNext = false;
+    panel.querySelector("label > textarea, label > input")?.focus();
+  }
 }
 
 function endForm(panel) {
   if (panel.querySelector(".end-form")) return;  // a second click on Done
   const box = document.createElement("div");
   box.className = "end-form";
-  box.innerHTML = "<h3>End the solve</h3>";
-  const outcome = document.createElement("select");
+  box.append(elem("h3", "End the solve"));
+  const outcome = document.createElement("select");  // no default: he says how it went
+  outcome.add(new Option("choose one", ""));
   for (const o of ["solved", "partial", "failed"]) outcome.add(new Option(o, o));
+  labelled(box, "Outcome", outcome);
   const lesson = field(box, "One-line lesson (goes into the problem's notes)", "", false);
-  box.append(outcome, button("Log it", () => endSolve(outcome.value, lesson.value.trim()), true));
+  box.append(button("Log it", () => endSolve(outcome.value, lesson.value.trim()), true));
   panel.append(box);
+  outcome.focus();
 }
 
 async function endSolve(outcome, note) {
   if (dirty && !(await save())) return;  // the code goes into the attempt file before the attempt is logged
   if (panelDirty && savePanel) await savePanel();  // and his stage note into the solve, which copies it to notes.md
-  const out = await api("POST", "/api/solve/end", {outcome, note});
+  const out = await api("POST", "/api/solve/end", {outcome, note});  // no outcome: "outcome is empty", in the banner
   solveGone();
-  banner(escapeHtml(out.message));
+  banner(out.message);
   await refresh();
 }
 
@@ -548,28 +594,35 @@ async function endSolve(outcome, note) {
 function renderStart() {
   const nx = state.next || {};
   const pick = (nx.kind === "new" || nx.kind === "resolve") && nx.problem ? nx.problem : "";
-  $("next-pick").innerHTML = pick
-    ? `Next pick: <b>${escapeHtml(pick)}</b> (${nx.kind === "resolve" ? "a re-solve from a blank page" : "a new problem"})`
-    : "No pick from <code>coach.py next</code> right now. Type a slug.";
-  if (pick && !$("slug").value) $("slug").value = pick;
+  $("next-pick").replaceChildren(...(pick
+    ? ["Next pick: ", elem("b", pick), ` (${nx.kind === "resolve" ? "a re-solve from a blank page" : "a new problem"})`]
+    : ["No pick from ", elem("code", "coach.py next"), " right now. Type a slug."]));
+  if (pick !== lastPick) {  // a new pick fills the slug box, unless he typed a slug of his own into it
+    const slug = $("slug");
+    if (!slug.value.trim() || slug.value === lastPick) slug.value = pick;
+    lastPick = pick;
+  }
   const due = state.due;
   $("due-line").textContent = due ? `Due: ${due.resolves.length} re-solve(s), ${due.cards.length} card(s), ${due.drafts} draft card(s).` : "";
   gateStart();
 }
-const gateStart = () => { $("start-btn").disabled = !($("slug").value.trim() && $("confidence").value); };
+// pending: not while a start (or anything else) is still on its way
+const gateStart = () => { $("start-btn").disabled = pending > 0 || !($("slug").value.trim() && $("confidence").value); };
 
 async function start() {
   const nx = state.next || {};
   const problem = $("slug").value.trim().toLowerCase();
   const body = {problem, confidence: Number($("confidence").value)};
   if ($("pattern").value.trim()) body.pattern = $("pattern").value.trim();
+  if ($("difficulty").value) body.difficulty = $("difficulty").value;  // none: an earlier attempt's, or medium
   if (nx.problem === problem && nx.kind === "new") {
     body.pattern = body.pattern || nx.pattern;
     if (nx.block === false) body.unlabeled = true;
   }
   if (nx.problem === problem && nx.kind === "resolve") body.mode = "review";
   await api("POST", "/api/solve/start", body);
-  $("slug").value = $("pattern").value = $("confidence").value = "";
+  $("slug").value = $("pattern").value = $("confidence").value = $("difficulty").value = "";
+  lastPick = null;  // the next start screen offers its pick again
   view = 1;
   await refresh(true);
 }
@@ -585,22 +638,36 @@ const statementDraft = () => ($("panel").querySelector(".problem textarea")?.val
 async function refresh(redraw = false) {
   if (busy) { queued = Boolean(queued) || redraw; return; }
   busy = true;
+  const seen = finished;
+  // A state change finished while this refresh was out: what it fetched may be from before that change. It's
+  // dropped, and fetched again at once.
+  const stale = () => {
+    if (seen === finished) return false;
+    queued = Boolean(queued) || redraw;
+    return true;
+  };
   try {
-    state = await api("GET", "/api/state");
+    const next = await api("GET", "/api/state");
+    if (stale()) return;
+    state = next;
     if ($("banner").dataset.kind === "offline") $("banner").hidden = true;  // it's answering again
     const live = state.live;
     if (attempt && (!live || live.file !== attempt.file)) solveGone();
     $("start").hidden = !!live;
     $("solve").hidden = !live;
     if (!live) { renderBar(); renderStart(); return; }
-    if (!attempt) {
-      useAttempt(await api("GET", "/api/attempt"));
-      problemText = (await api("GET", "/api/problem?slug=" + encodeURIComponent(live.problem))).text;
+    if (!attempt) {  // both or neither: a failed load leaves attempt null, so the next poll loads it again
+      const [a, p] = await Promise.all([api("GET", "/api/attempt"),
+        api("GET", "/api/problem?slug=" + encodeURIComponent(live.problem))]);
+      if (stale()) return;
+      useAttempt(a);
+      problemText = p.text;
       view = view || live.stage;
       redraw = true;
     } else if (!pending && state.attempt_mtime !== attempt.mtime && state.attempt_mtime !== warnedMtime) {
       // not while a save of the page's own is in flight: its answer brings the new mtime
       const disk = await api("GET", "/api/attempt");
+      if (stale()) return;
       if (dirty) conflict(disk); else { useAttempt(disk); if (redrawForFile()) redraw = true; }
     }
     // the chat moved the stage: follow it, unless he's typing in the panel
@@ -620,12 +687,12 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEditor();
   $("run-btn").onclick = () => change(runTests, $("run-btn"));
   $("start-btn").onclick = () => change(start, $("start-btn"));
-  $("start-btn").gate = gateStart;
   $("slug").oninput = gateStart;
   $("confidence").onchange = gateStart;
   $("block-btn").onclick = () => change(async () => { await api("POST", "/api/solve/block", {}); await refresh(); }, $("block-btn"));
   // the statement box isn't one of the stage's boxes: Save statement saves it, and a redraw carries it over
   $("panel").addEventListener("input", (e) => { if (!e.target.closest(".problem")) panelDirty = true; });
+  document.addEventListener("keydown", saveKey);
   window.addEventListener("beforeunload", (e) => {  // closing or reloading the tab would drop unsaved text
     if (dirty || panelDirty || statementDraft()) { e.preventDefault(); e.returnValue = ""; }
   });
