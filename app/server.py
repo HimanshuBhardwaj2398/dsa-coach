@@ -8,7 +8,6 @@ writes only the live solve's attempt file and problems/<slug>/problem.md, each o
 from __future__ import annotations
 
 import argparse
-import errno
 import json
 import os
 import re
@@ -35,7 +34,6 @@ SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,254}")  # used with fullmatch; 255 is th
 HOSTS = {"127.0.0.1", "localhost"}
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".css": "text/css; charset=utf-8"}
-MAX_BODY = 10_000_000  # bytes in a request body
 WRITE = threading.Lock()  # saves go one at a time, so two can't both pass the mtime check
 
 
@@ -52,15 +50,8 @@ class Coach:
         self.root, self.env = Path(root), env
 
     def run(self, *args: str) -> str:
-        try:
-            proc = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), *args],
-                                  capture_output=True, text=True, env=self.env)
-        except ValueError:  # a NUL character can't go on a command line
-            raise ApiError(400, "the text has a NUL character; take it out and try again") from None
-        except OSError as e:
-            if e.errno != errno.E2BIG:
-                raise
-            raise ApiError(400, "the text is too long to pass to coach.py; shorten it and try again") from None
+        proc = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), *args],
+                              capture_output=True, text=True, env=self.env)
         if proc.returncode != 0:  # the status goes by how coach.py's message starts, not by a value it quotes
             message = (proc.stderr or proc.stdout).strip().removeprefix("error: ")
             status = 409 if message.startswith("a solve is already live") else \
@@ -273,17 +264,11 @@ def make_handler(coach: Coach):
             self.wfile.write(data)
 
         def read_body(self) -> dict:
-            try:
-                length = int(self.headers.get("Content-Length") or 0)
-            except ValueError:
-                length = -1
-            if not 0 <= length <= MAX_BODY:
-                raise ApiError(400, f"a request body needs a Content-Length from 0 to {MAX_BODY} bytes")
-            raw = self.rfile.read(length)
+            raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
             try:
                 data = json.loads(raw or b"{}")
                 json.dumps(data, ensure_ascii=False).encode()  # JSON can carry a lone surrogate; files can't
-            except (ValueError, RecursionError):  # not JSON, not UTF-8 text, or nested too deeply
+            except ValueError:  # not JSON, or not UTF-8 text
                 raise ApiError(400, "the request body isn't JSON in UTF-8")
             if not isinstance(data, dict):
                 raise ApiError(400, "the request body must be a JSON object")
@@ -291,12 +276,8 @@ def make_handler(coach: Coach):
 
         def static(self, path: str):
             name = "index.html" if path in ("", "/") else path.removeprefix("/static/")
-            try:
-                target = (STATIC / name).resolve()
-                found = target.parent == STATIC.resolve() and target.is_file()
-            except (OSError, ValueError):  # a name too long for the file system, or a NUL character
-                found = False
-            if not found:
+            target = (STATIC / name).resolve()
+            if target.parent != STATIC.resolve() or not target.is_file():
                 raise ApiError(404, "not found")
             self.send(200, target.read_bytes(), TYPES.get(target.suffix, "application/octet-stream"))
 
