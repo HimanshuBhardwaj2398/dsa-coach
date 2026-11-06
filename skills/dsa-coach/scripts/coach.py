@@ -19,7 +19,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.4.1"
+SKILL_VERSION = "0.5.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -117,8 +117,21 @@ def read_json(path: Path, default):
 
 
 def write_json(path: Path, data) -> None:
+    """Write a temp file beside `path`, then rename it over `path`, so a reader never sees half a file.
+    A symlinked `path` stays a link (the real file is replaced), and an existing file keeps its mode."""
+    path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    tmp = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
+    try:
+        with open(tmp, "x", encoding="utf-8") as fh:  # a new file gets the umask's mode; mkstemp would make it 0600
+            fh.write(text)
+        if path.exists():
+            shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def read_jsonl(path: Path) -> list:
@@ -1074,6 +1087,9 @@ def cmd_due(args) -> None:
     root = find_root(args.root)
     j = compute(load_state(root), parse_date(args.date))
     d = j["due"]
+    if args.json:
+        print(json.dumps(d, indent=2, ensure_ascii=False))
+        return
     if not d["resolves"] and not d["cards"]:
         print("Nothing due.")
     for r in d["resolves"]:
@@ -1158,6 +1174,8 @@ def solve_start(root: Path, args) -> None:
     if load_live(root, required=False):
         die("a solve is already live (`coach.py solve show`). End it with `solve end --outcome ...` or `solve end --discard`.")
     slug = slugify(args.problem)
+    if not slug:
+        die(f"--problem {args.problem!r} has no letters or digits to make a slug from")
     roadmap = load_roadmap()
     past = [a for a in usable_attempts(read_jsonl(root / "learner" / "attempts.jsonl")) if a["problem"] == slug]
     canonical = next((p["key"] for p in roadmap["patterns"] if slug in p.get("canonical", [])), None)
@@ -1202,7 +1220,24 @@ def solve_end(root: Path, live: dict, args) -> None:
         "technique": args.technique, "mistakes": split_codes(args.mistakes),
         "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
     })
+    if live.get("notes"):
+        add_stage_notes(root / "problems" / live["problem"] / "notes.md", f"{today().isoformat()} ({live['file']})", live["notes"])
     (root / LIVE).unlink()
+
+
+def add_stage_notes(path: Path, heading: str, notes: dict) -> None:
+    """A solve's stage notes go at the end of the ## Stage notes section, which sits just above ## Lessons
+    (lesson lines are appended at the end of the file), so the oldest solve stays first.
+    It expects the ## Lessons heading that problem.md starts with. In a hand-edited file without one, the section
+    goes at the end of the file, and later lesson lines follow it."""
+    bullets = "".join(f"- **{n}. {STAGES[int(n) - 1][0]}:** " + notes[n].strip().replace("\n", "\n  ") + "\n"
+                      for n in sorted(notes, key=int))
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"^## Lessons[ \t\r]*$", text, re.M)  # a note's lines are indented, so none can match
+    head, rest = (text[:m.start()], text[m.start():]) if m else (text, "")
+    section = "" if re.search(r"^## Stage notes\n", head, re.M) else "## Stage notes\n\n"
+    head = head.rstrip("\n") + f"\n\n{section}### {heading}\n\n{bullets}"
+    path.write_text(head + ("\n" + rest if rest else ""), encoding="utf-8")
 
 
 def cmd_solve(args) -> None:
@@ -1227,6 +1262,12 @@ def cmd_solve(args) -> None:
         live["stage"] = args.n
     elif action == "hint":
         live["rung"] = min(7, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
+    elif action == "note":  # a blank note clears the stage's note
+        notes = live.setdefault("notes", {})
+        if args.text.strip():
+            notes[str(args.stage)] = args.text
+        else:
+            notes.pop(str(args.stage), None)
     elif action in ("break", "block"):
         if open_block:
             open_block["end"] = stamp()
@@ -1711,6 +1752,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_quiz)
 
     s = sub.add_parser("due", help="list due re-solves and cards")
+    s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     s.set_defaults(func=cmd_due)
 
@@ -1732,6 +1774,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("n", type=int, choices=range(1, 9))
     s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
     s.add_argument("--rung", type=int, choices=range(1, 8))
+    s = solve.add_parser("note", help="save the learner's note for a stage (replaces that stage's note)")
+    s.add_argument("--stage", type=int, required=True, choices=range(1, 9))
+    s.add_argument("--text", required=True)
     solve.add_parser("break", help="end the current focus block")
     solve.add_parser("block", help="start a new focus block")
     s = solve.add_parser("show", help="the live solve")

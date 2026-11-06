@@ -15,9 +15,13 @@ Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connec
   - The optional `dsa-coach-pane` plugin (`plugins/dsa-coach-pane/` in the workspace) shows the live solve beside the chat.
   - Elsewhere, the same state lives in `notebook/sessions/current.json`, so the next session can resume it.
 
+### The study app (Solve tab)
+
+`python3 app/server.py` from the workspace opens a local page with a stage panel, an editor without autocomplete and a test runner. The server saves the attempt file and the statement (`problems/<slug>/problem.md`) itself and asks `coach.py` for everything else (stages, notes, logging), so the chat in Claude Code or Codex sees every stage and note. Test runs aren't recorded. It listens on 127.0.0.1 only, prints the `http://127.0.0.1:<port>/` URL and opens it in the browser (`--no-browser` skips that). Pass `--port` for another port and `--root` for another notebook.
+
 ### Standalone setup
 
-The ZIP contains the `dsa-coach/` skill folder, without learner data or the optional pane plugin. Extract it into the host's skills directory and run its `scripts/coach.py` from there.
+The ZIP contains the `dsa-coach/` skill folder, without learner data, the optional pane plugin or the study app (`app/` in the workspace). Extract it into the host's skills directory and run its `scripts/coach.py` from there.
 
 For an existing notebook, pass `--root /absolute/path/to/notebook` before the command, or set `DSA_NOTEBOOK` to that path. For a new notebook, use the location chosen by the learner explicitly; plain `init` assumes the original repository layout:
 

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSA Coach · Solve</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+      integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header id="bar">
+  <span id="problem">DSA Coach</span>
+  <nav id="stages" aria-label="Solve stages"></nav>
+  <span id="rung"></span>
+  <span id="timer"></span>
+  <button id="block-btn" hidden>Start the next block</button>
+</header>
+<div id="banner" role="status" hidden></div>
+<div id="rescue" role="alert" hidden></div>
+
+<main id="start" hidden>
+  <h1>Start a solve</h1>
+  <p id="next-pick"></p>
+  <label>Problem (LeetCode slug) <input id="slug" placeholder="koko-eating-bananas" autocomplete="off" spellcheck="false"></label>
+  <label>Pattern (only for problems outside the roadmap) <input id="pattern" placeholder="binary-search" autocomplete="off" spellcheck="false"></label>
+  <label>Difficulty, as LeetCode rates it (it sets how long a focus block is)
+    <select id="difficulty">
+      <option value="">as before, or medium</option><option>easy</option><option>medium</option><option>hard</option>
+    </select>
+  </label>
+  <label>How sure are you that you'll solve it without help?
+    <select id="confidence">
+      <option value="">choose 1–5</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+    </select>
+  </label>
+  <button id="start-btn" disabled>Start</button>
+  <p id="due-line" class="muted"></p>
+</main>
+
+<main id="solve" hidden>
+  <section id="panel"></section>
+  <section id="work">
+    <div class="toolbar">
+      <span id="file" class="muted"></span>
+      <span id="dirty" class="muted"></span>
+      <span class="spacer"></span>
+      <button id="save-btn">Save</button>
+      <button id="run-btn" class="primary">Run tests</button>
+    </div>
+    <div id="editor-host"><textarea id="editor-fallback" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></div>
+    <div id="results"></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"
+        integrity="sha512-OeZ4Yrb/W7d2W4rAMOO0HQ9Ro/aWLtpW9BUSR2UOWnSV2hprXLkkYnnCGc9NeLUxxE4ZG7zN16UuT1Elqq8Opg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"
+        integrity="sha512-Vs2GKxnxnTQBRW7o2xXZ9A28njjmu5RToS42efiKNEWmikov0inZY522EtGVK5CcVo0M/FQwmXsTfl9skgRnvw==" crossorigin="anonymous"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

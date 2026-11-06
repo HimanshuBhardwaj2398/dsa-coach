@@ -11,6 +11,7 @@ dsa-coach/
 ├── docs/                  architecture, platform setup, the research behind the design
 ├── tests/                 tests for coach.py
 ├── plugins/dsa-coach-pane the coach pane for Claude Code (the live solve beside the chat)
+├── app/                   the study app: python3 app/server.py opens its Solve tab (see skills/dsa-coach/references/platforms.md)
 ├── dist/dsa-coach.zip     the skill packaged for uploading to Claude
 ├── CLAUDE.md, AGENTS.md   project instructions for Claude Code and Codex
 └── .claude/, .agents/     links that make the skill visible to Claude Code and Codex

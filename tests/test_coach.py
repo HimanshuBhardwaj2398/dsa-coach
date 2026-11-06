@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from pathlib import Path
 
@@ -297,6 +298,12 @@ class CoachTest(unittest.TestCase):
         self.assertTrue(steps[0].startswith("Solve two-sum"), steps)
         self.assertTrue(steps[1].startswith("Approve"), steps)
 
+    def test_due_json(self):
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing", hints=3)  # not unaided: due the next day
+        d = json.loads(self.run_cli("due", "--json", today="2026-11-02").stdout)
+        self.assertEqual([r["problem"] for r in d["resolves"]], ["two-sum"])
+        self.assertEqual((d["cards"], d["drafts"], d["inbox"]), ([], 0, []))
+
     # ------------------------------------------------------------------ live solve
     def live(self):
         path = self.root / "sessions" / "current.json"
@@ -319,10 +326,41 @@ class CoachTest(unittest.TestCase):
         self.assertNotEqual(again.returncode, 0)
         self.assertIn("already live", again.stderr)
 
+    def test_solve_template_runs_its_examples(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        path = self.root / self.live()["file"]
+        text = path.read_text()
+        self.assertIn("class Solution:", text)
+        self.assertIn("    Hand trace:", text)
+        run = lambda: subprocess.run([sys.executable, str(path)], capture_output=True, text=True, timeout=10).stdout
+        self.assertEqual(run(), "Write the method inside class Solution first.\n")
+        method = ("    MOD = 10**9 + 7  # a constant before the method: the examples still call the method\n"
+                  "    def twoSum(self, nums: List[int], target: int) -> List[int]:  # LeetCode's stub, typing unimported\n"
+                  "        seen = {}\n"
+                  "        for i, x in enumerate(nums):\n"
+                  "            if target - x in seen:\n"
+                  "                return [seen[target - x], i]\n"
+                  "            seen[x] = i\n")
+        text = text.replace("    pass\n", method, 1)
+        text = text.replace("EXAMPLES = [\n]", "EXAMPLES = [\n"
+                            "    (([2, 7, 11, 15], 9), [0, 1]),\n"
+                            "    (([3, 3], 6), [0, 1]),  # edge\n"
+                            "    (([1, 2], 3), [1, 0]),\n"
+                            "]")
+        path.write_text(text)
+        self.assertEqual([line[:4] for line in run().splitlines()], ["ok  ", "ok  ", "FAIL"])
+
     def test_solve_needs_a_pattern_for_unknown_problems(self):
         proc = self.run_cli("solve", "start", "--problem", "my-own-puzzle", ok=False)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("--pattern", proc.stderr)
+
+    def test_solve_refuses_a_problem_with_no_letters_or_digits(self):
+        proc = self.run_cli("solve", "start", "--problem", "!!!", "--pattern", "arrays-hashing", ok=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("no letters or digits", proc.stderr)
+        self.assertIsNone(self.live())
+        self.assertEqual(list((self.root / "problems").glob("*.py")), [])  # not problems//<date>.py
 
     def test_solve_end_logs_one_attempt_from_blocks_and_rung(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
@@ -338,6 +376,56 @@ class CoachTest(unittest.TestCase):
         [a] = self.attempts()
         self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
         self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (32, 3, 3, "solved"))
+
+    def test_solve_note_is_kept_and_written_to_problem_notes(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "1", "--text", "first draft", now="10:01")
+        self.run_cli("solve", "note", "--stage", "1", "--text=- return i != j with nums[i] + nums[j] == target", now="10:02")
+        self.run_cli("solve", "note", "--stage", "6", "--text", "seen maps value -> index\nfor every j < i", now="10:03")
+        shown = json.loads(self.run_cli("solve", "show", "--json", now="10:04").stdout)
+        self.assertEqual(shown["notes"], {"1": "- return i != j with nums[i] + nums[j] == target",
+                                          "6": "seen maps value -> index\nfor every j < i"})
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.run_cli("log", "attempt", "--problem", "two-sum", "--pattern", "arrays-hashing", "--outcome", "solved",
+                     "--note", "complement lookup")  # a lesson line, appended under ## Lessons
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs, O(n^2)", now="10:21")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
+        text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
+        self.assertIn("## Stage notes\n\n### 2026-11-01 (problems/two-sum/2026-11-01.py)\n\n"
+                      "- **1. Unknown, data, condition:** - return i != j", text)
+        self.assertIn("- **6. Plan card:** seen maps value -> index\n  for every j < i\n\n"
+                      "### 2026-11-01 (problems/two-sum/2026-11-01-2.py)\n\n"
+                      "- **2. Brute force on the grid:** all pairs, O(n^2)\n\n## Lessons\n", text)
+        self.assertNotIn("first draft", text)
+        self.assertEqual(text.count("## Stage notes"), 1)
+        lessons = text.index("## Lessons\n")
+        self.assertLess(text.index("**1."), text.index("**6."))
+        self.assertLess(text.index("**6."), lessons)
+        self.assertGreater(text.index("complement lookup"), lessons)
+
+    def test_solve_blank_note_clears_the_stage_and_writes_nothing(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "1", "--text", "a draft", now="10:01")
+        self.run_cli("solve", "note", "--stage", "3", "--text", "n^2 pairs", now="10:01")
+        self.run_cli("solve", "note", "--stage", "1", "--text=", now="10:02")  # the page sends a blank box like this
+        self.assertEqual(self.live()["notes"], {"3": "n^2 pairs"})
+        self.run_cli("solve", "note", "--stage", "3", "--text", " \n ", now="10:03")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.assertNotIn("## Stage notes", (self.root / "problems" / "two-sum" / "notes.md").read_text())
+
+    def test_stage_notes_split_only_at_the_lessons_heading(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "note", "--stage", "6", "--text", "line a\n## Lessons\nline b", now="10:01")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs", now="10:21")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
+        text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
+        self.assertEqual(text.count("\n## Lessons\n"), 1)
+        lessons = text.index("\n## Lessons\n")
+        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01.py)"), lessons)
+        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01-2.py)"), lessons)
 
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
@@ -376,6 +464,42 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(self.run_cli("guard", stdin="not json", ok=False).returncode, 0)
         self.run_cli("solve", "hint", "--rung", "7")
         self.assertEqual(guard(attempt), 0)
+
+    def test_write_json_replaces_the_file_whole(self):
+        """The page polls `solve show --json` while the chat and the app write current.json."""
+        spec = importlib.util.spec_from_file_location("coach", COACH)
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        path = self.tmp / "sessions" / "current.json"
+        coach.write_json(path, {"stage": 1})
+        with path.open(encoding="utf-8") as reader:  # opened before the next write: it never sees a cut-off file
+            coach.write_json(path, {"note": "seen → index"})
+            self.assertEqual(reader.read(), '{\n  "stage": 1\n}\n')
+        self.assertEqual(path.read_bytes(), '{\n  "note": "seen → index"\n}\n'.encode("utf-8"))
+        plain = path.with_name("plain.json")
+        plain.write_text("{}\n")  # the permissions the old in-place write gave
+        self.assertEqual(path.stat().st_mode, plain.stat().st_mode)
+        plain.unlink()
+        with unittest.mock.patch.object(coach.os, "replace", side_effect=OSError("disk full")):
+            self.assertRaises(OSError, coach.write_json, path, {"stage": 2})
+        self.assertEqual(os.listdir(path.parent), ["current.json"])  # no temp files left behind
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {"note": "seen → index"})
+
+    def test_write_json_writes_through_a_symlink_and_keeps_the_mode(self):
+        """e.g. .claude/settings.json linked from a dotfiles repo."""
+        spec = importlib.util.spec_from_file_location("coach", COACH)
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        target = self.tmp / "dotfiles" / "settings.json"
+        target.parent.mkdir()
+        target.write_text("{}\n")
+        target.chmod(0o600)
+        link = self.tmp / "settings.json"
+        link.symlink_to(target)
+        coach.write_json(link, {"hooks": 1})
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(json.loads(target.read_text()), {"hooks": 1})
+        self.assertEqual(target.stat().st_mode & 0o777, 0o600)
 
     # ------------------------------------------------------------------ status, validate, package, install
     def test_status_and_validate(self):
