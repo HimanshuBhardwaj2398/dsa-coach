@@ -70,6 +70,46 @@ class ServerTest(unittest.TestCase):
     def start(self):
         return self.call("POST", "/api/solve/start", {"problem": "binary-search", "confidence": 3, "difficulty": "easy"})
 
+    # POST /api/problem/fetch: statement.fetch is replaced, so no test touches the network
+    def problem_md(self, slug="koko-eating-bananas"):
+        return self.root / "problems" / slug / "problem.md"
+
+    def test_fetch_writes_problem_md_and_returns_it(self):
+        fake = unittest.mock.Mock(return_value=("Koko Eating Bananas", "<p>Koko loves <code>piles</code>.</p>"))
+        with unittest.mock.patch.object(server.statement, "fetch", fake):
+            status, body = self.call("POST", "/api/problem/fetch", {"slug": "koko-eating-bananas"})
+        self.assertEqual(status, 200)
+        fake.assert_called_once_with("koko-eating-bananas")
+        self.assertEqual(body["text"], self.problem_md().read_text())
+        self.assertTrue(body["text"].startswith("# Koko Eating Bananas\n\nhttps://leetcode.com/problems/koko-eating-bananas/"))
+        self.assertIn("Koko loves piles.", body["text"])
+
+    def test_an_existing_statement_is_returned_without_fetching(self):
+        self.problem_md().parent.mkdir(parents=True)
+        self.problem_md().write_text("pasted earlier\n")
+        fake = unittest.mock.Mock()
+        with unittest.mock.patch.object(server.statement, "fetch", fake):
+            status, body = self.call("POST", "/api/problem/fetch", {"slug": "koko-eating-bananas"})
+        self.assertEqual((status, body["text"]), (200, "pasted earlier\n"))
+        fake.assert_not_called()
+
+    def test_a_failed_fetch_is_a_502_with_the_reason_and_writes_nothing(self):
+        fake = unittest.mock.Mock(side_effect=server.statement.StatementError("it's a premium problem"))
+        with unittest.mock.patch.object(server.statement, "fetch", fake):
+            status, body = self.call("POST", "/api/problem/fetch", {"slug": "koko-eating-bananas"})
+        self.assertEqual(status, 502)
+        self.assertIn("it's a premium problem", body["error"])
+        self.assertIn("Paste it instead", body["error"])
+        self.assertFalse(self.problem_md().parent.exists())
+
+    def test_the_slug_is_checked_before_anything_else(self):
+        fake = unittest.mock.Mock()
+        with unittest.mock.patch.object(server.statement, "fetch", fake):
+            status, _ = self.call("POST", "/api/problem/fetch", {"slug": "../etc"})
+            status2, _ = self.call("POST", "/api/problem/fetch", {"slug": "koko"}, coach_header=False)
+        self.assertEqual((status, status2), (400, 403))
+        fake.assert_not_called()
+
     def test_binds_to_localhost_only(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
 

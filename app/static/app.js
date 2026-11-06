@@ -20,7 +20,8 @@ const $ = (id) => document.getElementById(id);
 const elem = (tag, text = "") => Object.assign(document.createElement(tag), {textContent: text});
 let state = null;        // the last /api/state
 let attempt = null;      // the last /api/attempt: {file, path, text, mtime, plan_card, examples, examples_error}
-let problemText = null;  // problems/<slug>/problem.md, or null before it's pasted
+let problemText = null;  // problems/<slug>/problem.md, or null before it's fetched or pasted
+let fetchState = null;   // the statement fetch for this solve: null, "fetching", or {error}
 let view = null;         // the stage shown in the panel
 let lastStage = null;    // the live stage at the previous poll
 let editor = null;       // CodeMirror, or null when the CDN didn't load and the textarea is used
@@ -202,7 +203,7 @@ function solveGone() {
   if ($("banner").dataset.kind === "solve") $("banner").hidden = true;  // its buttons were for that solve
   if (attempt && (dirty || fields)) rescue(dirty ? getCode() : "", fields);
   else if (attempt && finishSent === attempt.file) banner("The coach logged the solve.");
-  attempt = problemText = view = lastStage = blockBanner = warnedMtime = savePanel = finishSent = null;
+  attempt = problemText = fetchState = view = lastStage = blockBanner = warnedMtime = savePanel = finishSent = null;
   panelDirty = focusNext = false;
   // nothing of that solve may stay on screen to act on the next one, or to be typed into while it loads
   $("panel").innerHTML = "";
@@ -426,7 +427,13 @@ function problemBlock(draft = "") {
     const pre = document.createElement("pre");
     pre.textContent = problemText;
     box.append(pre);
+  } else if (fetchState === "fetching") {
+    box.append(Object.assign(elem("p", "Fetching the statement from LeetCode…"), {className: "muted"}));
   } else {
+    if (fetchState && fetchState.error) {
+      box.append(Object.assign(elem("p", fetchState.error), {className: "fail"}),
+        button("Fetch from LeetCode", async () => { await fetchStatement(); }));
+    }
     const slug = state.live.problem;
     const ta = document.createElement("textarea");
     ta.rows = 8;
@@ -439,6 +446,32 @@ function problemBlock(draft = "") {
     }, true));
   }
   return box;
+}
+
+// One request to LeetCode, through the server, when a solve opens without a statement; pasting is the fallback.
+// Not in the change() queue: it only writes problem.md and may take seconds. Polls never call it.
+async function fetchStatement() {
+  if (!attempt || !state || !state.live) return;
+  const file = attempt.file, slug = state.live.problem;
+  const redrawBox = () => {
+    const box = document.querySelector("#panel details.problem");
+    if (!box) return;
+    const ta = box.querySelector("textarea");
+    box.replaceWith(problemBlock(ta ? ta.value : ""));
+  };
+  fetchState = "fetching";
+  redrawBox();
+  let next;
+  try {
+    const r = await api("POST", "/api/problem/fetch", {slug});
+    next = {text: r.text};
+  } catch (e) {
+    if (e.gone || e.offline) { fail(e); next = {error: e.message}; }
+    else next = {error: e.message};
+  }
+  if (!attempt || attempt.file !== file) return;  // that solve ended while the fetch was out
+  if (next.text !== undefined) { problemText = next.text; fetchState = null; } else fetchState = next;
+  redrawBox();
 }
 
 function textStage(panel, note, done, n) {
@@ -704,6 +737,7 @@ async function refresh(redraw = false) {
       problemText = p.text;
       view = view || live.stage;
       redraw = true;
+      if (problemText === null && fetchState === null) fetchStatement();  // once per solve; not awaited
     } else if (!pending && state.attempt_mtime !== attempt.mtime && state.attempt_mtime !== warnedMtime) {
       // not while a save of the page's own is in flight: its answer brings the new mtime
       const disk = await api("GET", "/api/attempt");

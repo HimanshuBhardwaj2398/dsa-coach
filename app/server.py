@@ -3,7 +3,8 @@
     python3 app/server.py [--root NOTEBOOK] [--port 8765] [--no-browser]
 
 It binds to 127.0.0.1 only. Every change to the notebook's records goes through coach.py. The server itself
-writes only the live solve's attempt file and problems/<slug>/problem.md, each one whole.
+writes only the live solve's attempt file and problems/<slug>/problem.md, each one whole. A missing
+problem.md can be fetched from LeetCode (app/statement.py), one problem at a time.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP))
 import attempt_file  # noqa: E402
 import runner  # noqa: E402
+import statement  # noqa: E402
 
 REPO = APP.parent
 COACH = REPO / "skills" / "dsa-coach" / "scripts" / "coach.py"
@@ -222,6 +224,20 @@ def put_problem(coach, d):
     return {"text": path.read_text(encoding="utf-8")}
 
 
+def post_problem_fetch(coach, d):
+    """The statement from LeetCode, saved as problem.md, unless one is already there (pasted or fetched)."""
+    slug = check_slug(d.get("slug"))
+    path = coach.root / "problems" / slug / "problem.md"
+    if not path.exists():
+        try:
+            title, html = statement.fetch(slug)
+        except statement.StatementError as e:
+            raise ApiError(502, f"Couldn't fetch the statement: {e}. Paste it instead.")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_whole(path, statement.document(slug, title, html))
+    return {"text": path.read_text(encoding="utf-8")}
+
+
 def post_run(coach, d):
     return runner.run(coach.root / live_solve(coach)["file"])
 
@@ -238,6 +254,7 @@ ROUTES = {
     ("POST", "/api/solve/block"): post_block,
     ("POST", "/api/solve/end"): post_end,
     ("GET", "/api/problem"): get_problem,
+    ("POST", "/api/problem/fetch"): post_problem_fetch,
     ("PUT", "/api/problem"): put_problem,
     ("POST", "/api/run"): post_run,
 }

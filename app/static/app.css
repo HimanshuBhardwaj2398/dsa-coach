@@ -62,7 +62,7 @@ th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line
 #editor-fallback { width: 100%; height: 100%; border: 0; border-radius: 0; padding: 10px; }
 #results { max-height: 35vh; overflow: auto; border-top: 1px solid var(--line); padding: 6px 12px; }
 tr.ok td:first-child { color: var(--ok); font-weight: 600; }
-tr.fail td:first-child, pre.fail { color: var(--fail); font-weight: 600; }
+tr.fail td:first-child, pre.fail, p.fail { color: var(--fail); font-weight: 600; }
 pre.err { color: var(--fail); }
 
 /* CodeMirror's default theme is made for a white page: its dark blues and purples vanish on a dark one */

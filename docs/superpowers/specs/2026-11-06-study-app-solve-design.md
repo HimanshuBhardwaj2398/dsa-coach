@@ -18,7 +18,7 @@ This is the first piece of a larger app with Learn, Solve, Notes and Due & Journ
 | Technology | Small local web app: stdlib Python server, one HTML page, CodeMirror | Attempt files stay plain `.py`, so `coach.py`, the guard hook, Codex and Claude Code keep working; full layout control; clear path to v2 chat |
 | Layout | Follows the stages: a stage panel that changes with the stage, editor and tests always visible | Stages 1 and 6 are the ones not to skip; today's bug (the one-element case) is what stage 1 catches |
 | Plan card before code | A nudge, not a lock | Locks get bypassed with junk |
-| Problem statement | Pasted once per problem, saved to `problems/<slug>/problem.md` | Always works; no dependency on LeetCode's unofficial endpoint |
+| Problem statement | Pasted once per problem, saved to `problems/<slug>/problem.md` (0.5.1: fetched from LeetCode first, pasting is the fallback; see `2026-11-07-fetch-statement-design.md`) | Always works; no dependency on LeetCode's unofficial endpoint |
 | Code shape | LeetCode's `class Solution`; the runner finds the method itself | He can paste the code straight into LeetCode to submit |
 | Who logs the attempt | The coach, from stage 8's prompt; parking stays in the app | The record needs technique, mistake codes and the complexity check, which are the coach's judgment |
 

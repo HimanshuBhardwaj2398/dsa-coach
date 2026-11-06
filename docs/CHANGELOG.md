@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 · 2026-11-07
+
+The Solve tab fetches the problem statement.
+
+- **Statement:** when a solve opens without a statement, the app asks LeetCode for that one problem (the GraphQL endpoint its own site uses) and saves it as plain text in `problems/<slug>/problem.md`: the title, the link, then the statement with its examples and constraints. One request per problem, never on a poll and never in bulk.
+- **Fallback:** if the fetch fails (offline, the endpoint changed, a premium problem), the paste box appears with the reason and a **Fetch from LeetCode** retry button.
+- **Git:** `notebook/problems/*/problem.md` is ignored, fetched or pasted. Statements are LeetCode's text, and the repo is public.
+- **Why:** pasting each statement was a chore on every new problem, and the app should stay out of the way of the solve itself.
+
 ## 0.5.0 · 2026-11-06
 
 A study app for long solves: the Solve tab.

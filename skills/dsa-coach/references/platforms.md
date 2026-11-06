@@ -17,7 +17,7 @@ Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connec
 
 ### The study app (Solve tab)
 
-`python3 app/server.py` from the workspace opens a local page with a stage panel, an editor without autocomplete and a test runner. The server saves the attempt file and the statement (`problems/<slug>/problem.md`) itself and asks `coach.py` for everything else (stages, notes, logging), so the chat in Claude Code or Codex sees every stage and note. Test runs aren't recorded. It listens on 127.0.0.1 only, prints the `http://127.0.0.1:<port>/` URL and opens it in the browser (`--no-browser` skips that). Pass `--port` for another port and `--root` for another notebook.
+`python3 app/server.py` from the workspace opens a local page with a stage panel, an editor without autocomplete and a test runner. The server saves the attempt file and the statement (`problems/<slug>/problem.md`, fetched from LeetCode when a solve opens without one, or pasted; git ignores it) itself and asks `coach.py` for everything else (stages, notes, logging), so the chat in Claude Code or Codex sees every stage and note. Test runs aren't recorded. It listens on 127.0.0.1 only, prints the `http://127.0.0.1:<port>/` URL and opens it in the browser (`--no-browser` skips that). Pass `--port` for another port and `--root` for another notebook.
 
 ### Standalone setup
 
