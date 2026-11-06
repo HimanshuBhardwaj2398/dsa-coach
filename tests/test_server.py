@@ -172,6 +172,14 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/static/../server.py")[0], 404)
         self.assertEqual(self.call("GET", "/api/nope")[0], 404)
 
+    def test_the_page_is_served(self):
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}/")
+        with urllib.request.urlopen(req) as res:
+            self.assertIn("text/html", res.headers["Content-Type"])
+            page = res.read().decode()
+        self.assertIn('id="panel"', page)
+        self.assertIn("/static/app.js", page)
+
     # beyond the plan: input checks, and requests the page would never send ------------------------------------
     def answer(self, method, path, headers, body=None):
         """(status, headers) of the answer to a request with these headers, and the Host urllib adds."""
