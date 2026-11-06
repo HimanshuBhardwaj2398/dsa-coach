@@ -20,6 +20,7 @@ This is the first piece of a larger app with Learn, Solve, Notes and Due & Journ
 | Plan card before code | A nudge, not a lock | Locks get bypassed with junk |
 | Problem statement | Pasted once per problem, saved to `problems/<slug>/problem.md` | Always works; no dependency on LeetCode's unofficial endpoint |
 | Code shape | LeetCode's `class Solution`; the runner finds the method itself | He can paste the code straight into LeetCode to submit |
+| Who logs the attempt | The coach, from stage 8's prompt; parking stays in the app | The record needs technique, mistake codes and the complexity check, which are the coach's judgment |
 
 ## Architecture
 
@@ -100,7 +101,7 @@ So `python3 file.py` prints ok or FAIL per example without the app, using the sa
 4. **Stage 6, Plan card.** Fields for state, invariant, relies on, breaks if, termination, complexity and a hand trace, written into the docstring.
 5. **Stage 7, Code.** The editor. If the plan card is empty, a nudge says so. **Run** sends the file to `/api/run` and shows ok or FAIL per row, with the traceback for a crash.
 6. **Stage 8, Look back.** Three boxes: why it works in one sentence, complexity, and the extra question (rotating between another approach, a changed constraint, another problem the method solves).
-7. **End.** An outcome choice (solved, partial, failed) calls `solve end`. Hints and minutes come from the live solve as today.
+7. **End.** Below the look-back boxes he chooses an outcome (solved, partial, failed) and writes a one-line lesson. **Done: ask the coach to log it** saves his code and answers and copies a prompt with both. The coach checks the work and runs `solve end` with the outcome, the lesson as `--note`, the technique, mistake codes and `--complexity-stated`; hints and minutes come from the live solve as today. The page sees the solve end on its next read and goes back to the start screen. Parking is the one end the page makes itself.
 
 Throughout:
 
@@ -137,5 +138,6 @@ Throughout:
   - The Learn tab (next after Solve), the Notes tab, and the Due & Journey tab.
   - API keys and open-source models.
   - Fetching problem statements automatically.
+  - Input converters for `ListNode` and `TreeNode` problems.
   - Phone layout.
   - Accounts and anyone but him.

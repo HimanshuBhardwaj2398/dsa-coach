@@ -17,7 +17,10 @@ notebook/
 │   ├── techniques.json    technique ledger (generated)
 │   └── preferences.md     stated preferences: formatting defaults only
 ├── concepts/<slug>/       notes.md (core idea, plan card, FAQ, changelog) and explainer files
-├── problems/<slug>/       notes.md (plan card, lesson) and one attempt file per attempt (YYYY-MM-DD.py)
+├── problems/<slug>/
+│   ├── notes.md           plan card, lesson lines, and the ## Stage notes section that `solve end` writes
+│   ├── problem.md         the statement he pasted in the study app: read it instead of asking for it
+│   └── YYYY-MM-DD.py      one attempt file per attempt
 ├── sessions/YYYY-MM-DD.md session logs
 ├── sessions/current.json  the live solve, if any (`coach.py solve`; deleted by `solve end`)
 ├── artifacts/registry.json saved explainers and published pages
