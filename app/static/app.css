@@ -45,6 +45,8 @@ code, pre, .CodeMirror, #editor-fallback { font-family: ui-monospace, "SF Mono",
 #panel .question { color: var(--muted); margin-top: 0; }
 #panel .actions { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
 #panel .nudge { color: var(--nudge); }
+#panel .finish { border-top: 1px solid var(--line); }
+#panel .finish h3 { font-size: 15px; margin: 12px 0 0; }
 details.problem { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
 details.problem summary { cursor: pointer; color: var(--muted); }
 table.examples input[type=checkbox] { width: auto; }

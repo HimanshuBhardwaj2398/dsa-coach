@@ -57,7 +57,7 @@ Eight stages in Polya's four phases (*How to Solve It*). Work through them in or
 - **Start:** `solve start --problem SLUG` (add `--unlabeled` when `next` gave `block: false`). It creates a blank attempt file. He writes there, and you read and run it when he asks for a check.
 - **During:** record `solve stage N`, `solve hint`, and `solve break` and `solve block` as they happen. The pane beside the chat and the session-start status read them.
 - **In the study app** (`python3 app/server.py`): he writes stage notes, examples and the plan card there. Read them with `solve show --json` (`notes`) and from the attempt file instead of asking him to paste them. The app's prompts arrive through his clipboard and match the pane's in references/protocol.md.
-- **End:** `solve end --outcome ...` logs the attempt with its minutes and highest rung.
+- **End:** you end it with `solve end --outcome ... --technique ... --mistakes ...`, plus `--complexity-stated` when he stated the complexity. That logs the attempt with its minutes and highest rung. In the study app his "I'm done with stage 8" prompt carries his outcome and lesson (use it as `--note`); only parking ends a solve from the app.
 - **The guard:** where the Claude Code project hook is installed, it blocks your edits to his attempt files until rung 7. Never work around it. Without the hook, follow the same limit yourself.
 
 **Understand**

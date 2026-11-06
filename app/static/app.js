@@ -31,6 +31,7 @@ let focusNext = false;   // after Done: focus the next stage's first box once it
 let barFile = null;      // the solve the bar's problem link and stage buttons were built for
 let lastPick = null;     // the start screen's pick when the slug box was last filled from it
 let blockBanner = null;  // the block number the "block is over" banner was shown for
+let finishSent = null;   // the solve whose stage-8 finish prompt was copied: the coach logs it from the chat
 let warnedMtime = null;  // the disk mtime we already warned about
 let busy = false;        // a refresh is running
 let chain = Promise.resolve();  // the page's state changes (its POSTs and PUTs), one at a time, in click order
@@ -124,10 +125,10 @@ function field(parent, label, value, multiline) {
   return labelled(parent, label, input);
 }
 
-async function copyPrompt(text) {
+async function copyPrompt(text, copied = "Copied. Paste it into the coach chat:") {
   try {
     await navigator.clipboard.writeText(text);
-    banner("Copied. Paste it into the coach chat:", [], "", text);
+    banner(copied, [], "", text);
   } catch {  // no clipboard, or Safari's, which refuses a copy that comes after the saves
     banner("Copy this into the coach chat:", [], "", text);
   }
@@ -194,11 +195,14 @@ function useAttempt(a) {
   $("file").textContent = a.file;
 }
 
-// The live solve went away: ended from the chat, or replaced by another one. Unsaved code isn't dropped silently.
+// The live solve went away: ended from the chat, or replaced by another one. Unsaved code and stage text aren't
+// dropped silently.
 function solveGone() {
-  if (attempt && dirty) rescue(getCode());
+  const fields = attempt && panelDirty ? panelFields() : "";
   if ($("banner").dataset.kind === "solve") $("banner").hidden = true;  // its buttons were for that solve
-  attempt = problemText = view = lastStage = blockBanner = warnedMtime = savePanel = null;
+  if (attempt && (dirty || fields)) rescue(dirty ? getCode() : "", fields);
+  else if (attempt && finishSent === attempt.file) banner("The coach logged the solve.");
+  attempt = problemText = view = lastStage = blockBanner = warnedMtime = savePanel = finishSent = null;
   panelDirty = focusNext = false;
   // nothing of that solve may stay on screen to act on the next one, or to be typed into while it loads
   $("panel").innerHTML = "";
@@ -207,24 +211,42 @@ function solveGone() {
   $("results").innerHTML = "";
 }
 
-function rescue(code) {
+// The stage's boxes as text, each under its label, for the rescue: the panel goes, and what's typed there with it
+function panelFields() {
+  const panel = $("panel"), out = [];
+  for (const l of panel.querySelectorAll("label")) {
+    const c = l.querySelector("input, textarea, select");
+    if (c && c.value.trim()) out.push(`${l.firstChild.textContent.trim()}:\n${c.value.trim()}`);
+  }
+  const rows = [...panel.querySelectorAll("table.examples tr")].slice(1)
+    .map((tr) => [tr.querySelector(".args").value.trim(), tr.querySelector(".expected").value.trim(), tr.querySelector(".edge").checked])
+    .filter(([args, expected]) => args || expected)
+    .map(([args, expected, edge]) => `${args} -> ${expected}${edge ? "  (edge)" : ""}`);
+  if (rows.length) out.push(`Examples:\n${rows.join("\n")}`);
+  return out.length ? `Stage ${view}, not saved:\n\n${out.join("\n\n")}` : "";
+}
+
+// code: the editor's unsaved code, or ""; fields: the panel's unsaved text (panelFields), or ""
+function rescue(code, fields) {
   const el = $("rescue");
-  const text = elem("span", "The solve ended (from the chat?). Your unsaved code isn't in any file.");
-  const copy = button("Copy my code", async () => {
+  const all = fields ? (code ? code.replace(/\n*$/, "\n\n") : "") + fields : code;
+  const what = fields ? "What you hadn't saved" : "Your unsaved code";
+  const text = elem("span", `The solve ended (from the chat?). ${what} isn't in any file.`);
+  const copy = button(fields ? "Copy what I hadn't saved" : "Copy my code", async () => {
     try {
-      await navigator.clipboard.writeText(code);
-      text.textContent = "The solve ended (from the chat?). Your unsaved code isn't in any file; it's on the clipboard now.";
+      await navigator.clipboard.writeText(all);
+      text.textContent = `The solve ended (from the chat?). ${what} isn't in any file; it's on the clipboard now.`;
     } catch {
       if (!el.querySelector("textarea")) {
         const ta = document.createElement("textarea");
         ta.readOnly = true;
         ta.rows = 10;
-        ta.value = code;
-        ta.setAttribute("aria-label", "Your unsaved code");
+        ta.value = all;
+        ta.setAttribute("aria-label", what);
         el.append(ta);
       }
       el.querySelector("textarea").select();
-      text.textContent = "The solve ended (from the chat?). The clipboard isn't available: copy your unsaved code from the box below.";
+      text.textContent = `The solve ended (from the chat?). The clipboard isn't available: copy ${what.toLowerCase()} from the box below.`;
     }
   });
   el.replaceChildren(text, copy, closeButton(el));
@@ -533,10 +555,12 @@ function renderPanel() {
     await refresh();
   };
   savePanel = saveNote;
-  const done = button(n === 8 ? "Done: end the solve" : `Done with stage ${n}`, async () => {
+  let finish;  // stage 8: the outcome and lesson boxes
+  const done = button(n === 8 ? "Done: ask the coach to log it" : `Done with stage ${n}`, async () => {
+    if (n === 8 && dirty && !(await save())) return;  // the finish prompt sends the coach to the file
     await saveNote();
-    if (!state.live) return;  // the solve ended meanwhile
-    if (n === 8) return endForm(panel);
+    if (!state.live || !attempt) return;  // the solve ended meanwhile
+    if (n === 8) return finishPrompt(finish.outcome.value, finish.lesson.value.trim());
     if (n >= state.live.stage) await api("POST", "/api/solve/stage", {n: n + 1});
     view = n + 1;
     focusNext = true;
@@ -558,29 +582,45 @@ function renderPanel() {
     await saveNote();
     if (state.live && attempt) await copyPrompt(askPrompt(n));
   };
-  actions.append(button("Save", saveNote, true), done, button("Ask the coach", ask, true));
+  actions.append(button("Save", saveNote, true), ...(n === 8 ? [] : [done]), button("Ask the coach", ask, true));
   panel.append(actions);
+  if (n === 8) {
+    finish = finishBlock(done);
+    panel.append(finish.box);
+  }
   if (focusNext) {  // drawn by Done: he goes on typing in the next stage
     focusNext = false;
     panel.querySelector("label > textarea, label > input")?.focus();
   }
 }
 
-function endForm(panel) {
-  if (panel.querySelector(".end-form")) return;  // a second click on Done
+// The coach logs the attempt: the technique, mistake codes and complexity check are its judgment, so stage 8's Done
+// hands it his outcome and lesson rather than ending the solve here.
+function finishBlock(done) {
   const box = document.createElement("div");
-  box.className = "end-form";
-  box.append(elem("h3", "End the solve"));
+  box.className = "finish";
+  box.append(elem("h3", "Finish"));
   const outcome = document.createElement("select");  // no default: he says how it went
   outcome.add(new Option("choose one", ""));
   for (const o of ["solved", "partial", "failed"]) outcome.add(new Option(o, o));
   labelled(box, "Outcome", outcome);
-  const lesson = field(box, "One-line lesson (goes into the problem's notes)", "", false);
-  box.append(button("Log it", () => endSolve(outcome.value, lesson.value.trim()), true));
-  panel.append(box);
-  outcome.focus();
+  const lesson = field(box, "Lesson (one line)", "", false);
+  done.gate = () => { done.disabled = !outcome.value; };
+  outcome.addEventListener("change", done.gate);
+  done.gate();
+  box.append(done);
+  return {box, outcome, lesson};
 }
 
+async function finishPrompt(outcome, lesson) {
+  finishSent = attempt.file;
+  await copyPrompt(`I'm done with stage 8 of ${state.live.problem}: outcome ${outcome}, `
+    + `${lesson ? `lesson "${lesson}"` : "no lesson"}. Check my answers (solve show --json) and my attempt in `
+    + `${attempt.path}, then log the attempt.`,
+    "Copied. Paste it into the chat: the coach checks it and logs the attempt, and this page goes back to the start screen.");
+}
+
+// Parking: the one way a solve ends from the page
 async function endSolve(outcome, note) {
   if (dirty && !(await save())) return;  // the code goes into the attempt file before the attempt is logged
   if (panelDirty && savePanel) await savePanel();  // and his stage note into the solve, which copies it to notes.md
