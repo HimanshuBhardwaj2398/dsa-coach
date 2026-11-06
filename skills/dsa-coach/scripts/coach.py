@@ -19,7 +19,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.4.1"
+SKILL_VERSION = "0.5.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach

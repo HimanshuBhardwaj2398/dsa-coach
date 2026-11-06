@@ -113,12 +113,12 @@ Throughout:
 
 | Situation | Behaviour |
 |---|---|
-| Code loops or is slow | The runner kills the child process after 5 s; the page shows "timed out" |
+| Code loops or is slow | The runner kills the child process after 5 s; the page shows "timed out", names the example it stopped on and keeps the rows that finished |
 | Code raises | The failing row shows the exception and traceback; other rows still run |
-| `coach.py` returns an error (e.g. a solve is already live) | The server returns its message with HTTP 409 or 400; the page shows it in a banner. No retry, no guessing |
+| `coach.py` returns an error | The server returns its message with HTTP 409 when a solve is already live, 404 when there's no live solve, and 400 otherwise; the page shows it in a banner. No retry, no guessing |
 | The attempt file changes on disk while the editor has unsaved edits | The page warns and keeps his edits; he chooses to reload or overwrite |
 | Chat and app change state at once | All state goes through `coach.py`; the last write wins and the page catches up on its next read |
-| Port in use | The server tries the next ports and prints the URL it got |
+| Port in use | The server tries the next ports, skipping any that another server holds, and prints the URL it got |
 | CodeMirror CDN unreachable | The editor falls back to a `<textarea>` |
 
 ## Testing

@@ -1,5 +1,7 @@
 # Study App v1 (Solve tab) Implementation Plan
 
+> As built (2026-11-06): code review changed parts of Tasks 2–7; the code and tests on the branch are the reference. See docs/CHANGELOG.md, 0.5.0.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** A local web app where Himanshu works a whole solve in one window: a stage panel for the 8-stage protocol, a code editor without autocomplete, and a test runner, while the coach chat (Claude Code or Codex) stays beside it.

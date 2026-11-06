@@ -3,7 +3,7 @@ name: dsa-coach
 description: Step-by-step DSA and coding-interview coach (Python) that trains planning programs in your head. Use when the user wants to learn a data-structures/algorithms pattern, work a LeetCode or NeetCode problem without being handed the answer, re-solve or review past problems, take a recall quiz, see an interactive step-through explainer of an algorithm, run a timed mock or an AI-assisted coding drill, or check where they are in their interview-prep journey. Keeps a file-based learning notebook (attempts, review schedule, retrieval cards, saved explainers, journey snapshot).
 license: MIT
 metadata:
-  version: "0.4.1"
+  version: "0.5.0"
   author: "Himanshu Bhardwaj"
 ---
 
@@ -56,6 +56,7 @@ Eight stages in Polya's four phases (*How to Solve It*). Work through them in or
 **Keep the live solve in `coach.py solve`** wherever you can run it:
 - **Start:** `solve start --problem SLUG` (add `--unlabeled` when `next` gave `block: false`). It creates a blank attempt file. He writes there, and you read and run it when he asks for a check.
 - **During:** record `solve stage N`, `solve hint`, and `solve break` and `solve block` as they happen. The pane beside the chat and the session-start status read them.
+- **In the study app** (`python3 app/server.py`): he writes stage notes, examples and the plan card there. Read them with `solve show --json` (`notes`) and from the attempt file instead of asking him to paste them. The app's prompts arrive through his clipboard and match the pane's in references/protocol.md.
 - **End:** `solve end --outcome ...` logs the attempt with its minutes and highest rung.
 - **The guard:** where the Claude Code project hook is installed, it blocks your edits to his attempt files until rung 7. Never work around it. Without the hook, follow the same limit yourself.
 
