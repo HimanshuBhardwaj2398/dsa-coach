@@ -207,6 +207,85 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("SystemExit", r["rows"][1]["error"])
         self.assertTrue(r["rows"][2]["ok"])
 
+    def test_output_with_no_newline_doesnt_hide_the_row_after_it(self):
+        r = self.run_text('''
+            import os
+            class Solution:
+                def f(self, x):
+                    os.write(1, b"dbg")  # straight to the real stdout, with no newline
+                    if x == 2:
+                        os._exit(3)
+                    return x
+            EXAMPLES = [((1,), 1), ((2,), 2)]
+        ''')
+        self.assertEqual([row["ok"] for row in r["rows"]], [True, False])
+        self.assertEqual(r["error"], "crashed on the example (2) -> 2: the runner stopped without a result")
+
+    def test_json_the_attempt_prints_isnt_read_as_the_runners(self):
+        r = self.run_text('''
+            import os
+            class Solution:
+                def f(self, x):
+                    os.write(1, b'{"start": 1}\\n')
+                    while True:
+                        pass
+            EXAMPLES = [((1,), 1)]
+        ''', timeout=1)
+        self.assertEqual(r["error"], "timed out after 1 s on the example (1) -> 1: "
+                                     "an infinite loop, or too slow for these inputs")
+
+    def test_json_printed_after_the_result_doesnt_hide_it(self):
+        r = self.run_text('''
+            import atexit
+            atexit.register(print, '{"bye": 1}')
+            class Solution:
+                def f(self, x):
+                    return x
+            EXAMPLES = [((1,), 1)]
+        ''')
+        self.assertEqual((r["ok"], r["error"]), (True, None))
+
+    def test_a_thread_still_running_after_the_result_doesnt_make_it_a_time_out(self):
+        r = self.run_text('''
+            import threading
+            threading.Thread(target=threading.Event().wait).start()  # never ends, so the child never exits
+            class Solution:
+                def f(self, x):
+                    return x
+            EXAMPLES = [((1,), 1)]
+        ''', timeout=1)
+        self.assertEqual((r["ok"], r["error"]), (True, None))
+
+    def test_output_on_the_real_stdout_or_not_utf8_still_returns_the_result(self):
+        r = self.run_text('''
+            import os
+            import sys
+            os.write(1, b"\\xff\\xfe")
+            class Solution:
+                def f(self, x):
+                    print("debug", file=sys.__stdout__)
+                    os.write(2, b"\\xff\\n")
+                    return x
+            EXAMPLES = [((1,), 1), ((2,), 2)]
+        ''')
+        self.assertEqual((r["ok"], r["error"], [row["ok"] for row in r["rows"]]), (True, None, [True, True]))
+
+    def test_long_text_is_cut_short_once_ok_is_decided(self):
+        r = self.run_text('''
+            import os
+            class Solution:
+                def f(self, nums):
+                    if len(nums) > 100000:
+                        os._exit(3)
+                    return nums[:-1] + [-1]
+            EXAMPLES = [((list(range(100000)),), list(range(100000))), ((list(range(100001)),), 0)]
+        ''')
+        cut = repr(list(range(100000)))[:2000] + "..."
+        done, stopped = r["rows"]
+        self.assertEqual((done["ok"], done["args"], done["expected"], done["got"]), (False, cut, cut, cut))
+        self.assertEqual(stopped["args"], cut)
+        self.assertEqual(r["error"], f"crashed on the example ({cut[:100]}...) -> 0: the runner stopped without a result")
+
     def test_the_real_template_end_to_end(self):
         text = TEMPLATE.format(problem="remove-element", url="https://leetcode.com/problems/remove-element/",
                                date="2026-11-06", pattern_line=" Pattern: Two Pointers.")

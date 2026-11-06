@@ -61,6 +61,10 @@ class PlanCardTest(unittest.TestCase):
         compile(text, "attempt.py", "exec")
         self.assertEqual(af.read_plan_card(text)["Hand trace"], fine)
 
+    def test_keys_that_arent_plan_fields_are_ignored(self):
+        self.assertEqual(af.write_plan_card(blank(), {"State": "lo, hi", "Notes": "x", "state": "y"}),
+                         af.write_plan_card(blank(), {"State": "lo, hi"}))
+
 
 class ExamplesTest(unittest.TestCase):
     rows = [{"args": "[-1, 0, 3, 5, 9, 12], 9", "expected": "4", "edge": False},
@@ -97,10 +101,27 @@ class ExamplesTest(unittest.TestCase):
                 af.write_examples(blank(), [{"args": args, "expected": expected, "edge": False}])
         with self.assertRaises(ValueError) as cm:
             af.format_row({"args": "[2, 7], 9", "expected": "0, 1"})
-        self.assertEqual(str(cm.exception),
-                         "write the inputs and the output as Python values, such as [1, 2], 3 or 'abc': got '0, 1'")
+        self.assertEqual(str(cm.exception), "write the inputs and the output as Python values, "
+                                            "such as [1, 2], 3, 'abc', True or None: got '0, 1'")
         with self.assertRaisesRegex(ValueError, r"got 'nums'$"):
             af.format_row({"args": "nums", "expected": "4"})
+
+    def test_a_value_python_cant_build_is_refused(self):
+        for row in ({"args": "{[1]: 2}", "expected": "0"}, {"args": "[1]", "expected": "{[1]: 2}"}):  # unhashable key
+            with self.subTest(**row), self.assertRaisesRegex(ValueError, r"got '\{\[1\]: 2\}'$"):
+                af.format_row(row)
+
+    def test_input_nested_too_deeply_for_the_parser_is_a_value_error(self):
+        # Python 3.12 raises RecursionError on the sum and MemoryError on the minus signs; 3.9 reads both.
+        for nested in ("1+" * 100000 + "1", "-" * 100000 + "1"):
+            with self.subTest(nested[:2]):
+                self.assertRaises(ValueError, af.format_row, {"args": nested, "expected": "0"})
+                try:
+                    rows = af.read_examples(blank().replace("EXAMPLES = [\n]", f"EXAMPLES = [\n    (({nested},), 0),\n]"))
+                except ValueError as e:
+                    self.assertEqual(str(e), "EXAMPLES is nested too deeply to read")
+                else:
+                    self.assertEqual(rows[0]["args"], nested)
 
     def test_one_trailing_comma_in_the_inputs_is_allowed(self):
         # The template teaches (([7, 1, 5],), 4), so he may type that comma himself.
@@ -131,6 +152,20 @@ class ExamplesTest(unittest.TestCase):
                     af.write_examples(text, self.rows)
         with self.assertRaisesRegex(ValueError, "EXAMPLES has a syntax error"):
             af.read_examples(blank().replace("EXAMPLES = [\n]", cases["syntax error"]))
+
+    def test_examples_whose_end_cant_be_found_are_refused(self):
+        # Not read as no examples, while Run still runs the real ones.
+        cases = {"a comment after ]": "EXAMPLES = [\n    ((1,), 1),\n]  # end",
+                 "an indented ]": "EXAMPLES = [\n    ((1,), 1),\n    ]",
+                 "one line with a comment": "EXAMPLES = [((1,), 1)]  # one"}
+        message = r"^put the closing \] of EXAMPLES alone at the start of a line$"
+        for case, block in cases.items():
+            text = blank().replace("EXAMPLES = [\n]", block)
+            with self.subTest(case):
+                with self.assertRaisesRegex(ValueError, message):
+                    af.read_examples(text)
+                with self.assertRaisesRegex(ValueError, message):
+                    af.write_examples(text, self.rows)
 
     def test_the_edge_marker_is_read_loosely(self):
         marks = ["  #edge", "  # Edge", "  # edge case", "  # edge: empty", ""]

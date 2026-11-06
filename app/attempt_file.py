@@ -36,7 +36,7 @@ def read_plan_card(text: str) -> dict:
 
 
 def write_plan_card(text: str, card: dict) -> str:
-    """Replace the fields named in card; leave every other line as it is.
+    """Replace the fields named in card, ignoring keys that aren't in PLAN_FIELDS; leave every other line as it is.
 
     ValueError, naming the field, if a value would break the docstring or the docstring has no line for it.
     """
@@ -44,7 +44,7 @@ def write_plan_card(text: str, card: dict) -> str:
     end = _docstring_end(lines)
     if end is None:
         raise ValueError("the attempt file has no docstring with a plan card")
-    values = {field: str(value).strip() for field, value in card.items()}
+    values = {field: str(value).strip() for field, value in card.items() if field in PLAN_FIELDS}
     present = {m.group(1) for m in map(FIELD.match, lines[1:end]) if m}
     for field, value in values.items():
         if value and field not in present:
@@ -71,7 +71,10 @@ def write_plan_card(text: str, card: dict) -> str:
 
 
 def _examples_span(lines: list) -> tuple | None:
-    """(first, last) line indexes of the EXAMPLES = [ ... ] block."""
+    """(first, last) line indexes of the EXAMPLES = [ ... ] block, or None if there's none.
+
+    ValueError if its end can't be found: the closing ] must end the first line or stand alone on a later one.
+    """
     for i, line in enumerate(lines):
         if line.startswith("EXAMPLES = ["):
             if line.rstrip().endswith("]"):
@@ -79,7 +82,7 @@ def _examples_span(lines: list) -> tuple | None:
             for j in range(i + 1, len(lines)):
                 if lines[j].rstrip() == "]":
                     return i, j
-            return None
+            raise ValueError("put the closing ] of EXAMPLES alone at the start of a line")
     return None
 
 
@@ -89,6 +92,8 @@ def _rows(block: str) -> list:
         tree = ast.parse(block)
     except SyntaxError as e:
         raise ValueError(f"EXAMPLES has a syntax error: {e.msg}") from None
+    except (MemoryError, RecursionError):  # Python 3.12, on input nested thousands deep
+        raise ValueError("EXAMPLES is nested too deeply to read") from None
     if len(tree.body) != 1 or not isinstance(tree.body[0].value, ast.List):
         raise ValueError("EXAMPLES must be a single list: EXAMPLES = [ ... ]")
     lines, rows = block.split("\n"), []
@@ -117,7 +122,7 @@ def _fits(args: str, expected: str) -> bool:
         ast.literal_eval(f"({args},)")
         ast.literal_eval(expected)
         return len(line.splitlines()) == 1 and len(_rows(f"EXAMPLES = [\n{line}\n]")) == 1
-    except (ValueError, SyntaxError, TypeError):
+    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
         return False
 
 
@@ -127,8 +132,8 @@ def format_row(row: dict) -> str:
     args = typed.removesuffix(",").rstrip()  # one comma is fine: the template teaches (([7, 1, 5],), 4)
     if not _fits(args, expected):
         bad = [text for text, ok in ((typed, _fits(args, "0")), (expected, _fits("0", expected))) if not ok]
-        raise ValueError("write the inputs and the output as Python values, such as [1, 2], 3 or 'abc': got "
-                         + " and ".join(map(repr, bad or [typed, expected])))
+        raise ValueError("write the inputs and the output as Python values, such as [1, 2], 3, 'abc', True or None: "
+                         "got " + " and ".join(map(repr, bad or [typed, expected])))
     return f"    (({args},), {expected}),{'  # edge' if row.get('edge') else ''}"
 
 
