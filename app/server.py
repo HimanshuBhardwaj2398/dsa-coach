@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -257,6 +258,10 @@ def make_handler(coach: Coach):
         def log_message(self, fmt, *args):  # keep the terminal quiet
             pass
 
+        def end_headers(self):  # every answer, http.server's own error pages too
+            self.send_header("X-Frame-Options", "DENY")  # no other page can frame this one
+            super().end_headers()
+
         def send(self, status: int, body, ctype: str = "application/json; charset=utf-8"):
             # ASCII JSON: a run's stdout can hold a lone surrogate (print(chr(0xD800))), which UTF-8 can't encode
             data = body if isinstance(body, bytes) else json.dumps(body).encode()
@@ -314,6 +319,8 @@ def make_handler(coach: Coach):
                 self.send(200, route(coach, data))
             except ApiError as e:
                 self.send(e.status, {"error": e.message, **e.extra})
+            except ConnectionError:  # the page went away (a reload, a closed tab): there's no one to answer
+                return
             except Exception as e:  # a bug, or a file changed under it: the page still gets an answer to show
                 traceback.print_exc()
                 self.send(500, {"error": f"{type(e).__name__}: {e}"})
@@ -330,9 +337,23 @@ def make_handler(coach: Coach):
     return Handler
 
 
+def in_use(port: int) -> bool:
+    """True if a server already answers on port at 127.0.0.1 or ::1. This server could still bind 127.0.0.1:port,
+    on macOS even while that one listens on *:port (SO_REUSEADDR), and then localhost:port could reach either."""
+    for host in ("127.0.0.1", "::1"):
+        try:
+            with socket.create_connection((host, port), timeout=0.2):
+                return True
+        except OSError:
+            pass
+    return False
+
+
 def make_server(root: Path, port: int = 8765, env: dict | None = None, tries: int = 10) -> ThreadingHTTPServer:
     handler = make_handler(Coach(root, env))
     for p in [0] if port == 0 else range(port, port + tries):
+        if p and in_use(p):
+            continue
         try:
             return ThreadingHTTPServer(("127.0.0.1", p), handler)
         except OSError:
@@ -351,7 +372,7 @@ def main(argv=None) -> None:
         raise SystemExit(f"{root} isn't a dsa-coach notebook (no config.json). Pass --root.")
     server = make_server(root, a.port)
     url = f"http://127.0.0.1:{server.server_address[1]}/"
-    print(f"dsa-coach study app: {url}  (notebook: {root})  Ctrl+C stops it")
+    print(f"dsa-coach study app: {url}  (notebook: {root})  Ctrl+C stops it", flush=True)
     if not a.no_browser:
         webbrowser.open(url)
     try:

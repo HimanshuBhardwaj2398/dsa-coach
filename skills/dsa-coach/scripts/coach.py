@@ -1174,6 +1174,8 @@ def solve_start(root: Path, args) -> None:
     if load_live(root, required=False):
         die("a solve is already live (`coach.py solve show`). End it with `solve end --outcome ...` or `solve end --discard`.")
     slug = slugify(args.problem)
+    if not slug:
+        die(f"--problem {args.problem!r} has no letters or digits to make a slug from")
     roadmap = load_roadmap()
     past = [a for a in usable_attempts(read_jsonl(root / "learner" / "attempts.jsonl")) if a["problem"] == slug]
     canonical = next((p["key"] for p in roadmap["patterns"] if slug in p.get("canonical", [])), None)

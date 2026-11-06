@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 import os
+import select
 import shutil
 import socket
 import subprocess
@@ -342,6 +343,88 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/api/problem?slug=" + "a" * 300)[0], 400)
         self.assertEqual(self.call("GET", "/static/" + "a" * 300)[0], 404)
         self.assertEqual(self.raw(b"GET /static/a\x00b HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n"), 404)
+
+    def answer(self, method, path, headers, body=None):
+        """(status, headers) of the answer to a request with these headers, and the Host urllib adds."""
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=body, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(req) as res:
+                return res.status, res.headers
+        except urllib.error.HTTPError as e:
+            e.read()
+            return e.code, e.headers
+
+    def test_a_preflight_or_an_unknown_method_gets_no_cors_headers(self):
+        """With no Access-Control-Allow-*, a page on another origin can't send the X-DSA-Coach header."""
+        asks = {"Origin": "http://evil.example", "Access-Control-Request-Method": "PUT",
+                "Access-Control-Request-Headers": "x-dsa-coach, content-type"}
+        for method, headers in (("OPTIONS", asks), ("DELETE", {"X-DSA-Coach": "1"}), ("BREW", {"X-DSA-Coach": "1"})):
+            status, answer = self.answer(method, "/api/attempt", headers)
+            self.assertFalse(200 <= status < 300, method)
+            self.assertEqual([h for h in answer if h.lower().startswith("access-control-allow-")], [], method)
+
+    def test_a_post_without_the_header_starts_nothing(self):
+        """What a form or a no-cors fetch on another site can send with no preflight: text/plain, no custom header."""
+        body = json.dumps({"problem": "binary-search", "confidence": 3}).encode()
+        headers = {"Content-Type": "text/plain", "Origin": "http://evil.example"}
+        self.assertEqual(self.answer("POST", "/api/solve/start", headers, body)[0], 403)
+        shown = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), "solve", "show", "--json"],
+                               capture_output=True, text=True, env=self.env, check=True)
+        self.assertIsNone(json.loads(shown.stdout))
+
+    def test_force_overwrites_a_file_that_changed_on_disk(self):
+        """The page's "Keep mine" after a conflict."""
+        self.start()
+        attempt = self.call("GET", "/api/attempt")[1]
+        path = self.root / attempt["file"]
+        path.write_text("changed in another editor\n")
+        stale = {"text": "mine\n", "mtime": attempt["mtime"]}
+        self.assertEqual(self.call("PUT", "/api/attempt", stale)[0], 409)
+        for sent in (stale, {"text": "mine\n"}):  # a stale mtime, and none, as the page sends
+            path.write_text("changed in another editor\n")
+            status, saved = self.call("PUT", "/api/attempt", dict(sent, force=True))
+            self.assertEqual((status, saved["text"], path.read_text()), (200, "mine\n", "mine\n"))
+
+    def test_no_page_can_frame_the_app(self):
+        for path in ("/", "/api/state"):
+            self.assertEqual(self.answer("GET", path, {"X-DSA-Coach": "1"})[1]["X-Frame-Options"], "DENY", path)
+
+    def test_a_page_that_went_away_gets_no_500_and_the_terminal_stays_quiet(self):
+        """A reload or a closed tab before the answer: writing it raises BrokenPipe or ConnectionReset."""
+        handler = self.server.RequestHandlerClass
+        with unittest.mock.patch.object(handler, "send", side_effect=BrokenPipeError(32, "Broken pipe")) as send, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as page:
+                page.sendall(b"GET /api/state HTTP/1.0\r\nHost: 127.0.0.1\r\nX-DSA-Coach: 1\r\n\r\n")
+                self.assertEqual(page.recv(100), b"")  # the server hung up without an answer
+        self.assertEqual((send.call_count, err.getvalue()), (1, ""))  # no try at a 500, and no traceback
+
+    def test_a_port_another_server_holds_is_skipped(self):
+        """127.0.0.1:p still binds while another server listens on *:p (on macOS, with SO_REUSEADDR) or on [::1]:p,
+        and then localhost:p could reach either. make_server moves on to the next port instead."""
+        for family, host in ((socket.AF_INET, ""), (socket.AF_INET6, "::1")):
+            with self.subTest(host=host), socket.socket(family) as other:
+                other.bind((host, 0))
+                other.listen()
+                taken = other.getsockname()[1]
+                if taken < 65535:  # 65535 has no port above it to move on to
+                    ours = server.make_server(self.root, port=taken, env=self.env)
+                    ours.server_close()
+                    self.assertNotEqual(ours.server_address[1], taken)
+
+    def test_the_startup_line_reaches_a_pipe_at_once(self):
+        """A launcher that reads the server's output gets the URL while the server runs."""
+        env = dict(self.env)
+        env.pop("PYTHONUNBUFFERED", None)
+        proc = subprocess.Popen([sys.executable, str(REPO / "app" / "server.py"), "--root", str(self.root),
+                                 "--port", "0", "--no-browser"], stdout=subprocess.PIPE, text=True, env=env)
+        try:
+            self.assertTrue(select.select([proc.stdout], [], [], 10)[0], "no startup line within 10 s")
+            self.assertRegex(proc.stdout.readline(), r"^dsa-coach study app: http://127\.0\.0\.1:\d+/ ")
+        finally:
+            proc.terminate()
+            proc.wait()
+            proc.stdout.close()
 
     def test_a_bug_still_gets_an_answer_the_page_can_show(self):
         with unittest.mock.patch.dict(server.ROUTES, {("GET", "/api/state"): lambda coach, q: {}["boom"]}), \

@@ -355,6 +355,13 @@ class CoachTest(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("--pattern", proc.stderr)
 
+    def test_solve_refuses_a_problem_with_no_letters_or_digits(self):
+        proc = self.run_cli("solve", "start", "--problem", "!!!", "--pattern", "arrays-hashing", ok=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("no letters or digits", proc.stderr)
+        self.assertIsNone(self.live())
+        self.assertEqual(list((self.root / "problems").glob("*.py")), [])  # not problems//<date>.py
+
     def test_solve_end_logs_one_attempt_from_blocks_and_rung(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
         self.run_cli("solve", "stage", "3", now="10:05")
