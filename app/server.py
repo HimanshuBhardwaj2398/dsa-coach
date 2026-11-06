@@ -3,7 +3,7 @@
     python3 app/server.py [--root NOTEBOOK] [--port 8765] [--no-browser]
 
 It binds to 127.0.0.1 only. Every change to the notebook's records goes through coach.py. The server itself
-writes only the live solve's attempt file and problems/<slug>/problem.md.
+writes only the live solve's attempt file and problems/<slug>/problem.md, each one whole.
 """
 from __future__ import annotations
 
@@ -12,8 +12,10 @@ import errno
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import threading
 import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -33,6 +35,7 @@ HOSTS = {"127.0.0.1", "localhost"}
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".css": "text/css; charset=utf-8"}
 MAX_BODY = 10_000_000  # bytes in a request body
+WRITE = threading.Lock()  # saves go one at a time, so two can't both pass the mtime check
 
 
 class ApiError(Exception):
@@ -57,9 +60,11 @@ class Coach:
             if e.errno != errno.E2BIG:
                 raise
             raise ApiError(400, "the text is too long to pass to coach.py; shorten it and try again") from None
-        if proc.returncode != 0:
+        if proc.returncode != 0:  # the status goes by how coach.py's message starts, not by a value it quotes
             message = (proc.stderr or proc.stdout).strip().removeprefix("error: ")
-            raise ApiError(409 if "already live" in message else 400, message)
+            status = 409 if message.startswith("a solve is already live") else \
+                404 if message.startswith("no live solve") else 400
+            raise ApiError(status, message)
         return proc.stdout.strip()
 
     def json(self, *args: str):
@@ -85,7 +90,7 @@ def check_slug(value) -> str:
 def live_solve(coach: Coach) -> dict:
     live = coach.json("solve", "show")
     if live is None:
-        raise ApiError(409, "no live solve")
+        raise ApiError(404, "no live solve")
     return live
 
 
@@ -108,12 +113,31 @@ def same_mtime(sent, actual: int) -> bool:
         return False
 
 
+def write_whole(path: Path, text: str) -> None:
+    """Write a temp file beside path, then rename it over path, as coach.py's write_json does: a reader never
+    sees half a file, and a failed write leaves the old one. A symlink stays a link; the file keeps its mode."""
+    path = path.resolve()
+    tmp = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
+    try:
+        with open(tmp, "x", encoding="utf-8") as fh:  # a new file gets the umask's mode, as write_text gave it
+            fh.write(text)
+        if path.exists():
+            shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def write_checked(path: Path, live: dict, text: str, d: dict) -> dict:
-    """Write unless the file changed on disk since the page loaded it (pass force to overwrite anyway)."""
-    if not d.get("force") and not same_mtime(d.get("mtime"), path.stat().st_mtime_ns):
-        raise ApiError(409, "the attempt file changed on disk since you loaded it", read_attempt(path, live))
-    path.write_text(text, encoding="utf-8")
-    return read_attempt(path, live)
+    """Write unless the file changed on disk since the page loaded it (pass force to overwrite anyway).
+    A save that leaves the file as it is isn't a conflict."""
+    with WRITE:
+        if not d.get("force") and not same_mtime(d.get("mtime"), path.stat().st_mtime_ns) \
+                and path.read_text(encoding="utf-8") != text:
+            raise ApiError(409, "the attempt file changed on disk since you loaded it", read_attempt(path, live))
+        write_whole(path, text)
+        return read_attempt(path, live)
 
 
 # routes -----------------------------------------------------------------------
@@ -202,7 +226,7 @@ def get_problem(coach, q):
 def put_problem(coach, d):
     path, text = coach.root / "problems" / check_slug(d.get("slug")) / "problem.md", need(d, "text", str)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    write_whole(path, text)
     return {"text": path.read_text(encoding="utf-8")}
 
 
