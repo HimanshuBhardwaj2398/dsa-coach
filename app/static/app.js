@@ -24,7 +24,9 @@ let problemText = null;  // problems/<slug>/problem.md, or null before it's past
 let view = null;         // the stage shown in the panel
 let lastStage = null;    // the live stage at the previous poll
 let editor = null;       // CodeMirror, or null when the CDN didn't load and the textarea is used
-let dirty = false;
+let dirty = false;       // the editor has code that isn't in the file
+let panelDirty = false;  // the stage's boxes have text that isn't saved (an unsaved statement: statementDraft)
+let savePanel = null;    // saves the panel shown: its parts of the attempt file, then its stage note
 let blockBanner = null;  // the block number the "block is over" banner was shown for
 let warnedMtime = null;  // the disk mtime we already warned about
 let busy = false;        // a refresh is running
@@ -169,7 +171,9 @@ function useAttempt(a) {
 function solveGone() {
   if (attempt && dirty) rescue(getCode());
   if ($("banner").dataset.kind === "solve") $("banner").hidden = true;  // its buttons were for that solve
-  attempt = problemText = view = lastStage = blockBanner = warnedMtime = null;
+  attempt = problemText = view = lastStage = blockBanner = warnedMtime = savePanel = null;
+  panelDirty = false;
+  $("panel").innerHTML = "";  // nothing in it may act on, or carry over into, the next solve
   markDirty(false);
   $("results").innerHTML = "";
 }
@@ -207,7 +211,7 @@ const isConflict = (e) => e.status === 409 && typeof e.data.text === "string" &&
 function conflict(disk) {
   warnedMtime = disk.mtime;
   banner("The attempt file changed on disk (the coach or another editor saved it) while you had unsaved edits.", [
-    ["Load the disk version (drops my edits)", async () => { useAttempt(disk); renderPanel(); }],
+    ["Load the disk version (drops my edits)", async () => { useAttempt(disk); if (redrawForFile()) renderPanel(); }],
     ["Keep mine (overwrite the file)", async () => {
       useAttempt(await api("PUT", "/api/attempt", {text: getCode(), force: true}));
     }],
@@ -226,11 +230,13 @@ async function save() {
   }
 }
 
+// parts: only what he changed in the panel, so edits made in the editor to the rest survive. The editor's code is
+// saved first, since the parts are written into the file on disk.
 async function saveParts(parts) {
   if (dirty && !(await save())) {
     const e = new Error("not saved"); e.shown = true; throw e;
   }
-  if (!attempt) return;  // the solve ended meanwhile
+  if (!attempt || !Object.keys(parts).length) return;  // the solve ended meanwhile, or nothing changed
   try {
     useAttempt(await api("PUT", "/api/attempt/parts", {...parts, mtime: attempt.mtime}));
   } catch (e) {
@@ -314,11 +320,23 @@ function renderBar() {
   }
 }
 
+// Leaving a stage saves what he typed in it first: the panel is drawn again for the stage he goes to.
 function goTo(n) {
   const live = state.live;
-  if (n <= live.stage) { view = n; renderPanel(); renderBar(); return; }
+  if (n <= live.stage) {
+    return change(async () => {
+      if (panelDirty && savePanel) await savePanel();
+      if (!state.live || !attempt) return;  // the solve ended meanwhile, or hasn't loaded yet
+      view = n; renderPanel(); renderBar();
+    });
+  }
   banner(`Which stage are you in? The solve is at stage ${live.stage} (${escapeHtml(STAGES[live.stage - 1][0])}).`, [
-    [`Move to stage ${n} anyway`, async () => { await api("POST", "/api/solve/stage", {n}); view = n; await refresh(true); }],
+    [`Move to stage ${n} anyway`, async () => {
+      if (panelDirty && savePanel) await savePanel();
+      await api("POST", "/api/solve/stage", {n});
+      view = n;
+      await refresh(true);
+    }],
     [`Stay at stage ${live.stage}`, async () => {}],
   ], "solve");
 }
@@ -340,7 +358,8 @@ function askPrompt(n) {
   return `I'm done with stage ${n} of ${live.problem}. Check it: my notes are in \`coach.py solve show --json\` and my attempt file is ${attempt.path}.`;
 }
 
-function problemBlock() {
+// draft: a statement pasted into the box before the panel was drawn again, and not saved yet
+function problemBlock(draft = "") {
   const box = document.createElement("details");
   box.className = "problem";
   box.open = !problemText || view === 1;
@@ -355,10 +374,11 @@ function problemBlock() {
     const slug = state.live.problem;
     const ta = document.createElement("textarea");
     ta.rows = 8;
+    ta.value = draft;
     ta.placeholder = "Paste the problem statement from LeetCode. You only do this once per problem.";
     box.append(ta, button("Save statement", async () => {
       problemText = (await api("PUT", "/api/problem", {slug, text: ta.value})).text;
-      renderPanel();
+      box.replaceWith(problemBlock());  // only this box: what he's typed in the rest of the panel stays
     }, true));
   }
   return box;
@@ -389,11 +409,12 @@ function stageOne(panel, note, done) {
     tr.querySelector(".args").value = r.args;
     tr.querySelector(".expected").value = r.expected;
     tr.querySelector(".edge").checked = r.edge;
-    tr.cells[3].append(button("×", () => { tr.remove(); gate(); }));
+    tr.cells[3].append(button("×", () => { tr.remove(); panelDirty = true; gate(); }));
     tr.addEventListener("input", gate);
     tr.addEventListener("change", gate);
   };
   (attempt.examples.length ? attempt.examples : [undefined, undefined]).forEach((r) => addRow(r));
+  let drawn = JSON.stringify(rows());  // EXAMPLES is written only if the rows changed here: edits in the editor stay
   restate.addEventListener("input", gate);
   panel.append(table, button("Add an example", () => addRow()));
   if (attempt.examples_error) {
@@ -407,42 +428,73 @@ function stageOne(panel, note, done) {
   hint.textContent = "Done unlocks once you have a one-sentence restatement and at least one edge case.";
   panel.append(hint);
   setTimeout(gate);
-  return async () => { await saveParts({examples: rows()}); return restate.value.trim(); };
+  return async () => {
+    const text = restate.value.trim(), now = rows(), json = JSON.stringify(now);
+    await saveParts(json === drawn ? {} : {examples: now});
+    drawn = json;
+    return text;
+  };
 }
 
 function stageSix(panel) {
-  const inputs = PLAN_FIELDS.map((f) => [f, field(panel, f, attempt.plan_card[f] || "", f === "Hand trace")]);
+  // a field is written only if he changed it here, so what he typed into the docstring in the editor stays.
+  // drawn is the value as the box holds it: a one-line box drops the line breaks of a longer value.
+  const inputs = PLAN_FIELDS.map((f) => {
+    const el = field(panel, f, attempt.plan_card[f] || "", f === "Hand trace");
+    return {f, el, drawn: el.value};
+  });
   return async () => {
-    await saveParts({plan_card: Object.fromEntries(inputs.map(([f, el]) => [f, el.value]))});
+    const changed = inputs.filter((x) => x.el.value !== x.drawn).map((x) => [x, x.el.value]);
+    await saveParts(changed.length ? {plan_card: Object.fromEntries(changed.map(([x, v]) => [x.f, v]))} : {});
+    for (const [x, v] of changed) x.drawn = v;
     return null;  // the plan card lives in the attempt file's docstring, not in a stage note
   };
 }
 
+// The note holds the three answers, each after its question's head, with a blank line between them.
+const lookHead = (i) => `${LOOK_BACK[i].split(":")[0]}: `;
 function stageEight(panel, note) {
   const parts = note ? note.split("\n\n") : [];
-  const boxes = LOOK_BACK.map((q, i) => field(panel, q, (parts[i] || "").replace(/^[^:]*: /, ""), true));
-  return async () => boxes.map((b, i) => `${LOOK_BACK[i].split(":")[0]}: ${b.value.trim()}`).join("\n\n");
+  const boxes = LOOK_BACK.map((q, i) => {
+    const part = parts[i] || "";
+    return field(panel, q, part.startsWith(lookHead(i)) ? part.slice(lookHead(i).length) : part, true);
+  });
+  // a blank line inside an answer would read back as the start of the next one
+  return async () => boxes.map((b, i) => lookHead(i) + b.value.trim().replace(/\n\s*\n/g, "\n")).join("\n\n");
 }
 
 function renderPanel() {
   const live = state.live;
   const n = view;
   const panel = $("panel");
+  const draft = panel.querySelector(".problem textarea")?.value || "";
   panel.innerHTML = "";
+  panelDirty = false;
   const h = document.createElement("h2");
   h.textContent = `${n}. ${STAGES[n - 1][0]}`;
   const q = document.createElement("p");
   q.className = "question";
   q.textContent = STAGES[n - 1][1];
-  panel.append(problemBlock(), h, q);
+  panel.append(problemBlock(draft), h, q);
 
   const note = (live.notes || {})[String(n)] || "";
   let collect;  // saves this stage's parts of the attempt file, and returns the stage note (or null)
   const saveNote = async () => {
-    const text = await collect();
-    if (text !== null) await api("POST", "/api/solve/note", {stage: n, text});
+    panelDirty = false;  // what he types from here on counts as unsaved again
+    try {
+      const text = await collect();
+      if (text !== null) {
+        await api("POST", "/api/solve/note", {stage: n, text});
+        // as the next poll will have it, so drawing this stage again before that poll shows what he wrote
+        if (state.live) state.live.notes = {...state.live.notes, [n]: text};
+      }
+    } catch (e) {
+      panelDirty = true;
+      throw e;
+    }
     await refresh();
   };
+  savePanel = saveNote;
   const done = button(n === 8 ? "Done: end the solve" : `Done with stage ${n}`, async () => {
     await saveNote();
     if (!state.live) return;  // the solve ended meanwhile
@@ -461,7 +513,13 @@ function renderPanel() {
   }
   const actions = document.createElement("div");
   actions.className = "actions";
-  actions.append(button("Save", saveNote, true), done, button("Ask the coach", () => copyPrompt(askPrompt(n))));
+  // The prompt sends the coach to the file and to `solve show --json`, so both are saved before it's copied.
+  const ask = async () => {
+    if (dirty && !(await save())) return;
+    await saveNote();
+    if (state.live && attempt) await copyPrompt(askPrompt(n));
+  };
+  actions.append(button("Save", saveNote, true), done, button("Ask the coach", ask, true));
   panel.append(actions);
 }
 
@@ -479,6 +537,7 @@ function endForm(panel) {
 
 async function endSolve(outcome, note) {
   if (dirty && !(await save())) return;  // the code goes into the attempt file before the attempt is logged
+  if (panelDirty && savePanel) await savePanel();  // and his stage note into the solve, which copies it to notes.md
   const out = await api("POST", "/api/solve/end", {outcome, note});
   solveGone();
   banner(escapeHtml(out.message));
@@ -518,6 +577,11 @@ async function start() {
 // --- the loop ----------------------------------------------------------------
 let queued = null;       // a refresh asked for while one was running: null, or whether it wanted a redraw
 
+// Stages 1 and 6 show parts of the attempt file, so a new version of the file draws them again, unless that would
+// drop what he's typed in the panel. Nothing here ever redraws a panel with unsaved text in it.
+const redrawForFile = () => !panelDirty && (view === 1 || view === 6);
+const statementDraft = () => ($("panel").querySelector(".problem textarea")?.value || "").trim();
+
 async function refresh(redraw = false) {
   if (busy) { queued = Boolean(queued) || redraw; return; }
   busy = true;
@@ -537,9 +601,10 @@ async function refresh(redraw = false) {
     } else if (!pending && state.attempt_mtime !== attempt.mtime && state.attempt_mtime !== warnedMtime) {
       // not while a save of the page's own is in flight: its answer brings the new mtime
       const disk = await api("GET", "/api/attempt");
-      if (dirty) conflict(disk); else { useAttempt(disk); redraw = view === 1 || view === 6; }
+      if (dirty) conflict(disk); else { useAttempt(disk); if (redrawForFile()) redraw = true; }
     }
-    if (lastStage !== null && live.stage !== lastStage && view === lastStage) { view = live.stage; redraw = true; }
+    // the chat moved the stage: follow it, unless he's typing in the panel
+    if (lastStage !== null && live.stage !== lastStage && view === lastStage && !panelDirty) { view = live.stage; redraw = true; }
     lastStage = live.stage;
     if (redraw) renderPanel();
     renderBar();
@@ -559,6 +624,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("slug").oninput = gateStart;
   $("confidence").onchange = gateStart;
   $("block-btn").onclick = () => change(async () => { await api("POST", "/api/solve/block", {}); await refresh(); }, $("block-btn"));
+  // the statement box isn't one of the stage's boxes: Save statement saves it, and a redraw carries it over
+  $("panel").addEventListener("input", (e) => { if (!e.target.closest(".problem")) panelDirty = true; });
+  window.addEventListener("beforeunload", (e) => {  // closing or reloading the tab would drop unsaved text
+    if (dirty || panelDirty || statementDraft()) { e.preventDefault(); e.returnValue = ""; }
+  });
   refresh();
   setInterval(refresh, 3000);
 });
