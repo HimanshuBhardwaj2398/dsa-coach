@@ -83,6 +83,67 @@ class ServerTest(unittest.TestCase):
     def problem_md(self, slug="koko-eating-bananas"):
         return self.root / "problems" / slug / "problem.md"
 
+    def raw_get(self, path):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}") as res:
+                return res.status, res.headers, res.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers, e.read()
+
+    def fake_claude(self):
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        self.server.coach.jobs = server.claude_job.Jobs(run=run)
+        return calls
+
+    def wait_job(self, pattern):
+        for _ in range(200):
+            status, body = self.call("GET", f"/api/explainer?pattern={pattern}")
+            if body["state"] != "running":
+                return body
+            time.sleep(0.01)
+        self.fail("job never finished")
+
+    def test_map(self):
+        status, body = self.call("GET", "/api/map")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(body["patterns"]), 22)
+
+    def test_explainer_runs_the_coach_for_one_pattern(self):
+        calls = self.fake_claude()
+        status, body = self.call("POST", "/api/explainer", {"pattern": "binary-search"})
+        self.assertEqual((status, body["state"]), (200, "running"))
+        self.assertEqual(self.wait_job("binary-search")["state"], "done")
+        argv = calls[0]
+        self.assertEqual(argv[:2], ["claude", "-p"])
+        self.assertIn("binary-search", argv[2])
+        self.assertIn("artifact add --concept binary-search", argv[2])
+
+    def test_explainer_uses_claude_bin_and_rejects_unknown_patterns(self):
+        cfg = json.loads((self.root / "config.json").read_text())
+        (self.root / "config.json").write_text(json.dumps({**cfg, "claude_bin": "/opt/claude"}))
+        calls = self.fake_claude()
+        self.call("POST", "/api/explainer", {"pattern": "stack"})
+        self.wait_job("stack")
+        self.assertEqual(calls[0][0], "/opt/claude")
+        self.assertEqual(self.call("POST", "/api/explainer", {"pattern": "nope"})[0], 400)
+
+    def test_explainer_page_is_sandboxed(self):
+        self.assertEqual(self.raw_get("/explainer/stack")[0], 404)
+        folder = self.root / "concepts" / "stack"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "stack-explainer.html").write_text("<p>stack</p>")
+        subprocess.run([sys.executable, str(COACH), "--root", str(self.root), "artifact", "add", "--concept", "stack",
+                        "--title", "Stack", "--file", str(folder / "stack-explainer.html")],
+                       check=True, capture_output=True, env=self.env)
+        status, headers, body = self.raw_get("/explainer/stack")
+        self.assertEqual((status, body), (200, b"<p>stack</p>"))
+        self.assertIn("sandbox", headers["Content-Security-Policy"])
+
     def test_stale_actions_cannot_touch_a_replacement_solve(self):
         self.start()
         old = self.call("GET", "/api/attempt")[1]

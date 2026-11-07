@@ -28,6 +28,7 @@ from urllib.parse import parse_qs, urlparse
 APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP))
 import attempt_file  # noqa: E402
+import claude_job  # noqa: E402
 import runner  # noqa: E402
 import statement  # noqa: E402
 
@@ -40,6 +41,8 @@ SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,254}")  # used with fullmatch; 255 is th
 HOSTS = {"127.0.0.1", "localhost"}
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".css": "text/css; charset=utf-8"}
+ROADMAP = json.loads((COACH.parent.parent / "assets" / "roadmap.json").read_text(encoding="utf-8"))
+EXPLAINER_TIMEOUT = 300  # seconds: the coach traces real Python before it draws
 WRITE = threading.Lock()  # saves go one at a time, so two can't both pass the mtime check
 
 
@@ -54,6 +57,7 @@ class Coach:
 
     def __init__(self, root: Path, env: dict | None = None):
         self.root, self.env = Path(root), env
+        self.jobs = claude_job.Jobs()
 
     def run(self, *args: str) -> str:
         proc = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), *args],
@@ -273,6 +277,54 @@ def post_run(coach, d):
     return {**runner.run(path), "session_id": identity}
 
 
+def check_pattern(value) -> dict:
+    p = next((p for p in ROADMAP["patterns"] if p["key"] == value), None)
+    if p is None:
+        raise ApiError(400, f"unknown pattern {value!r}")
+    return p
+
+
+def get_map(coach, q):
+    return coach.json("map")
+
+
+def explainer_prompt(p: dict, root: Path) -> str:
+    path = root / f"concepts/{p['key']}/{p['key']}-explainer.html"  # absolute: artifact add reads --file from the cwd
+    return (f"Use the dsa-coach skill. Write the interactive explainer for the pattern {p['name']} ({p['key']}), "
+            f"following references/explainers.md. Save it as one self-contained HTML file at {path}. "
+            f"Don't publish it. Then register it: python3 skills/dsa-coach/scripts/coach.py --root {root} "
+            f"artifact add --concept {p['key']} --title \"{p['name']}, explained\" --file {path}")
+
+
+def claude_argv(coach, prompt: str) -> list:
+    cfg = json.loads((coach.root / "config.json").read_text(encoding="utf-8"))
+    return [cfg.get("claude_bin", "claude"), "-p", prompt, "--permission-mode", "acceptEdits",
+            "--allowedTools", "Bash(python3:*),Read,Write,Edit,Glob,Grep"]
+
+
+def post_explainer(coach, d):
+    p = check_pattern(d.get("pattern"))
+    key = "explainer:" + p["key"]
+    try:
+        coach.jobs.start(key, claude_argv(coach, explainer_prompt(p, coach.root)), REPO, EXPLAINER_TIMEOUT)
+    except claude_job.Busy as e:
+        raise ApiError(409, str(e))
+    return {"state": "running", "error": None}  # not status(): a fast job may already be done, and the page polls
+
+
+def get_explainer(coach, q):
+    return coach.jobs.status("explainer:" + check_pattern(q.get("pattern"))["key"])
+
+
+def explainer_file(coach, key: str) -> Path:
+    check_pattern(key)
+    rel = next(p["explainer"] for p in coach.json("map")["patterns"] if p["key"] == key)
+    path = (coach.root / (rel or "")).resolve()
+    if not rel or not path.is_relative_to(coach.root.resolve()) or not path.is_file():
+        raise ApiError(404, "no explainer for that pattern yet")
+    return path
+
+
 ROUTES = {
     ("GET", "/api/state"): get_state,
     ("GET", "/api/attempt"): get_attempt,
@@ -288,6 +340,9 @@ ROUTES = {
     ("POST", "/api/problem/fetch"): post_problem_fetch,
     ("PUT", "/api/problem"): put_problem,
     ("POST", "/api/run"): post_run,
+    ("GET", "/api/map"): get_map,
+    ("POST", "/api/explainer"): post_explainer,
+    ("GET", "/api/explainer"): get_explainer,
 }
 
 
@@ -301,13 +356,15 @@ def make_handler(coach: Coach):
             self.send_header("X-Frame-Options", "DENY")  # no other page can frame this one
             super().end_headers()
 
-        def send(self, status: int, body, ctype: str = "application/json; charset=utf-8"):
+        def send(self, status: int, body, ctype: str = "application/json; charset=utf-8", headers: dict | None = None):
             # ASCII JSON: a run's stdout can hold a lone surrogate (print(chr(0xD800))), which UTF-8 can't encode
             data = body if isinstance(body, bytes) else json.dumps(body).encode()
             self.send_response(status)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(data)
 
@@ -337,6 +394,11 @@ def make_handler(coach: Coach):
                 if not url.path.startswith("/api/"):
                     if method != "GET":
                         raise ApiError(405, "method not allowed")
+                    if url.path.startswith("/explainer/"):
+                        path = explainer_file(coach, url.path.removeprefix("/explainer/"))
+                        # its own origin: the page's scripts run, but can't call this server's API
+                        return self.send(200, path.read_bytes(), TYPES[".html"],
+                                         {"Content-Security-Policy": "sandbox allow-scripts allow-popups"})
                     return self.static(url.path)
                 if self.headers.get("X-DSA-Coach") != "1":
                     raise ApiError(403, "missing the X-DSA-Coach header")
@@ -379,12 +441,15 @@ def in_use(port: int) -> bool:
 
 
 def make_server(root: Path, port: int = 8765, env: dict | None = None, tries: int = 10) -> ThreadingHTTPServer:
-    handler = make_handler(Coach(root, env))
+    coach = Coach(root, env)
+    handler = make_handler(coach)
     for p in [0] if port == 0 else range(port, port + tries):
         if p and in_use(p):
             continue
         try:
-            return ThreadingHTTPServer(("127.0.0.1", p), handler)
+            srv = ThreadingHTTPServer(("127.0.0.1", p), handler)
+            srv.coach = coach  # tests swap its jobs
+            return srv
         except OSError:
             continue
     raise SystemExit(f"no free port in {port}-{port + tries - 1}; pass --port")
