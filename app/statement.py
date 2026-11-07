@@ -6,13 +6,41 @@ opens without a statement. Premium problems need a login, so they fail here and 
 from __future__ import annotations
 
 import json
+import os
 import re
+import ssl
 import urllib.error
 import urllib.request
 from html.parser import HTMLParser
 
 ENDPOINT = "https://leetcode.com/graphql"
 QUERY = "query q($titleSlug: String!) { question(titleSlug: $titleSlug) { title content isPaidOnly } }"
+
+
+# Root certificates to fall back on: macOS's system bundle, then the usual Linux places.
+CA_FILES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt")
+
+
+def ssl_context() -> ssl.SSLContext:
+    """A verifying context with root certificates, even on a Python that ships none.
+
+    python.org's macOS installer leaves Python without any until "Install Certificates.command" is run, and then every
+    HTTPS request fails with CERTIFICATE_VERIFY_FAILED. Use certifi if it's installed, else the system's bundle.
+    """
+    ctx = ssl.create_default_context()
+    if ctx.cert_store_stats()["x509_ca"]:
+        return ctx
+    try:
+        import certifi
+        ctx.load_verify_locations(certifi.where())
+        return ctx
+    except (ImportError, OSError):
+        pass
+    for path in CA_FILES:
+        if os.path.isfile(path):
+            ctx.load_verify_locations(path)
+            break
+    return ctx
 
 
 class StatementError(Exception):
@@ -31,11 +59,14 @@ def fetch(slug: str, opener=urllib.request.urlopen, timeout: float = 10) -> tupl
         headers={"Content-Type": "application/json", "Referer": problem_url(slug),
                  "User-Agent": "dsa-coach-study-app"})
     try:
-        with opener(req, timeout=timeout) as res:
+        with opener(req, timeout=timeout, context=ssl_context()) as res:
             body = json.loads(res.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         raise StatementError(f"LeetCode answered HTTP {e.code}") from None
     except (urllib.error.URLError, OSError) as e:
+        if isinstance(getattr(e, "reason", e), ssl.SSLCertVerificationError):
+            raise StatementError("this Python couldn't verify LeetCode's certificate. On python.org's macOS Python, "
+                                 "run its Install Certificates.command once") from None
         raise StatementError(f"no connection to LeetCode ({getattr(e, 'reason', e)})") from None
     except ValueError:
         raise StatementError("LeetCode's answer wasn't the expected data") from None

@@ -1,6 +1,8 @@
 """Tests for app/statement.py. They never touch the network: fetch() gets a fake opener."""
 import io
 import json
+import os
+import ssl
 import sys
 import unittest
 import urllib.error
@@ -25,11 +27,36 @@ HTML = (
 
 
 def opener_returning(payload, seen=None):
-    def opener(req, timeout=None):
+    def opener(req, timeout=None, context=None):
         if seen is not None:
             seen.append((req, timeout))
         return io.BytesIO(payload if isinstance(payload, bytes) else json.dumps(payload).encode())
     return opener
+
+
+class SSLContextTest(unittest.TestCase):
+    def test_a_python_without_root_certificates_still_gets_some(self):
+        """python.org's macOS Python ships with none until Install Certificates.command runs: the fetch then failed
+        with CERTIFICATE_VERIFY_FAILED. Pointing OpenSSL at nothing reproduces that Python."""
+        import subprocess
+        env = dict(os.environ, SSL_CERT_FILE="/nonexistent/cert.pem", SSL_CERT_DIR="/nonexistent")
+        code = ("import ssl, sys; sys.path.insert(0, %r); import statement; "
+                "print(ssl.create_default_context().cert_store_stats()['x509_ca'], "
+                "statement.ssl_context().cert_store_stats()['x509_ca'])" % str(REPO / "app"))
+        out = subprocess.run([sys.executable, "-I", "-c", code], env=env, capture_output=True, text=True, timeout=30)
+        default, ours = map(int, out.stdout.split())
+        if default:  # Apple's /usr/bin/python3 (LibreSSL) loads the system bundle whatever the environment says
+            self.skipTest("this Python's TLS library can't be left without certificates")
+        self.assertGreater(ours, 0)
+
+    def test_fetch_passes_a_verifying_context(self):
+        seen = []
+        def opener(req, timeout=None, context=None):
+            seen.append(context)
+            return io.BytesIO(json.dumps({"data": {"question": {"title": "T", "content": "<p>x</p>"}}}).encode())
+        statement.fetch("two-sum", opener=opener)
+        self.assertEqual(seen[0].verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(seen[0].check_hostname)
 
 
 class ToTextTest(unittest.TestCase):
@@ -65,7 +92,7 @@ class FetchTest(unittest.TestCase):
             "not json": opener_returning(b"<html>blocked</html>"),
         }
 
-        def offline(req, timeout=None):
+        def offline(req, timeout=None, context=None):
             raise urllib.error.URLError("nodename nor servname provided")
         cases["offline"] = offline
         for name, opener in cases.items():
