@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 · 2026-11-07
+
+The study app opens on a map of the roadmap. Each pattern has a Learn page, and Solve is one link away.
+
+- **Map:** the home page. Patterns are laid out by roadmap week, each showing its status, Blind 75 and NeetCode 150 progress, and how many re-solves are due. A strip at the top names the next item from `coach.py next`, with its LeetCode link and a link back to a live solve. Foundations appears as three stubs, to be written for testers.
+- **Learn pages:** one per pattern (`#/learn/<key>`), with cues, invariant, template, two or three resources, and the pattern's problems. Blind 75 problems come first, and each title links to LeetCode, with its status and next re-solve.
+- **Catalogue:** `assets/problems.json` holds NeetCode 150 by roadmap pattern, with Blind 75 tagged. It adds Combination Sum IV (Blind 75's one problem outside NeetCode 150) and the prefix-sums canonical problems. `validate` checks it against the roadmap.
+- **Resources:** each pattern in `roadmap.json` lists its resources. Every URL comes from `references/resources.md`, and a test keeps it that way.
+- **`coach.py map`:** joins the catalogue with progress. The app reads `--json`; without the flag it prints one line per pattern.
+- **Explainers from the app:** when a pattern has none, **Write the explainer** runs the coach headless (`claude -p`, one job at a time, five-minute limit) to write and register one, and the page checks on the job until it's done. Set `claude_bin` in `notebook/config.json` if `claude` isn't on the PATH. The explainer is served at `/explainer/<key>` in a sandbox, so its scripts can't call the app's API.
+- **Solve:** unchanged, now at `#/solve`, with **Map** in the bar to return.
+- **Browser check:** `tests/browser/check_map.py`, run by hand, drives the views with Playwright against a copy of the notebook and a fake `claude`.
+
 ## 0.5.2 · 2026-11-07
 
 Practice saves, session ownership, and browser recovery.
