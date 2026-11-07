@@ -1163,6 +1163,56 @@ def cmd_next(args) -> None:
     print(json.dumps(item, indent=2, ensure_ascii=False) if args.json else render_next(item))
 
 
+
+SOLVED = ("practicing", "retained", "ready")  # a problem solved unaided at least once
+
+
+def list_progress(problems: list, name: str) -> dict:
+    on = [x for x in problems if name in x["lists"]]
+    return {"done": sum(x["status"] in SOLVED for x in on), "total": len(on)}
+
+
+def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
+    """The study app's map: every pattern with its status, explainer and problems (Blind 75 first)."""
+    explainers = {a["concept"]: a["file"] for a in j["artifacts"] if (a.get("file") or "").endswith(".html")}
+    due = {d["problem"] for d in j["due"]["resolves"]}
+    status = {r["key"]: r["status"] for r in j["patterns"]}
+    patterns = []
+    for p in roadmap["patterns"]:
+        problems = []
+        for c in sorted(catalogue.get(p["key"], []), key=lambda c: "blind75" not in c["lists"]):
+            seen = j["problems"].get(c["slug"]) or {}
+            problems.append({**c, "url": roadmap["problem_url"].format(slug=c["slug"]),
+                             "status": seen.get("status", "not started"), "last_outcome": seen.get("last_outcome"),
+                             "next_due": seen.get("next_due"), "due": c["slug"] in due})
+        patterns.append({
+            "key": p["key"], "name": p["name"], "week": p.get("week"), "tier": p.get("tier"),
+            "cues": p.get("cues", []), "invariant": p.get("invariant", ""), "template": p.get("template", ""),
+            "resources": p.get("resources", []), "status": status[p["key"]], "format": p["key"] in LONG_FORMATS,
+            "explainer": explainers.get(p["key"]), "due": sum(x["due"] for x in problems),
+            "lists": {name: list_progress(problems, name) for name in ("blind75", "nc150")},
+            "problems": problems,
+        })
+    nxt = pick_next(j)
+    return {"plan": j["plan"], "next": nxt, "next_text": render_next(nxt),
+            "next_url": roadmap["problem_url"].format(slug=nxt["problem"]) if nxt.get("problem") else None,
+            "patterns": patterns}
+
+
+def render_map(view: dict) -> str:
+    lines = []
+    for p in view["patterns"]:
+        b, n = p["lists"]["blind75"], p["lists"]["nc150"]
+        lists = f" · Blind 75 {b['done']}/{b['total']} · NeetCode 150 {n['done']}/{n['total']}" if b["total"] or n["total"] else ""
+        lines.append(f"{p['name']}: {p['status']}{lists}")
+    return "\n".join(lines)
+
+
+def cmd_map(args) -> None:
+    root = find_root(args.root)
+    view = map_view(compute(load_state(root), parse_date(args.date)), load_roadmap(), load_catalogue())
+    print(json.dumps(view, indent=2, ensure_ascii=False) if args.json else render_map(view))
+
 # live solve -----------------------------------------------------------------
 def now() -> datetime:
     forced = os.environ.get("DSA_NOW")
@@ -1812,6 +1862,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     s.set_defaults(func=cmd_next)
+
+    s = sub.add_parser("map", help="every pattern with its status, explainer and problems (the study app's map)")
+    s.add_argument("--json", action="store_true")
+    s.add_argument("--date")
+    s.set_defaults(func=cmd_map)
 
     solve = sub.add_parser("solve", help="the live solve: stage, hint rung and focus blocks").add_subparsers(dest="solve_cmd", required=True)
     s = solve.add_parser("start", help="start a solve and create a blank attempt file")

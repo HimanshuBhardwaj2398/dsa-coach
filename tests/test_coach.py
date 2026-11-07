@@ -61,6 +61,29 @@ class CoachTest(unittest.TestCase):
         return json.loads(self.run_cli("next", "--json", *args, today=today).stdout)
 
     # ------------------------------------------------------------------ init
+    def test_map_joins_catalogue_and_progress(self):
+        self.attempt("best-time-to-buy-and-sell-stock", "2026-11-01", pattern="sliding-window")
+        view = json.loads(self.run_cli("map", "--json", today="2026-11-01").stdout)
+        sw = next(p for p in view["patterns"] if p["key"] == "sliding-window")
+        self.assertEqual(sw["lists"], {"blind75": {"done": 1, "total": 4}, "nc150": {"done": 1, "total": 6}})
+        row = sw["problems"][0]  # Blind 75 first
+        self.assertEqual((row["slug"], row["status"], row["due"]), ("best-time-to-buy-and-sell-stock", "practicing", False))
+        self.assertEqual(row["url"], "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/")
+        self.assertEqual([("blind75" in x["lists"]) for x in sw["problems"]], [True] * 4 + [False] * 2)
+        ml = next(p for p in view["patterns"] if p["key"] == "ml-coding")
+        self.assertTrue(ml["format"])
+        self.assertEqual(ml["problems"], [])
+        self.assertIn("next_text", view)
+
+    def test_map_names_the_latest_explainer(self):
+        folder = self.root / "concepts" / "stack"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "stack-explainer.html").write_text("<p>stack</p>")
+        self.run_cli("artifact", "add", "--concept", "stack", "--title", "Stack", "--file", str(folder / "stack-explainer.html"))
+        view = json.loads(self.run_cli("map", "--json").stdout)
+        stack = next(p for p in view["patterns"] if p["key"] == "stack")
+        self.assertEqual(stack["explainer"], "concepts/stack/stack-explainer.html")
+
     def test_init_creates_layout_and_snapshot(self):
         for rel in ["config.json", "JOURNEY.md", "journey.json", "learner/summary.md", "learner/cards.json",
                     "learner/attempts.jsonl", "artifacts/registry.json", "inbox/imported", "exports", "README.md"]:
