@@ -29,6 +29,7 @@
       "cues": ["seen before / duplicates", "count frequencies", "group by a key", "complement lookup (target - x)"],
       "invariant": "The map holds exactly the elements to the left of i.",
       "template": "One pass with dict / Counter / set.",
+      "resources": [{"title": "Time complexity of Python's built-in types", "url": "https://docs.python.org/3/builtins/time-complexity.html"}, {"title": "collections: Counter, defaultdict, deque", "url": "https://docs.python.org/3/library/collections.html"}],
       "canonical": ["two-sum", "group-anagrams", "longest-consecutive-sequence"]
     },
     {
@@ -36,6 +37,7 @@
       "cues": ["sorted array + pair or triplet with a target", "palindrome check", "in-place partition", "maximize area between two ends"],
       "invariant": "No pair outside [l..r] can beat the best found so far.",
       "template": "l = 0, r = n - 1; move the pointer whose side can't improve.",
+      "resources": [{"title": "Competitive Programmer's Handbook, ch. 8", "url": "https://cses.fi/book/book.pdf"}, {"title": "Python Tutor", "url": "https://pythontutor.com/visualize.html"}],
       "canonical": ["two-sum-ii-input-array-is-sorted", "3sum", "container-with-most-water"]
     },
     {
@@ -43,6 +45,7 @@
       "cues": ["contiguous subarray or substring", "longest / shortest with a condition", "at most k distinct or k changes", "fixed window size k"],
       "invariant": "s[l..r] is the best valid window ending at r, and the window state describes exactly s[l..r].",
       "template": "Fixed size, longest valid (shrink while invalid, then record), or shortest valid (record while valid, shrinking).",
+      "resources": [{"title": "Hello Interview: sliding window", "url": "https://www.hellointerview.com/learn/code/sliding-window/fixed-length"}, {"title": "Python Tutor", "url": "https://pythontutor.com/visualize.html"}],
       "canonical": ["longest-substring-without-repeating-characters", "permutation-in-string", "minimum-window-substring"]
     },
     {
@@ -50,6 +53,7 @@
       "cues": ["subarray sum equals k with negative numbers", "many range-sum queries", "count subarrays with a property"],
       "invariant": "prefix[i] = sum(a[:i]); the map counts prefix sums seen to the left.",
       "template": "Running sum plus a dict of counts of earlier prefix sums.",
+      "resources": [{"title": "USACO Guide: prefix sums", "url": "https://usaco.guide/silver/prefix-sums"}],
       "canonical": ["subarray-sum-equals-k", "range-sum-query-immutable", "continuous-subarray-sum"]
     },
     {
@@ -57,6 +61,7 @@
       "cues": ["matching brackets", "next greater or smaller element", "evaluate an expression", "histogram / temperatures"],
       "invariant": "The stack is monotone, and every popped index has found its answer.",
       "template": "Monotonic stack: pop while the new element resolves the top.",
+      "resources": [{"title": "Competitive Programmer's Handbook, ch. 8 (monotonic stack)", "url": "https://cses.fi/book/book.pdf"}],
       "canonical": ["valid-parentheses", "daily-temperatures", "largest-rectangle-in-histogram"]
     },
     {
@@ -64,6 +69,7 @@
       "cues": ["sorted input", "minimum or maximum feasible value", "rotated sorted array", "O(log n) required"],
       "invariant": "The answer is in [lo, hi), and the predicate is monotone.",
       "template": "while lo < hi: mid; shrink the half that can't hold the answer. Also binary search on the answer.",
+      "resources": [{"title": "TopCoder: binary search", "url": "https://www.topcoder.com/thrive/articles/Binary%20Search"}, {"title": "bisect", "url": "https://docs.python.org/3/library/bisect.html"}],
       "canonical": ["binary-search", "koko-eating-bananas", "search-in-rotated-sorted-array"]
     },
     {
@@ -71,6 +77,7 @@
       "cues": ["reverse", "detect a cycle", "merge lists", "k-th node from the end", "reorder in place"],
       "invariant": "prev heads the processed part, curr the rest; nothing becomes unreachable.",
       "template": "Dummy head; fast and slow pointers; pointer rewiring in a fixed order.",
+      "resources": [{"title": "Tech Interview Handbook cheatsheets", "url": "https://www.techinterviewhandbook.org/algorithms/study-cheatsheet/"}],
       "canonical": ["reverse-linked-list", "linked-list-cycle", "lru-cache"]
     },
     {
@@ -78,6 +85,7 @@
       "cues": ["depth, height or diameter", "path sums", "level by level", "BST property or k-th smallest"],
       "invariant": "Each recursive call returns the answer for its own subtree.",
       "template": "DFS returning values up the tree; BFS with a queue per level.",
+      "resources": [{"title": "MIT 6.006 lecture notes 6–7", "url": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/pages/lecture-notes/"}, {"title": "VisuAlgo: BST", "url": "https://visualgo.net/en/bst"}],
       "canonical": ["maximum-depth-of-binary-tree", "binary-tree-level-order-traversal", "validate-binary-search-tree"]
     },
     {
@@ -85,6 +93,7 @@
       "cues": ["top k / k-th largest", "merge k sorted", "running median", "always take the earliest or cheapest next"],
       "invariant": "The heap holds the k best seen so far; its root is the worst of them.",
       "template": "heapq is a min-heap: push (key, tiebreak, item); negate keys for a max-heap.",
+      "resources": [{"title": "heapq, with its implementation notes", "url": "https://docs.python.org/3/library/heapq.html"}, {"title": "VisuAlgo: heap", "url": "https://visualgo.net/en/heap"}],
       "canonical": ["kth-largest-element-in-an-array", "k-closest-points-to-origin", "find-median-from-data-stream"]
     },
     {
@@ -92,6 +101,7 @@
       "cues": ["all subsets, permutations or combinations", "word search on a grid", "N-Queens", "partition into valid pieces"],
       "invariant": "The path is a valid partial solution; every choice is undone after recursing.",
       "template": "Choose, recurse, unchoose; prune as early as possible.",
+      "resources": [{"title": "Erickson, Algorithms, ch. 2", "url": "https://jeffe.cs.illinois.edu/teaching/algorithms/book/Algorithms-JeffE.pdf"}, {"title": "Recursion Tree Visualizer", "url": "https://recursion.vercel.app/"}],
       "canonical": ["subsets", "combination-sum", "word-search"]
     },
     {
@@ -99,6 +109,7 @@
       "cues": ["grid islands or regions", "connected components", "prerequisites or ordering", "shortest path in an unweighted graph"],
       "invariant": "Visited nodes are never re-entered; BFS dequeues nodes in order of distance.",
       "template": "BFS / DFS with a visited set; Kahn's topological sort; union-find with path compression.",
+      "resources": [{"title": "WilliamFiset: graph theory", "url": "https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P"}, {"title": "VisuAlgo", "url": "https://visualgo.net/en"}],
       "canonical": ["number-of-islands", "rotting-oranges", "course-schedule"]
     },
     {
@@ -106,6 +117,7 @@
       "cues": ["prefix queries", "dictionary with wildcards", "many words searched on one grid"],
       "invariant": "Each node represents the prefix spelled from the root to it.",
       "template": "Nodes with a dict of children and an end-of-word flag.",
+      "resources": [{"title": "Tech Interview Handbook cheatsheets", "url": "https://www.techinterviewhandbook.org/algorithms/study-cheatsheet/"}],
       "canonical": ["implement-trie-prefix-tree", "design-add-and-search-words-data-structure", "word-search-ii"]
     },
     {
@@ -113,6 +125,7 @@
       "cues": ["merge or insert intervals", "meeting rooms", "remove overlaps"],
       "invariant": "Intervals are processed in sorted order, and the output has no overlaps.",
       "template": "Sort by start (or end); compare with the last merged interval; a heap of end times for rooms.",
+      "resources": [{"title": "Tech Interview Handbook cheatsheets", "url": "https://www.techinterviewhandbook.org/algorithms/study-cheatsheet/"}],
       "canonical": ["merge-intervals", "non-overlapping-intervals", "meeting-rooms-ii"]
     },
     {
@@ -120,6 +133,7 @@
       "cues": ["maximum subarray", "jump game", "gas station", "partition labels"],
       "invariant": "An exchange argument: the greedy choice can be swapped into some optimal solution.",
       "template": "Sort or scan once, keeping a running best; prove the choice with an exchange argument.",
+      "resources": [{"title": "Competitive Programmer's Handbook, ch. 6", "url": "https://cses.fi/book/book.pdf"}],
       "canonical": ["maximum-subarray", "jump-game", "gas-station"]
     },
     {
@@ -127,6 +141,7 @@
       "cues": ["number of ways", "min or max cost to reach i", "can you reach or partition", "decisions along a line"],
       "invariant": "dp[i] is the optimum of subproblem i and reads only smaller subproblems.",
       "template": "SRTBOT: subproblems, relation, topological order, base cases, original problem, time.",
+      "resources": [{"title": "MIT 6.006 lectures 15–16 (SRTBOT)", "url": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/pages/lecture-notes/"}, {"title": "Competitive Programmer's Handbook, ch. 7", "url": "https://cses.fi/book/book.pdf"}],
       "canonical": ["house-robber", "coin-change", "longest-increasing-subsequence"]
     },
     {
@@ -134,6 +149,7 @@
       "cues": ["two strings (LCS, edit distance)", "grid paths", "knapsack with a capacity", "interleaving"],
       "invariant": "dp[i][j] is the answer for prefixes i and j, filled in dependency order.",
       "template": "Table with an explicit fill order; reduce to rolling rows when only the previous row is read.",
+      "resources": [{"title": "MIT 6.006 lectures 15–16 (SRTBOT)", "url": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/pages/lecture-notes/"}, {"title": "VisuAlgo: recursion tree vs DAG", "url": "https://visualgo.net/en/recursion"}],
       "canonical": ["unique-paths", "longest-common-subsequence", "edit-distance"]
     },
     {
@@ -141,6 +157,7 @@
       "cues": ["weighted shortest path", "minimum spanning tree", "at most k stops", "itinerary using every edge"],
       "invariant": "A node popped with the smallest tentative distance is final (non-negative weights).",
       "template": "Dijkstra with a heap and stale-entry skip; Prim or Kruskal; Bellman-Ford for k stops.",
+      "resources": [{"title": "CP-Algorithms", "url": "https://cp-algorithms.com/"}, {"title": "Red Blob Games: pathfinding", "url": "https://redblobgames.com/pathfinding/a-star/introduction.html"}],
       "canonical": ["network-delay-time", "min-cost-to-connect-all-points", "cheapest-flights-within-k-stops"]
     },
     {
@@ -148,6 +165,7 @@
       "cues": ["rotate or spiral a matrix", "fast power", "digit manipulation"],
       "invariant": "Boundaries shrink inward (top, bottom, left, right) and every cell is visited once.",
       "template": "Careful index arithmetic; fast exponentiation by squaring.",
+      "resources": [{"title": "Tech Interview Handbook cheatsheets", "url": "https://www.techinterviewhandbook.org/algorithms/study-cheatsheet/"}],
       "canonical": ["rotate-image", "spiral-matrix", "powx-n"]
     },
     {
@@ -155,6 +173,7 @@
       "cues": ["single number among pairs", "count set bits", "add without +"],
       "invariant": "x ^ x = 0 and x & (x - 1) clears the lowest set bit.",
       "template": "Bit tricks; Python ints are unbounded, so mask with 0xFFFFFFFF for 32-bit behaviour.",
+      "resources": [{"title": "Competitive Programmer's Handbook, ch. 10", "url": "https://cses.fi/book/book.pdf"}],
       "canonical": ["single-number", "counting-bits", "sum-of-two-integers"]
     },
     {
@@ -176,6 +195,7 @@
       "cues": ["implement softmax, attention, k-means, logistic regression or backprop from scratch in NumPy"],
       "invariant": "Every tensor's shape is stated, and numerics are stable (subtract the max before exp).",
       "template": "Write shapes first, implement, test on a tiny hand-computed example.",
+      "resources": [{"title": "Karpathy: Neural Networks, Zero to Hero", "url": "https://karpathy.ai/zero-to-hero.html"}, {"title": "Deep-ML", "url": "https://www.deep-ml.com/"}],
       "canonical": ["softmax-and-cross-entropy", "scaled-dot-product-attention", "k-means", "logistic-regression-gd", "micrograd-backprop"]
     }
   ]

@@ -31,3 +31,12 @@ class CatalogueTest(unittest.TestCase):
                          "bad slug 'Bad Slug'", "min-stack is listed twice", "no title", "difficulty 'trivial'",
                          "lists ['top100']"):
             self.assertIn(expected, issues)
+
+    def test_resources_come_from_the_vetted_list(self):
+        vetted = (COACH.parent.parent / "references" / "resources.md").read_text(encoding="utf-8")
+        for p in coach.load_roadmap()["patterns"]:
+            for r in p.get("resources", []):
+                self.assertTrue(r["title"], p["key"])
+                self.assertIn(r["url"], vetted, f"{p['key']}: {r['url']} isn't in references/resources.md")
+        with_resources = [p["key"] for p in coach.load_roadmap()["patterns"] if p.get("resources")]
+        self.assertGreaterEqual(len(with_resources), 18)
