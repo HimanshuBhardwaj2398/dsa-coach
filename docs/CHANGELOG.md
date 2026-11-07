@@ -6,6 +6,7 @@
 - **Coaching in the panel:** questions, saved stage answers, plan cards, examples and optional page text/screenshots go to the local Claude CLI. Replies appear in the panel. The coach has no tools and cannot modify code or execute tests. Coding and running remain in LeetCode; final attempt logging remains in the main coach chat.
 - **Context capture:** selected/page text, visible-tab screenshots and pasted/uploaded PNG/JPEGs, reviewed before sending. Captures clear when switching problems and stay out of notebook files. Chat is temporary.
 - **Embedding:** a dedicated `/companion` route permits only the pinned extension origin. Other pages retain frame denial and the existing API header checks.
+- **Improve a theory page:** the panel's Learn cards and the app's Learn page can ask the coach to write a missing explainer, or to revise one: say what should change, and the coach rewrites the page in place (`POST /api/explainer` with `feedback`) and logs the feedback as a question. The form repeats `explainers.md`'s advice to attempt one problem first.
 - **Verification:** server/input/extension tests and a Chromium integration check against a temporary notebook and fake Claude. Live text and image CLI transport smoke checks passed.
 
 ## 0.6.0 · 2026-11-07

@@ -29,6 +29,7 @@ Chrome 116 or later is required. The same manifest targets Edge's compatible sid
 - Choose **Take screenshot** for the visible LeetCode tab. If Chrome asks for access, click the DSA Coach toolbar icon while on LeetCode and reopen the panel, then retry. Screenshots require a toolbar invocation under Chrome's [activeTab permission](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). You can also paste an image in the conversation area or attach a PNG/JPEG under 4 MB.
 - Review or edit the attached text, type a question, then choose **Ask coach**. Stage-specific **Ask coach** controls save your stage answer before asking. The conversation form uses already-saved stage answers; save a stage answer first if you want it included.
 - When changing problems, attachments are cleared. A different active solve is shown explicitly, and coaching is paused until you return to that problem or finish that solve.
+- In **Learn**, a card opens its interactive explainer in a new tab. **Write the interactive explainer** asks the coach for a missing one; **Improve this page** takes what should change, and the coach revises the page in place (one to three minutes, one job at a time).
 
 ## What is sent and saved
 

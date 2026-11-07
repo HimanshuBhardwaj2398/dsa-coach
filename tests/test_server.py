@@ -134,17 +134,45 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(calls[0][0], "/opt/claude")
         self.assertEqual(self.call("POST", "/api/explainer", {"pattern": "nope"})[0], 400)
 
+    def add_explainer(self, key):
+        page = self.root / "concepts" / key / f"{key}-explainer.html"
+        page.parent.mkdir(parents=True, exist_ok=True)
+        page.write_text(f"<p>{key}</p>")
+        subprocess.run([sys.executable, str(COACH), "--root", str(self.root), "artifact", "add", "--concept", key,
+                        "--title", key, "--file", str(page)], check=True, capture_output=True, env=self.env)
+        return page
+
     def test_explainer_page_is_sandboxed(self):
         self.assertEqual(self.raw_get("/explainer/stack")[0], 404)
-        folder = self.root / "concepts" / "stack"
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "stack-explainer.html").write_text("<p>stack</p>")
-        subprocess.run([sys.executable, str(COACH), "--root", str(self.root), "artifact", "add", "--concept", "stack",
-                        "--title", "Stack", "--file", str(folder / "stack-explainer.html")],
-                       check=True, capture_output=True, env=self.env)
+        self.add_explainer("stack")
         status, headers, body = self.raw_get("/explainer/stack")
         self.assertEqual((status, body), (200, b"<p>stack</p>"))
         self.assertIn("sandbox", headers["Content-Security-Policy"])
+
+    def test_feedback_revises_the_registered_explainer_in_place(self):
+        page = self.add_explainer("stack")
+        calls = self.fake_claude()
+        feedback = 'The pop step is unclear. Show it with "equal heights".'
+        status, body = self.call("POST", "/api/explainer", {"pattern": "stack", "feedback": f"  {feedback}\n"})
+        self.assertEqual((status, body["state"]), (200, "running"))
+        self.assertEqual(self.wait_job("stack")["state"], "done")
+        prompt = calls[0][2]
+        self.assertIn(f"Revise the interactive explainer for the pattern Stack (stack) at {page.resolve()},", prompt)
+        self.assertIn(json.dumps(feedback), prompt)  # quoted, so his words stay data
+        self.assertIn(f"--root {self.root} log question --concept stack --text", prompt)
+        self.assertNotIn("artifact add", prompt)  # it is registered already
+        self.assertEqual(page.read_text(), "<p>stack</p>")  # the page itself is the coach's to change
+
+    def test_feedback_needs_an_explainer_and_some_words(self):
+        calls = self.fake_claude()
+        self.assertEqual(self.call("POST", "/api/explainer", {"pattern": "stack", "feedback": "Slower, please"})[0], 404)
+        self.add_explainer("stack")
+        for feedback in ("", "   ", 3, ["Slower"], "x" * 2001):
+            with self.subTest(feedback=feedback):
+                status, body = self.call("POST", "/api/explainer", {"pattern": "stack", "feedback": feedback})
+                self.assertEqual(status, 400)
+                self.assertIn("at most 2000 characters", body["error"])
+        self.assertEqual(calls, [])
 
     def test_stale_actions_cannot_touch_a_replacement_solve(self):
         self.start()

@@ -19,6 +19,14 @@ sys.path.insert(0, str(REPO / "app"))
 import server
 
 
+def tap(locator):
+    """A click in the panel's frame. Playwright first checks that the target is visible, enabled and not covered, then
+    the click is dispatched to it: headless Chromium sends a real mouse click to the outer iframe while another tab
+    (LeetCode here) is in front, which a real side panel never is."""
+    locator.click(trial=True)
+    locator.dispatch_event("click")
+
+
 def main():
     out = Path(sys.argv[1] if len(sys.argv) > 1 else tempfile.mkdtemp(prefix="dsa-extension-shots-"))
     out.mkdir(parents=True, exist_ok=True)
@@ -87,62 +95,77 @@ def main():
                 expect(workspace.locator("#slug")).to_have_value("two-sum")
                 expect(workspace.locator("#companion-problem")).to_have_text("Two Sum")
                 expect(workspace.locator("#companion-question")).to_be_in_viewport()
-                workspace.locator("#companion-use").click()
+                tap(workspace.locator("#companion-use"))
                 expect(workspace.locator("#start")).to_be_visible()
                 workspace.locator("#confidence").select_option("3")
-                workspace.locator("#start-btn").click()
+                tap(workspace.locator("#start-btn"))
                 expect(workspace.locator("#solve")).to_be_visible()
                 expect(workspace.locator("#tab-stage")).to_have_attribute("aria-selected", "true")
                 expect(workspace.locator("#work")).to_be_hidden()
-                workspace.locator("#companion-tab-chat").click()
+                tap(workspace.locator("#companion-tab-chat"))
                 expect(workspace.locator("#solve")).to_be_hidden()
-                workspace.locator("#companion-attachment summary").click()
-                workspace.locator("#capture-text").click()
+                tap(workspace.locator("#companion-attachment summary"))
+                tap(workspace.locator("#capture-text"))
                 expect(workspace.locator("#captured-text")).to_have_value("LeetCode fixture")
                 screenshot = out / "leetcode-fixture.png"
                 leetcode.screenshot(path=str(screenshot))
                 workspace.locator("#captured-file").set_input_files(str(screenshot))
                 expect(workspace.locator("#captured-image")).to_be_visible()
                 workspace.locator("#companion-question").fill("What should I check next?")
-                workspace.locator("#companion-send").click()
+                tap(workspace.locator("#companion-send"))
                 try:
                     expect(workspace.locator("#companion-messages")).to_contain_text("same value appears twice", timeout=20000)
                 except AssertionError:
                     print("Chat status:", workspace.locator("#companion-chat-status").inner_text(), "Page errors:", errors)
                     panel.screenshot(path=str(out / "failure.png"))
                     raise
-                workspace.locator("#companion-tab-stages").click()
+                tap(workspace.locator("#companion-tab-stages"))
                 note = workspace.locator("#panel textarea").first
                 note.fill("Keep this unsaved reasoning")
-                workspace.get_by_role("button", name="Stage 3: Count, upcoming", exact=True).click()
+                tap(workspace.get_by_role("button", name="Stage 3: Count, upcoming", exact=True))
                 expect(workspace.locator("#companion-stage-preview")).to_be_visible()
                 expect(workspace.locator("#solve")).to_be_hidden()
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 1
-                workspace.locator("#companion-stage-prev").click()
+                tap(workspace.locator("#companion-stage-prev"))
                 expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 8")
-                workspace.locator("#companion-stage-current").click()
+                tap(workspace.locator("#companion-stage-current"))
                 expect(note).to_have_value("Keep this unsaved reasoning")
-                workspace.locator("#companion-tab-chat").click()
+                tap(workspace.locator("#companion-tab-chat"))
                 workspace.locator("#companion-question").fill("My unsent follow-up")
-                workspace.locator("#companion-tab-learn").click()
+                tap(workspace.locator("#companion-tab-learn"))
                 expect(workspace.locator(".theory-card")).to_have_count(1)
                 with context.expect_page() as theory_tab:
-                    workspace.get_by_role("link", name="Open interactive theory", exact=False).click()
+                    tap(workspace.get_by_role("link", name="Open interactive theory", exact=False))
                 expect(theory_tab.value.locator("h1")).to_have_text("Arrays and hashing, explained")
                 theory_tab.value.close()
                 leetcode.bring_to_front()
-                workspace.get_by_role("button", name="Explain this to me", exact=True).click()
+                # Improve: what should change goes to the coach, which revises the page in place.
+                tap(workspace.get_by_role("button", name="Improve this page", exact=True))
+                workspace.get_by_label("What should change?").fill("Show the duplicate case first.")
+                panel.screenshot(path=str(out / "companion-learn-improve.png"), full_page=True)
+                tap(workspace.get_by_role("button", name="Revise it", exact=True))
+                expect(workspace.get_by_text("Revised. Open it again to see the changes.")).to_be_visible(timeout=20000)
+                with context.expect_page() as theory_tab:
+                    tap(workspace.get_by_role("link", name="Open interactive theory", exact=False))
+                expect(theory_tab.value.locator("body")).to_contain_text("Revised: Show the duplicate case first.")
+                theory_tab.value.close()
+                leetcode.bring_to_front()
+                tap(workspace.get_by_role("button", name="Explain this to me", exact=True))
                 expect(workspace.locator("#companion-tab-chat")).to_have_attribute("aria-selected", "true")
                 assert "My unsent follow-up" in workspace.locator("#companion-question").input_value()
                 assert "Arrays & Hashing" in workspace.locator("#companion-question").input_value()
                 expect(workspace.locator("#companion-attachment-count")).to_contain_text("text")
-                workspace.locator("#companion-tab-learn").click()
+                tap(workspace.locator("#companion-tab-learn"))
                 workspace.locator("#companion-theory-search").fill("binary search")
                 expect(workspace.locator(".theory-card")).to_have_count(1)
                 expect(workspace.locator(".theory-card a")).to_have_attribute("href", "/#/learn/binary-search")
+                # Write: a topic without an explainer gets one, and its card then opens it.
+                tap(workspace.get_by_role("button", name="Write the interactive explainer", exact=True))
+                expect(workspace.locator(".theory-card a")).to_have_attribute("href", "/explainer/binary-search", timeout=20000)
+                expect(workspace.get_by_role("button", name="Improve this page", exact=True)).to_be_visible()
                 workspace.locator("#companion-theory-search").fill("no matching topic")
                 expect(workspace.locator("#companion-theory-status")).to_contain_text("No matching topics")
-                workspace.locator("#companion-tab-stages").click()
+                tap(workspace.locator("#companion-tab-stages"))
                 expect(note).to_have_value("Keep this unsaved reasoning")
 
                 leetcode.goto("https://leetcode.com/problems/valid-anagram/")
@@ -160,27 +183,27 @@ def main():
                     panel.set_viewport_size({"width": width, "height": 844})
                     frame = next(frame for frame in panel.frames if "/companion" in frame.url)
                     for name in ("chat", "stages", "learn"):
-                        workspace.locator(f"#companion-tab-{name}").click()
+                        tap(workspace.locator(f"#companion-tab-{name}"))
                         assert frame.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"{name} overflow at {width}px"
                         if name == "chat":
                             expect(workspace.locator("#companion-question")).to_be_in_viewport()
                             expect(workspace.locator("#companion-send")).to_be_in_viewport()
                 workspace.locator("#companion-theory-search").fill("")
                 for name in ("chat", "stages", "learn"):
-                    workspace.locator(f"#companion-tab-{name}").click()
+                    tap(workspace.locator(f"#companion-tab-{name}"))
                     panel.screenshot(path=str(out / f"companion-{name}-light.png"), full_page=True)
                 panel.emulate_media(color_scheme="dark")
-                workspace.locator("#companion-tab-chat").click()
+                tap(workspace.locator("#companion-tab-chat"))
                 panel.screenshot(path=str(out / "companion-chat-dark.png"), full_page=True)
-                workspace.locator("#companion-tab-stages").click()
+                tap(workspace.locator("#companion-tab-stages"))
                 workspace.locator("table.examples .args").first.fill("[2, 7], 9")
                 workspace.locator("table.examples .expected").first.fill("[0, 1]")
-                workspace.locator("table.examples .edge").first.check()
-                workspace.get_by_role("button", name="Remove this example").nth(1).click()
-                workspace.get_by_role("button", name="Complete and continue", exact=True).click()
+                tap(workspace.locator("table.examples .edge").first)
+                tap(workspace.get_by_role("button", name="Remove this example").nth(1))
+                tap(workspace.get_by_role("button", name="Complete and continue", exact=True))
                 expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 8")
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 2
-                workspace.get_by_role("button", name="Stage 1: Understand, completed", exact=True).click()
+                tap(workspace.get_by_role("button", name="Stage 1: Understand, completed", exact=True))
                 expect(note).to_have_value("Keep this unsaved reasoning")
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 2
 

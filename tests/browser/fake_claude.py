@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Stands in for `claude -p` in the browser check: writes the explainer the prompt asks for and registers it."""
+"""Stands in for `claude -p` in the browser checks: writes the explainer the prompt asks for and registers it, or
+revises a registered one by adding his feedback to the page."""
+import html
+import json
 import re
 import subprocess
 import sys
@@ -7,6 +10,12 @@ from pathlib import Path
 
 prompt = sys.argv[2]
 key = re.search(r"\(([a-z0-9-]+)\)", prompt).group(1)
+revise = re.search(r"Revise the interactive explainer .*? at (\S+), following", prompt)
+if revise:
+    path = Path(revise.group(1))
+    feedback = json.loads(re.search(r'His feedback, quoted: (".*")\. He was told', prompt, re.S).group(1))
+    path.write_text(path.read_text(encoding="utf-8") + f"<p>Revised: {html.escape(feedback)}</p>", encoding="utf-8")
+    sys.exit()
 root = re.search(r"--root (\S+)", prompt).group(1)
 path = Path(re.search(r"--file (\S+)", prompt).group(1))
 path.parent.mkdir(parents=True, exist_ok=True)

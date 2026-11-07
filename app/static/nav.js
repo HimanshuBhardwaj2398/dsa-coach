@@ -118,43 +118,101 @@ function problemTable(problems) {
   return t;
 }
 
-// The explainer: a link when there is one; otherwise the coach writes it, and the page checks on the job.
-function explainerBlock(p) {
-  const box = withClass(document.createElement("section"), "explainer");
-  if (p.explainer) {
-    box.append(withClass(link("Read the explainer", `/explainer/${p.key}`, true), "button primary"));
-  } else if (!p.format) {
-    offerExplainer(p.key, box);
-    checkExplainer(p.key, box);  // a job started earlier may still be running
-  }
+// --- the explainer: the coach writes it, or revises it from what he says should change ----------------------
+// The jobs this page started or saw running, by pattern ("write", "revise" or "seen"). Only these are checked when a
+// list of cards is drawn, so drawing it doesn't ask about every pattern.
+const explainerJobs = new Map();
+const explainerNotes = new Map();  // pattern -> a line to show once its job has ended
+const explainerFeedback = new Map();  // pattern -> what he last said should change, until a revision succeeds
+const statusNote = (text) => Object.assign(withClass(elem("p", text), "hint"), {role: "status"});
+
+// redraw: draws the view again with fresh map data once a job ends. compact: the actions of a card that links to
+// the explainer itself, rather than the Learn page's buttons.
+function explainerBlock(p, redraw = () => reloadLearn(p.key), compact = false) {
+  const box = withClass(document.createElement("section"), compact ? "explainer compact" : "explainer");
+  if (p.format) return box;
+  idleExplainer(p, box, redraw, compact);
+  if (!compact || explainerJobs.has(p.key)) checkExplainer(p, box, redraw, compact);  // a job may still be running
   return box;
 }
-function offerExplainer(key, box, note = "No explainer yet. The coach writes one from real Python traces, with a prediction to make at each step.") {
-  const write = withClass(button("Write the explainer", () => writeExplainer(key, box)), "primary");
-  box.replaceChildren(withClass(elem("p", note), "hint"), write);
+function idleExplainer(p, box, redraw, compact, said = explainerNotes.get(p.key)) {
+  const parts = said ? [statusNote(said)] : [];
+  if (p.explainer) {
+    if (!compact) parts.push(withClass(link("Read the explainer", `/explainer/${p.key}`, true), "button primary"));
+    parts.push(withClass(button(compact ? "Improve this page" : "Improve it", () => improveForm(p, box, redraw, compact)),
+      compact ? "text-action" : "ghost"));
+  } else {
+    if (!said && !compact) parts.push(statusNote("No explainer yet. The coach writes one from real Python traces, with a prediction to make at each step."));
+    parts.push(withClass(button(compact ? "Write the interactive explainer" : "Write the explainer",
+      () => startExplainer(p, box, redraw, compact, {})), compact ? "text-action" : "primary"));
+  }
+  box.replaceChildren(...parts);
 }
-async function writeExplainer(key, box) {
-  await api("POST", "/api/explainer", {pattern: key});
-  await checkExplainer(key, box);
+// What he says should change goes to the coach, which revises the page in place. His words come back into the box
+// until a revision succeeds, so a failed request or job doesn't lose them.
+function improveForm(p, box, redraw, compact) {
+  const form = withClass(document.createElement("form"), "improve");
+  const text = Object.assign(document.createElement("textarea"), {rows: 3, maxLength: 2000, required: true,
+    value: explainerFeedback.get(p.key) || "", placeholder: "For example: the pop step is unclear. Show it with two equal heights."});
+  text.oninput = () => explainerFeedback.set(p.key, text.value);
+  const label = elem("label", "What should change?");
+  label.append(text);
+  const revise = withClass(elem("button", "Revise it"), "primary");
+  const cancel = withClass(button("Cancel", () => {
+    idleExplainer(p, box, redraw, compact);
+    box.querySelector("button")?.focus();
+  }), "ghost");
+  cancel.type = "button";
+  const actions = withClass(document.createElement("div"), "actions");
+  actions.append(revise, cancel);
+  form.append(label, withClass(elem("p", "Attempting one problem first often shows what the page is really missing."), "hint"), actions);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    revise.disabled = true;
+    startExplainer(p, box, redraw, compact, {feedback: text.value}).catch(fail).finally(() => { revise.disabled = false; });
+  };
+  box.replaceChildren(form);
+  text.focus();
 }
-async function checkExplainer(key, box) {
+async function startExplainer(p, box, redraw, compact, extra) {
+  await api("POST", "/api/explainer", {pattern: p.key, ...extra});
+  explainerJobs.set(p.key, extra.feedback === undefined ? "write" : "revise");
+  explainerNotes.delete(p.key);
+  await checkExplainer(p, box, redraw, compact);
+}
+// Only a job this page follows redraws the view when it ends: an old job's "done" would otherwise redraw for ever.
+async function checkExplainer(p, box, redraw, compact) {
   let s;
   try {
-    s = await api("GET", "/api/explainer?pattern=" + encodeURIComponent(key));
+    s = await api("GET", "/api/explainer?pattern=" + encodeURIComponent(p.key));
   } catch (e) {
     return fail(e);
   }
-  if (route(location.hash).key !== key) return;  // he left the page
+  if (!box.isConnected) return;  // he left the page, or the view was drawn again
+  const kind = explainerJobs.get(p.key);
   if (s.state === "running") {
-    box.replaceChildren(withClass(elem("p", "The coach is writing it. This usually takes one to three minutes."), "hint"));
-    pollTimer = setTimeout(() => checkExplainer(key, box), POLL_MS);
-  } else if (s.state === "error") {
-    offerExplainer(key, box, s.error);
-  } else if (s.state === "done") {
-    mapData = await api("GET", "/api/map");
-    if (mapData.patterns.find((x) => x.key === key)?.explainer) renderLearn(key);
-    else offerExplainer(key, box, "The coach finished but didn't register an explainer. Try again, or ask it in the chat.");
+    explainerJobs.set(p.key, kind || "seen");
+    box.replaceChildren(statusNote("The coach is working on it. This usually takes one to three minutes."));
+    pollTimer = setTimeout(() => checkExplainer(p, box, redraw, compact), POLL_MS);
+    return;
   }
+  explainerJobs.delete(p.key);
+  if (s.state === "error") {
+    idleExplainer(p, box, redraw, compact, s.error);
+  } else if (s.state === "done" && kind) {
+    if (kind === "revise") {
+      explainerNotes.set(p.key, "Revised. Open it again to see the changes.");
+      explainerFeedback.delete(p.key);
+    }
+    await redraw();
+  } else if (s.state === "done" && !p.explainer) {
+    idleExplainer(p, box, redraw, compact, "The coach finished but didn't register an explainer. Try again, or ask it in the chat.");
+  }
+}
+async function reloadLearn(key) {
+  mapData = await api("GET", "/api/map");
+  const {view, key: shown} = route(location.hash);
+  if (view === "learn" && shown === key) renderLearn(key);
 }
 
 window.addEventListener("hashchange", show);

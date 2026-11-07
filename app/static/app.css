@@ -289,6 +289,11 @@ a.node:hover { border-color: var(--accent); }
 .learn h2 { font-size: 15px; margin: 22px 0 6px; }
 .learn pre { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
 .learn .explainer { margin: 24px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.explainer > .hint:first-child { margin-top: 0; }
+.explainer a.button + button { margin-left: 8px; }
+.explainer .improve label { margin-top: 0; }
+.explainer .improve .hint { margin: 6px 0 10px; }
+.explainer .improve .actions { display: flex; gap: 8px; }
 a.button { display: inline-block; padding: 7px 14px; border-radius: 6px; text-decoration: none; }
 a.button.primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 table.problems td, table.problems th { padding: 7px 6px; border-bottom: 1px solid var(--line); }
@@ -387,4 +392,11 @@ body.companion { height: 100dvh; min-height: 0; overflow: hidden; }
 .theory-open > p:not(.eyebrow) { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
 .theory-open > span { font-size: 13px; color: var(--accent); }
 .theory-card .text-action { margin: 0 16px 8px; }
+.theory-card .explainer { padding: 0 16px 8px; }
+.theory-card .explainer .text-action { margin: 0; }
+.theory-card .explainer .hint { margin: 0 0 4px; font-size: 12px; }
+.theory-card .improve { padding-bottom: 8px; }
+.theory-card .improve label { margin: 4px 0 0; font-size: 12px; }
+.theory-card .improve textarea { font-size: 13px; }
+.theory-card .improve .actions button { font-size: 12px; }
 #companion-theory-more { margin-top: 20px; font-size: 13px; }

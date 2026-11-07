@@ -68,6 +68,19 @@ def main() -> None:
             assert "binary-search, explained" in explainer.content()
             explainer.close()
 
+            # What should change goes to the coach, which revises the page in place.
+            page.get_by_role("button", name="Improve it").click()
+            page.get_by_label("What should change?").fill("Show the empty-array case first.")
+            page.screenshot(path=out / "learn-improve.png", full_page=True)
+            page.get_by_role("button", name="Revise it").click()
+            expect(page.get_by_text("Revised. Open it again to see the changes.")).to_be_visible(timeout=30_000)
+            with page.context.expect_page() as tab:
+                read.click()
+            explainer = tab.value
+            explainer.wait_for_load_state()
+            assert "Revised: Show the empty-array case first." in explainer.content(), explainer.content()
+            explainer.close()
+
             page.goto(base + "#/solve")
             expect(page.locator("#start, #solve").locator("visible=true")).to_have_count(1)
             assert page.locator("#map").is_hidden()

@@ -133,9 +133,15 @@ function renderCompanionTheory() {
       draftCompanionQuestion(`Help me understand ${topic.name}. Use a small example and ask me to predict the next step.`);
     });
     discuss.className = "text-action";
-    card.append(open, discuss);
+    card.append(open, discuss, explainerBlock(topic, reloadCompanionTheory, true));
     return card;
   }));
+}
+
+// A job that wrote or revised an explainer ended: the cards' links and actions come from fresh map data.
+async function reloadCompanionTheory() {
+  companionLibrary = await api("GET", "/api/map");
+  renderCompanionTheory();
 }
 
 function companionIdentity() {

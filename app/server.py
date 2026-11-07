@@ -47,6 +47,7 @@ TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=u
          ".css": "text/css; charset=utf-8"}
 ROADMAP = json.loads((COACH.parent.parent / "assets" / "roadmap.json").read_text(encoding="utf-8"))
 EXPLAINER_TIMEOUT = 300  # seconds: the coach traces real Python before it draws
+FEEDBACK_LIMIT = 2000  # characters: what should change in an explainer
 WRITE = threading.Lock()  # saves go one at a time, so two can't both pass the mtime check
 
 
@@ -303,6 +304,18 @@ def explainer_prompt(p: dict, root: Path) -> str:
             f"artifact add --concept {p['key']} --title \"{p['name']}, explained\" --file {path}")
 
 
+def revise_prompt(p: dict, path: Path, feedback: str, root: Path) -> str:
+    """He read the explainer and says what should change. explainers.md asks the coach to offer a problem first; the
+    page has shown him that advice, so the coach builds what he still asks for."""
+    return (f"Use the dsa-coach skill. Revise the interactive explainer for the pattern {p['name']} ({p['key']}) at "
+            f"{path}, following references/explainers.md. His feedback, quoted: {json.dumps(feedback)}. "
+            f"He was told that attempting one problem often shows what a page is really missing, and still wants this "
+            f"change. Log his feedback with python3 skills/dsa-coach/scripts/coach.py --root {root} log question "
+            f"--concept {p['key']} --text and his words. Change what the feedback needs and keep what works; every "
+            f"frame still comes from a real Python trace. Save over the same file; it is already registered. "
+            f"Don't publish it.")
+
+
 def claude_argv(coach, prompt: str) -> list:
     cfg = json.loads((coach.root / "config.json").read_text(encoding="utf-8"))
     return [cfg.get("claude_bin", "claude"), "-p", prompt, "--permission-mode", "acceptEdits",
@@ -310,10 +323,18 @@ def claude_argv(coach, prompt: str) -> list:
 
 
 def post_explainer(coach, d):
+    """Writes the pattern's explainer, or with feedback revises the one it has."""
     p = check_pattern(d.get("pattern"))
+    feedback = d.get("feedback")
+    if feedback is None:
+        prompt = explainer_prompt(p, coach.root)
+    elif not isinstance(feedback, str) or not feedback.strip() or len(feedback) > FEEDBACK_LIMIT:
+        raise ApiError(400, f"say what should change, in at most {FEEDBACK_LIMIT} characters")
+    else:
+        prompt = revise_prompt(p, explainer_file(coach, p["key"]), feedback.strip(), coach.root)
     key = "explainer:" + p["key"]
     try:
-        coach.jobs.start(key, claude_argv(coach, explainer_prompt(p, coach.root)), REPO, EXPLAINER_TIMEOUT)
+        coach.jobs.start(key, claude_argv(coach, prompt), REPO, EXPLAINER_TIMEOUT)
     except claude_job.Busy as e:
         raise ApiError(409, str(e))
     return {"state": "running", "error": None}  # not status(): a fast job may already be done, and the page polls
