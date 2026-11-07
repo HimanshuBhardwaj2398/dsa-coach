@@ -12,6 +12,7 @@ dsa-coach/
 ├── tests/                 tests for coach.py
 ├── plugins/dsa-coach-pane the coach pane for Claude Code (the live solve beside the chat)
 ├── app/                   the study app: python3 app/server.py opens its Solve tab (see skills/dsa-coach/references/platforms.md)
+├── extensions/dsa-coach/  Chrome/Edge side panel: Claude coaching beside LeetCode
 ├── dist/dsa-coach.zip     the skill packaged for uploading to Claude
 ├── CLAUDE.md, AGENTS.md   project instructions for Claude Code and Codex
 └── .claude/, .agents/     links that make the skill visible to Claude Code and Codex
@@ -62,6 +63,10 @@ On another machine with access to the repo: `/plugin install dsa-coach-pane --ma
 - **Version needed:** Claude Code 2.1.317 or later.
 
 ## Everyday commands
+
+For coaching directly beside LeetCode, install the [browser extension](extensions/dsa-coach/README.md).
+It reads selected/page text or a screenshot when asked, and replies through your local Claude CLI.
+You write and run code in LeetCode; the side panel has no code editor.
 
 The coach runs these for you; they're here so you can check or fix things by hand.
 

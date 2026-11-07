@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased · 2026-11-07 · Browser companion 0.1.0
+
+- **Browser extension:** `extensions/dsa-coach` adds a Chrome/Edge side panel beside LeetCode. App problem links can open it, and the toolbar opens it directly. The panel follows the current problem without replacing an active solve.
+- **Coaching in the panel:** questions, saved stage answers, plan cards, examples and optional page text/screenshots go to the local Claude CLI. Replies appear in the panel. The coach has no tools and cannot modify code or execute tests. Coding and running remain in LeetCode; final attempt logging remains in the main coach chat.
+- **Context capture:** selected/page text, visible-tab screenshots and pasted/uploaded PNG/JPEGs, reviewed before sending. Captures clear when switching problems and stay out of notebook files. Chat is temporary.
+- **Embedding:** a dedicated `/companion` route permits only the pinned extension origin. Other pages retain frame denial and the existing API header checks.
+- **Verification:** server/input/extension tests and a Chromium integration check against a temporary notebook and fake Claude. Live text and image CLI transport smoke checks passed.
+
 ## 0.6.0 · 2026-11-07
 
 The study app opens on a map of the roadmap. Each pattern has a Learn page, and Solve is one link away.

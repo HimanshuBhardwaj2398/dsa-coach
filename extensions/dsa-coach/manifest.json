@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "DSA Coach",
+  "version": "0.1.0",
+  "description": "Keep your local DSA Coach beside LeetCode.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArbctYlXL3eC+3tn6ya4V5mdkUPBqCfBJkWV1qnX2Co2q2yoO1ld7OXGsx3CMtyJmIVcvyPgZd89ktnMRgGTQGkmpYn3CRxOkrq4OnHMWPAWfP1o8uhCIJ9T544jXKax1t1qmKZEH1Lu1v8p1q0r675YP0ng3SM9ULNJQMsebQo62dmDGmkhcvGIPc7f2VpFz97kXsXd6RlcGJ/vs8bQODvmznnOoTZc/HtTOXD6NU5gmUObuU3eXqfxy+71WDbTMQGszonfAWZWxfJ6DO0Ez3euiAjd6cYJel/67cKKGFw9oK6mrVJi1xeuxmmxn6QiOdbax11NkfXBK/DWa7zjuxQIDAQAB",
+  "permissions": ["sidePanel", "storage", "activeTab", "scripting"],
+  "host_permissions": ["https://leetcode.com/*", "http://127.0.0.1/*", "http://localhost/*"],
+  "action": {"default_title": "Open DSA Coach beside this page"},
+  "background": {"service_worker": "background.js"},
+  "side_panel": {"default_path": "sidepanel.html"},
+  "content_scripts": [{
+    "matches": ["http://127.0.0.1/*", "http://localhost/*"],
+    "js": ["links.js"],
+    "all_frames": true
+  }],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; frame-src http://127.0.0.1:* http://localhost:*; connect-src http://127.0.0.1:* http://localhost:*"
+  }
+}

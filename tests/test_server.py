@@ -1,5 +1,7 @@
 """Tests for app/server.py. Run: python3 -m unittest discover -s tests -v"""
 import contextlib
+import base64
+import hashlib
 import io
 import json
 import os
@@ -554,6 +556,35 @@ class ServerTest(unittest.TestCase):
     def test_no_page_can_frame_the_app(self):
         for path in ("/", "/api/state"):
             self.assertEqual(self.answer("GET", path, {"X-DSA-Coach": "1"})[1]["X-Frame-Options"], "DENY", path)
+
+    def test_only_the_companion_route_allows_the_pinned_extension_to_frame_it(self):
+        manifest = json.loads((REPO / "extensions/dsa-coach/manifest.json").read_text())
+        digest = hashlib.sha256(base64.b64decode(manifest["key"])).hexdigest()[:32]
+        identity = "".join(chr(ord("a") + int(c, 16)) for c in digest)
+        status, headers = self.answer("GET", "/companion", {})
+        self.assertEqual(status, 200)
+        self.assertNotIn("X-Frame-Options", headers)
+        self.assertEqual(headers["Content-Security-Policy"], f"frame-ancestors chrome-extension://{identity}")
+        for path in ("/companion/", "/missing", "/static/index.html"):
+            self.assertEqual(self.answer("GET", path, {})[1]["X-Frame-Options"], "DENY")
+        self.assertEqual(self.answer("POST", "/companion", {})[1]["X-Frame-Options"], "DENY")
+
+    def test_coaching_is_read_only_and_bound_to_the_current_solve(self):
+        self.start()
+        live = self.call("GET", "/api/state")[1]["live"]
+        request = {"problem": live["problem"], "session_id": live["session_id"], "question": "What next?"}
+        with unittest.mock.patch.object(self.server.coach.chat_jobs, "start") as start:
+            self.assertEqual(self.call("POST", "/api/coaching", {**request, "session_id": "stale"})[0], 409)
+            self.assertEqual(self.call("POST", "/api/coaching", {**request, "problem": "valid-anagram"})[0], 409)
+            start.assert_not_called()
+            before = self.files()
+            status, result = self.call("POST", "/api/coaching", request)
+            self.assertEqual(status, 200)
+            self.assertEqual(result["state"], "running")
+            self.assertEqual(self.files(), before)
+            args = start.call_args.args[1]
+            self.assertEqual(args[args.index("--tools") + 1], "")
+            self.assertTrue(start.call_args.kwargs["collect"])
 
     def test_a_page_that_went_away_gets_no_500_and_the_terminal_stays_quiet(self):
         """A reload or a closed tab before the answer: writing it raises BrokenPipe or ConnectionReset."""

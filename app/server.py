@@ -19,6 +19,7 @@ import socket
 import subprocess
 import sys
 import threading
+import tempfile
 import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +30,7 @@ APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP))
 import attempt_file  # noqa: E402
 import claude_job  # noqa: E402
+import companion  # noqa: E402
 import runner  # noqa: E402
 import statement  # noqa: E402
 
@@ -39,6 +41,8 @@ sys.path.insert(0, str(COACH.parent))
 from session_lock import session_lock, session_identity  # noqa: E402
 SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,254}")  # used with fullmatch; 255 is the longest name a folder can have
 HOSTS = {"127.0.0.1", "localhost"}
+# Stable public key in extensions/dsa-coach/manifest.json fixes this unpacked extension's ID.
+COMPANION_ORIGIN = "chrome-extension://fiahbfhmngefgmcnlacogkhhhflfomoh"
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".css": "text/css; charset=utf-8"}
 ROADMAP = json.loads((COACH.parent.parent / "assets" / "roadmap.json").read_text(encoding="utf-8"))
@@ -58,6 +62,9 @@ class Coach:
     def __init__(self, root: Path, env: dict | None = None):
         self.root, self.env = Path(root), env
         self.jobs = claude_job.Jobs()
+        self.chat_jobs = claude_job.Jobs()
+        # An empty cwd avoids loading project instructions or local notebook hooks in the read-only chat.
+        self.chat_directory = tempfile.TemporaryDirectory(prefix="dsa-coach-chat-")
 
     def run(self, *args: str) -> str:
         proc = subprocess.run([sys.executable, str(COACH), "--root", str(self.root), *args],
@@ -316,6 +323,49 @@ def get_explainer(coach, q):
     return coach.jobs.status("explainer:" + check_pattern(q.get("pattern"))["key"])
 
 
+def post_coaching(coach, d):
+    problem = check_slug(d.get("problem"))
+    live = coach.json("solve", "show")
+    if d.get("session_id") != (live.get("session_id") if live else None) or (live and live["problem"] != problem):
+        raise ApiError(409, "the solve changed; refresh before asking the coach", {"stale_session": True})
+    context = live
+    if live:
+        with checked_solve(coach, d):
+            saved = read_attempt(coach.root / live["file"], live)
+            context = {**live, "plan_card": saved["plan_card"], "examples": saved["examples"]}
+    protocol = (COACH.parent.parent / "references/protocol.md").read_text(encoding="utf-8")
+    # The eight-stage teaching table is enough; platform and command instructions are not needed.
+    protocol = protocol.split("## Stage prompts for the solve protocol", 1)[1].split("## Modes in detail", 1)[0]
+    try:
+        system, stream = companion.request(d, context, protocol)
+    except ValueError as exc:
+        raise ApiError(400, str(exc)) from None
+    config = json.loads((coach.root / "config.json").read_text(encoding="utf-8"))
+    key = os.urandom(16).hex()
+    try:
+        coach.chat_jobs.start(key, companion.argv(config.get("claude_bin", "claude"), system),
+                              coach.chat_directory.name, 180, input_text=stream, collect=True)
+    except claude_job.Busy as exc:
+        raise ApiError(409, str(exc)) from None
+    return {"id": key, "state": "running"}
+
+
+def get_coaching(coach, q):
+    key = need(q, "id", str)
+    if not re.fullmatch(r"[0-9a-f]{32}", key):
+        raise ApiError(400, "invalid coaching request")
+    status = coach.chat_jobs.status(key)
+    if status["state"] == "idle":
+        raise ApiError(404, "coaching request expired; ask again")
+    output = status.pop("output", None)
+    if status["state"] == "done":
+        try:
+            status["reply"] = companion.response(output or "")
+        except ValueError as exc:
+            return {"state": "error", "error": str(exc)}
+    return status
+
+
 def explainer_file(coach, key: str) -> Path:
     check_pattern(key)
     rel = next(p["explainer"] for p in coach.json("map")["patterns"] if p["key"] == key)
@@ -343,6 +393,8 @@ ROUTES = {
     ("GET", "/api/map"): get_map,
     ("POST", "/api/explainer"): post_explainer,
     ("GET", "/api/explainer"): get_explainer,
+    ("POST", "/api/coaching"): post_coaching,
+    ("GET", "/api/coaching"): get_coaching,
 }
 
 
@@ -353,7 +405,10 @@ def make_handler(coach: Coach):
             pass
 
         def end_headers(self):  # every answer, http.server's own error pages too
-            self.send_header("X-Frame-Options", "DENY")  # no other page can frame this one
+            if getattr(self, "companion_response", False):
+                self.send_header("Content-Security-Policy", f"frame-ancestors {COMPANION_ORIGIN}")
+            else:
+                self.send_header("X-Frame-Options", "DENY")
             super().end_headers()
 
         def send(self, status: int, body, ctype: str = "application/json; charset=utf-8", headers: dict | None = None):
@@ -369,7 +424,13 @@ def make_handler(coach: Coach):
             self.wfile.write(data)
 
         def read_body(self) -> dict:
-            raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                raise ApiError(400, "invalid Content-Length") from None
+            if not 0 <= length <= 8_000_000:
+                raise ApiError(413, "request too large")
+            raw = self.rfile.read(length)
             try:
                 data = json.loads(raw or b"{}")
                 json.dumps(data, ensure_ascii=False).encode()  # JSON can carry a lone surrogate; files can't
@@ -380,13 +441,15 @@ def make_handler(coach: Coach):
             return data
 
         def static(self, path: str):
-            name = "index.html" if path in ("", "/") else path.removeprefix("/static/")
+            name = "index.html" if path in ("", "/", "/companion") else path.removeprefix("/static/")
             target = (STATIC / name).resolve()
             if target.parent != STATIC.resolve() or not target.is_file():
                 raise ApiError(404, "not found")
+            self.companion_response = path == "/companion"
             self.send(200, target.read_bytes(), TYPES.get(target.suffix, "application/octet-stream"))
 
         def handle_any(self, method: str):
+            self.companion_response = False
             url = urlparse(self.path)
             try:
                 if (self.headers.get("Host") or "").rsplit(":", 1)[0] not in HOSTS:
@@ -440,6 +503,13 @@ def in_use(port: int) -> bool:
     return False
 
 
+class StudyServer(ThreadingHTTPServer):
+    def server_close(self):
+        super().server_close()
+        if hasattr(self, "coach"):
+            self.coach.chat_directory.cleanup()
+
+
 def make_server(root: Path, port: int = 8765, env: dict | None = None, tries: int = 10) -> ThreadingHTTPServer:
     coach = Coach(root, env)
     handler = make_handler(coach)
@@ -447,11 +517,12 @@ def make_server(root: Path, port: int = 8765, env: dict | None = None, tries: in
         if p and in_use(p):
             continue
         try:
-            srv = ThreadingHTTPServer(("127.0.0.1", p), handler)
+            srv = StudyServer(("127.0.0.1", p), handler)
             srv.coach = coach  # tests swap its jobs
             return srv
         except OSError:
             continue
+    coach.chat_directory.cleanup()
     raise SystemExit(f"no free port in {port}-{port + tries - 1}; pass --port")
 
 
@@ -473,6 +544,8 @@ def main(argv=None) -> None:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":

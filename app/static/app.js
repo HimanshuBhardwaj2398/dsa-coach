@@ -31,6 +31,7 @@ let savePanel = null;    // saves the panel shown: its parts of the attempt file
 let focusNext = false;   // after Done: focus the next stage's first box once it's drawn
 let barFile = null;      // the solve the bar's problem link and stage buttons were built for
 let lastPick = null;     // the start screen's pick when the slug box was last filled from it
+let companionProblem = null; // offered by the browser panel; never starts or replaces a solve
 let blockBanner = null;  // the block number the "block is over" banner was shown for
 let finishSent = null;   // the solve whose stage-8 finish prompt was copied: the coach logs it from the chat
 let warnedMtime = null;  // the disk mtime we already warned about
@@ -157,6 +158,7 @@ function field(parent, label, value, multiline, name) {
 }
 
 async function copyPrompt(text, copied = "Copied. Paste it into the coach chat:") {
+  if (typeof companionEnabled !== "undefined" && companionEnabled) return companionAsk(text);
   try {
     await navigator.clipboard.writeText(text);
     banner(copied, [], "", text);
@@ -897,7 +899,10 @@ function renderPanel() {
   };
   savePanel = saveNote;
   let finish;  // stage 8: the outcome and lesson boxes
-  const done = button(n === 8 ? "Done: ask the coach to log it" : `Done with stage ${n}`, async () => {
+  const inCompanion = typeof companionEnabled !== "undefined" && companionEnabled;
+  const doneLabel = n === 8 ? (inCompanion ? "Review with coach" : "Done: ask the coach to log it")
+    : inCompanion ? (n === live.stage ? "Complete and continue" : `Go to stage ${n + 1}`) : `Done with stage ${n}`;
+  const done = button(doneLabel, async () => {
     if (n === 8 && dirty && !(await save())) return;  // the finish prompt sends the coach to the file
     await saveNote();
     if (!state.live || !attempt) return;  // the solve ended meanwhile
@@ -931,6 +936,7 @@ function renderPanel() {
   const saveBtn = button("Save answer", saveNote, true);
   saveBtn.className = "ghost";
   actions.append(saveBtn, ...(n === 8 ? [] : [done]));
+  if (inCompanion) actions.append(button("Discuss with coach", () => askCoach(), true));
   panel.append(actions);
   applyStageDraft(n);
   if (focusNext) {  // drawn by Done: he goes on typing in the next stage
@@ -959,6 +965,9 @@ function finishBlock(done) {
 }
 
 async function finishPrompt(outcome, lesson) {
+  if (typeof companionEnabled !== "undefined" && companionEnabled) {
+    return companionAsk(`Review my stage 8 answers and the attached LeetCode context. My outcome is ${outcome}; lesson: ${lesson || "not stated yet"}. Ask me for any evidence still missing. I will log the attempt in my main coach chat.`);
+  }
   finishSent = attempt.file;
   await copyPrompt(`I'm done with stage 8 of ${state.live.problem}: outcome ${outcome}, `
     + `${lesson ? `lesson "${lesson}"` : "no lesson"}. Check my answers (solve show --json) and my attempt in `
@@ -1161,8 +1170,8 @@ function offerRecovery() {
 // --- start screen ------------------------------------------------------------
 function renderStart() {
   const nx = state.next || {};
-  const pick = (nx.kind === "new" || nx.kind === "resolve") && nx.problem ? nx.problem : "";
-  $("pick-kind").textContent = pick ? `Next up · ${nx.kind === "resolve" ? "re-solve from a blank page" : "new problem"}`
+  const pick = companionProblem || ((nx.kind === "new" || nx.kind === "resolve") && nx.problem ? nx.problem : "");
+  $("pick-kind").textContent = companionProblem ? "Open on LeetCode" : pick ? `Next up · ${nx.kind === "resolve" ? "re-solve from a blank page" : "new problem"}`
     : "Start a solve";
   $("next-pick").textContent = pick;
   if (pick !== lastPick) {  // a new pick fills the slug box, unless he typed a slug of his own into it
@@ -1219,6 +1228,7 @@ async function refresh(redraw = false) {
     const next = await api("GET", "/api/state");
     if (stale()) return;
     state = next;
+    if (typeof renderCompanion === "function") renderCompanion();
     if ($("banner").dataset.kind === "offline") $("banner").hidden = true;  // it's answering again
     const live = state.live;
     if (attempt && (!live || live.session_id !== attempt.session_id)) solveGone();
@@ -1235,7 +1245,7 @@ async function refresh(redraw = false) {
       beginDraft();
       redraw = true;
       renderDesc();
-      showTab(problemText === null ? "desc" : "stage");  // a first load with no statement opens on Description
+      showTab(problemText === null && !document.body.classList.contains("companion") ? "desc" : "stage");
       showConsole("cases");
       if (problemText === null && fetchState === null) fetchStatement();  // once per solve; not awaited
     } else if (!pending && state.attempt_mtime !== attempt.mtime && state.attempt_mtime !== warnedMtime) {
@@ -1255,12 +1265,13 @@ async function refresh(redraw = false) {
     fail(e);
   } finally {
     busy = false;
+    if (typeof renderCompanion === "function") renderCompanion();
     if (queued !== null) { const r = queued; queued = null; refresh(r); }
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupEditor();
+  if (location.pathname !== "/companion") setupEditor();
   $("run-btn").onclick = () => change(runTests, $("run-btn"));
   $("start-btn").onclick = () => change(start, $("start-btn"));
   $("slug").oninput = gateStart;
