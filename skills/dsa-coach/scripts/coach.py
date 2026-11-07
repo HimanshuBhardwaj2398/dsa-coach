@@ -16,10 +16,11 @@ import re
 import shutil
 import sys
 import zipfile
+from session_lock import session_lock, session_identity
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.5.1"
+SKILL_VERSION = "0.5.2"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -1155,7 +1156,7 @@ def live_view(live: dict) -> dict:
     blocks = live["blocks"]
     current = blocks[-1] if blocks and not blocks[-1].get("end") else None
     stage, phase = STAGES[live["stage"] - 1]
-    return dict(live, stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]],
+    return dict(live, session_id=session_identity(live), stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]],
                 minutes=int(sum(block_minutes(b, at) for b in blocks) + 0.5),
                 block={"number": len(blocks), "open": current is not None, "length": live["block_minutes"],
                        "elapsed": int(block_minutes(current, at)) if current else None})
@@ -1197,6 +1198,7 @@ def solve_start(root: Path, args) -> None:
     live = {
         "problem": slug, "pattern": pattern, "pattern_name": pattern_name, "labeled": not args.unlabeled,
         "difficulty": difficulty, "mode": args.mode, "confidence": args.confidence, "url": url,
+        "session_id": os.urandom(16).hex(),
         "file": f"problems/{slug}/{name}", "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
         "blocks": [{"start": started, "end": None}], "started": started, "skill_version": SKILL_VERSION,
     }
@@ -1242,10 +1244,23 @@ def add_stage_notes(path: Path, heading: str, notes: dict) -> None:
 
 def cmd_solve(args) -> None:
     root = find_root(args.root)
+    if args.solve_cmd == "show":
+        return solve_command(root, args)
+    try:
+        with session_lock(root):
+            return solve_command(root, args)
+    except TimeoutError as exc:
+        die(str(exc))
+
+
+def solve_command(root, args) -> None:
     action = args.solve_cmd
     if action == "start":
         return solve_start(root, args)
-    live = load_live(root, required=not (action == "show" or (action == "end" and args.discard)))
+    expected = getattr(args, "expected_session", None)
+    live = load_live(root, required=not (expected is not None or action == "show" or (action == "end" and args.discard)))
+    if expected is not None and (live is None or session_identity(live) != expected):
+        die("the solve changed; refresh before trying again")
     if action == "show" or live is None:
         if live is None:
             print("null" if getattr(args, "json", False) else "No live solve.")
@@ -1791,7 +1806,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mistakes", help=f"comma-separated codes: {', '.join(MISTAKES)}")
     s.add_argument("--complexity-stated", action="store_true")
     s.add_argument("--note")
-    for sp in solve.choices.values():
+    for name, sp in solve.choices.items():
+        if name not in ("start", "show"):
+            sp.add_argument("--expected-session", help="reject an action for a different live solve")
         sp.set_defaults(func=cmd_solve)
 
     s = sub.add_parser("guard", help="PreToolUse hook: keeps Claude out of the attempt files during a live solve")

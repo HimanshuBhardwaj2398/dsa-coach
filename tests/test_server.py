@@ -53,7 +53,16 @@ class ServerTest(unittest.TestCase):
         self.server.server_close()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def call(self, method, path, body=None, coach_header=True, host=None):
+    def call(self, method, path, body=None, coach_header=True, host=None, auto_session=True):
+        scoped = path.startswith("/api/attempt") or path == "/api/run" or (path.startswith("/api/solve/") and path != "/api/solve/start")
+        if scoped and auto_session:
+            live_path = self.root / "sessions/current.json"
+            identity = server.session_identity(json.loads(live_path.read_text())) if live_path.exists() else "ended-session"
+            if method == "GET":
+                if "session_id=" not in path:
+                    path += ("&" if "?" in path else "?") + "session_id=" + identity
+            else:
+                body = {"session_id": identity, **(body or {})}
         headers = {"Content-Type": "application/json"}
         if coach_header:
             headers["X-DSA-Coach"] = "1"
@@ -73,6 +82,68 @@ class ServerTest(unittest.TestCase):
     # POST /api/problem/fetch: statement.fetch is replaced, so no test touches the network
     def problem_md(self, slug="koko-eating-bananas"):
         return self.root / "problems" / slug / "problem.md"
+
+    def test_stale_actions_cannot_touch_a_replacement_solve(self):
+        self.start()
+        old = self.call("GET", "/api/attempt")[1]
+        self.call("POST", "/api/solve/end", {"outcome": "partial"})
+        self.start()
+        new = self.call("GET", "/api/attempt")[1]
+        paths = [self.root / "sessions/current.json", self.root / new["file"], self.root / "learner/attempts.jsonl"]
+        before = [p.read_bytes() for p in paths]
+        actions = [("PUT", "/api/attempt", {"text": "old code", "force": True}),
+                   ("PUT", "/api/attempt/parts", {"examples": []}),
+                   ("POST", "/api/run", {}), ("POST", "/api/solve/stage", {"n": 7}),
+                   ("POST", "/api/solve/note", {"stage": 1, "text": "old note"}),
+                   ("POST", "/api/solve/break", {}), ("POST", "/api/solve/block", {}),
+                   ("POST", "/api/solve/end", {"outcome": "solved"})]
+        for method, path, body in actions:
+            status, answer = self.call(method, path, {**body, "session_id": old["session_id"]})
+            self.assertEqual(status, 409, path)
+            self.assertTrue(answer["stale_session"], path)
+            self.assertEqual([p.read_bytes() for p in paths], before, path)
+        status, _ = self.call("GET", "/api/attempt?session_id=" + old["session_id"])
+        self.assertEqual(status, 409)
+
+    def test_browser_session_identity_is_required(self):
+        self.start()
+        for method, path, body in [("GET", "/api/attempt", None), ("PUT", "/api/attempt", {"text": "x"}),
+                                  ("POST", "/api/run", {}), ("POST", "/api/solve/stage", {"n": 2})]:
+            self.assertEqual(self.call(method, path, body, auto_session=False)[0], 400)
+
+    def test_content_revision_catches_changes_even_when_mtime_is_preserved(self):
+        self.start()
+        old = self.call("GET", "/api/attempt")[1]
+        path = self.root / old["file"]
+        path.write_text("# another editor\n")
+        os.utime(path, ns=(old["mtime"], old["mtime"]))
+        status, disk = self.call("PUT", "/api/attempt", {"text": "# mine\n", "revision": old["revision"]})
+        self.assertEqual(status, 409)
+        self.assertEqual(disk["text"], "# another editor\n")
+        self.assertNotEqual(disk["revision"], old["revision"])
+
+    def test_read_revision_belongs_to_the_descriptor_not_a_replaced_path(self):
+        self.start()
+        live = self.call("GET", "/api/state")[1]["live"]
+        path = self.root / live["file"]
+        original = path.read_bytes()
+        real_fstat = os.fstat
+        calls = []
+        def replace_after_read(fd):
+            calls.append(fd)
+            if len(calls) == 2:
+                server.write_whole(path, "# replacement\n")
+            return real_fstat(fd)
+        with unittest.mock.patch.object(server.os, "fstat", side_effect=replace_after_read):
+            shown = server.read_attempt(path, live)
+        self.assertEqual(shown["text"].encode(), original)
+        self.assertEqual(shown["revision"], server.hashlib.sha256(original).hexdigest())
+        self.assertEqual(path.read_text(), "# replacement\n")
+
+    def test_notebook_identity_is_stable_and_distinct(self):
+        first = self.call("GET", "/api/state")[1]["notebook_id"]
+        self.assertEqual(first, self.call("GET", "/api/state")[1]["notebook_id"])
+        self.assertEqual(first, server.hashlib.sha256(str(self.root.resolve()).encode()).hexdigest())
 
     def test_fetch_writes_problem_md_and_returns_it(self):
         fake = unittest.mock.Mock(return_value=("Koko Eating Bananas", "<p>Koko loves <code>piles</code>.</p>"))
@@ -151,8 +222,8 @@ class ServerTest(unittest.TestCase):
             self.assertIn(f"invalid choice: '{typed}'", body["error"])
         self.assertEqual(self.call("POST", "/api/solve/stage", {})[0], 400)
 
-    def test_no_live_solve_is_a_404_on_every_route_that_needs_one(self):
-        """Not a 409: the page takes a 409 from a save for a file conflict, and shows the disk version it carries."""
+    def test_ended_session_is_a_distinct_conflict_on_every_scoped_route(self):
+        """Identity conflicts carry no disk text and cannot be mistaken for content conflicts."""
         for method, path, body in (("GET", "/api/attempt", None), ("PUT", "/api/attempt", {"text": "x", "mtime": 0}),
                                    ("PUT", "/api/attempt/parts", {"examples": [], "mtime": 0}),
                                    ("POST", "/api/run", {}), ("POST", "/api/solve/stage", {"n": 2}),
@@ -160,8 +231,9 @@ class ServerTest(unittest.TestCase):
                                    ("POST", "/api/solve/break", {}), ("POST", "/api/solve/block", {}),
                                    ("POST", "/api/solve/end", {"outcome": "solved"})):
             status, answer = self.call(method, path, body)
-            self.assertEqual(status, 404, path)
-            self.assertTrue(answer["error"].startswith("no live solve"), answer)
+            self.assertEqual(status, 409, path)
+            self.assertTrue(answer["stale_session"], answer)
+            self.assertNotIn("text", answer)
 
     def test_parts_run_and_the_mtime_check(self):
         self.start()
@@ -289,7 +361,7 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(self.call("PUT", "/api/attempt", {"text": "x", "mtime": mtime})[0], 409, mtime)
         self.assertEqual(path.read_text(), saved["text"])
 
-    def test_a_save_after_the_solve_ended_is_a_404_not_a_conflict(self):
+    def test_a_save_after_the_solve_ended_is_a_session_conflict(self):
         """e.g. the chat ended the solve while the page had unsaved edits: there's no disk version to offer."""
         self.start()
         attempt = self.call("GET", "/api/attempt")[1]
@@ -297,7 +369,9 @@ class ServerTest(unittest.TestCase):
         for path, body in (("/api/attempt", {"text": attempt["text"] + "# more\n"}),
                            ("/api/attempt/parts", {"examples": []})):
             answer = self.call("PUT", path, dict(body, mtime=attempt["mtime"]))
-            self.assertEqual(answer, (404, {"error": "no live solve"}), path)
+            self.assertEqual(answer[0], 409, path)
+            self.assertTrue(answer[1]["stale_session"])
+            self.assertNotIn("text", answer[1])
 
     def test_saves_from_the_same_mtime_at_once_go_one_at_a_time(self):
         """Two tabs, or a double click: one save wins, and the others get a conflict carrying the winner's text."""

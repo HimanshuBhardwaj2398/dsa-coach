@@ -11,45 +11,79 @@
 <body>
 <header id="bar">
   <span id="problem">DSA Coach</span>
-  <nav id="stages" aria-label="Solve stages"></nav>
-  <span id="rung"></span>
+  <div id="progress" hidden>
+    <nav id="stages" aria-label="Solve stages"></nav>
+    <span id="stage-name"></span>
+  </div>
+  <span class="spacer"></span>
+  <span id="rung" hidden></span>
   <span id="timer"></span>
   <button id="block-btn" hidden>Start the next block</button>
+  <span id="actions" hidden>
+    <button id="ask-btn" class="ghost">Ask coach</button>
+    <button id="save-btn" class="ghost" title="Save the code (⌘S)">Save</button>
+    <button id="run-btn" class="primary" title="Save, then run the EXAMPLES">Run<span class="unsaved-dot" aria-hidden="true"></span></button>
+    <span id="dirty" class="sr-only" role="status"></span>
+  </span>
 </header>
 <div id="banner" role="status" hidden></div>
 <div id="rescue" role="alert" hidden></div>
+<div id="recovery" role="status" hidden></div>
 
 <main id="start" hidden>
-  <h1>Start a solve</h1>
-  <p id="next-pick"></p>
-  <label>Problem (LeetCode slug) <input id="slug" placeholder="koko-eating-bananas" autocomplete="off" spellcheck="false"></label>
-  <label>Pattern (only for problems outside the roadmap) <input id="pattern" placeholder="binary-search" autocomplete="off" spellcheck="false"></label>
-  <label>Difficulty, as LeetCode rates it (it sets how long a focus block is)
-    <select id="difficulty">
-      <option value="">as before, or medium</option><option>easy</option><option>medium</option><option>hard</option>
-    </select>
-  </label>
-  <label>How sure are you that you'll solve it without help?
-    <select id="confidence">
-      <option value="">choose 1–5</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-    </select>
-  </label>
-  <button id="start-btn" disabled>Start</button>
-  <p id="due-line" class="muted"></p>
+  <div class="start-card">
+    <p id="pick-kind" class="eyebrow"></p>
+    <h1 id="next-pick"></h1>
+    <label>Problem (LeetCode slug) <input id="slug" placeholder="koko-eating-bananas" autocomplete="off" spellcheck="false"></label>
+    <div class="row">
+      <label>Difficulty
+        <select id="difficulty">
+          <option value="">as before, or medium</option><option>easy</option><option>medium</option><option>hard</option>
+        </select>
+      </label>
+      <label>Sure you'll solve it unaided?
+        <select id="confidence">
+          <option value="">choose 1–5</option><option value="1">1, not at all</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5, certain</option>
+        </select>
+      </label>
+    </div>
+    <button id="start-btn" class="primary wide" disabled>Start solving</button>
+    <details class="more">
+      <summary>More options</summary>
+      <label>Pattern (only for problems outside the roadmap) <input id="pattern" placeholder="binary-search" autocomplete="off" spellcheck="false"></label>
+      <p class="hint">Difficulty sets how long a focus block is.</p>
+      <p id="due-line" class="hint"></p>
+    </details>
+  </div>
 </main>
 
 <main id="solve" hidden>
-  <section id="panel"></section>
-  <section id="work">
-    <div class="toolbar">
-      <span id="file" class="muted"></span>
-      <span id="dirty" class="muted"></span>
-      <span class="spacer"></span>
-      <button id="save-btn">Save</button>
-      <button id="run-btn" class="primary">Run tests</button>
+  <section id="left">
+    <div class="tabs" role="tablist" aria-label="Problem">
+      <button role="tab" id="tab-desc" data-tab="desc" aria-controls="desc">Description</button>
+      <button role="tab" id="tab-stage" data-tab="stage" aria-controls="panel">Stage</button>
+      <button role="tab" id="tab-notes" data-tab="notes" aria-controls="notes">Notes</button>
     </div>
-    <div id="editor-host"><textarea id="editor-fallback" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></div>
-    <div id="results"></div>
+    <div id="desc" class="pane" role="tabpanel" aria-labelledby="tab-desc" hidden></div>
+    <section id="panel" class="pane" role="tabpanel" aria-labelledby="tab-stage"></section>
+    <div id="notes" class="pane" role="tabpanel" aria-labelledby="tab-notes" hidden></div>
+  </section>
+  <section id="work">
+    <div id="editor-host"><textarea id="editor-fallback" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Attempt file"></textarea></div>
+    <section id="console">
+      <div class="tabs console-head" role="tablist" aria-label="Tests">
+        <button role="tab" id="tab-cases" data-console="cases" aria-controls="cases">Testcases</button>
+        <button role="tab" id="tab-results" data-console="results" aria-controls="results">Result</button>
+        <span class="spacer"></span>
+        <p id="draft-status" role="status"></p>
+        <button id="console-toggle" class="icon" aria-expanded="true" aria-controls="console-body" title="Collapse the console">
+          <span aria-hidden="true">▾</span><span class="sr-only">Console</span></button>
+      </div>
+      <div id="console-body">
+        <div id="cases" role="tabpanel" aria-labelledby="tab-cases"></div>
+        <div id="results" role="tabpanel" aria-labelledby="tab-results" hidden></div>
+      </div>
+    </section>
   </section>
 </main>
 

@@ -13,6 +13,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 COACH = HERE.parent / "skills" / "dsa-coach" / "scripts" / "coach.py"
+sys.path.insert(0, str(COACH.parent))
+from session_lock import session_lock
 
 
 class CoachTest(unittest.TestCase):
@@ -313,6 +315,71 @@ class CoachTest(unittest.TestCase):
         text = (self.root / "learner" / "attempts.jsonl").read_text()
         return [json.loads(line) for line in text.splitlines() if line.strip()]
 
+    def test_legacy_session_identity_is_stable_without_rewriting(self):
+        self.run_cli("solve", "start", "--problem", "two-sum")
+        path = self.root / "sessions/current.json"
+        old = self.live()
+        del old["session_id"]
+        path.write_text(json.dumps(old))
+        before = path.read_bytes()
+        first = json.loads(self.run_cli("solve", "show", "--json").stdout)
+        second = json.loads(self.run_cli("solve", "show", "--json").stdout)
+        self.assertEqual(first["session_id"], second["session_id"])
+        self.assertEqual(path.read_bytes(), before)
+        self.run_cli("solve", "note", "--stage", "1", "--text", "legacy note", "--expected-session", first["session_id"])
+        self.assertEqual(self.live()["notes"]["1"], "legacy note")
+
+    def test_expected_identity_rejects_stale_cli_mutations_without_writing(self):
+        self.run_cli("solve", "start", "--problem", "two-sum")
+        original = self.live()["session_id"]
+        self.run_cli("solve", "end", "--discard")
+        self.run_cli("solve", "start", "--problem", "two-sum")
+        path = self.root / "sessions/current.json"
+        before = path.read_bytes()
+        for args in [("stage", "7"), ("hint",), ("note", "--stage", "1", "--text", "old"),
+                     ("break",), ("block",), ("end", "--discard")]:
+            result = self.run_cli("solve", *args, "--expected-session", original, ok=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("the solve changed", result.stderr)
+            self.assertEqual(path.read_bytes(), before)
+        self.run_cli("solve", "stage", "2")  # compatibility for chat callers without an identity
+        self.assertEqual(self.live()["stage"], 2)
+
+    def test_lock_timeout_cannot_mutate_and_release_allows_progress(self):
+        self.run_cli("solve", "start", "--problem", "two-sum")
+        path = self.root / "sessions/current.json"
+        before = path.read_bytes()
+        script = ("import sys\nsys.path.insert(0, sys.argv[1])\n"
+                  "from session_lock import session_lock\nfrom pathlib import Path\n"
+                  "root = Path(sys.argv[2])\nwith session_lock(root, timeout=0.05):\n"
+                  "    (root / 'sessions/current.json').write_text('broken')\n")
+        with session_lock(self.root):
+            result = subprocess.run([sys.executable, "-c", script, str(COACH.parent), str(self.root)],
+                                    capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("the solve is busy", result.stderr)
+        self.assertEqual(path.read_bytes(), before)
+        self.run_cli("solve", "stage", "3")
+        self.assertEqual(self.live()["stage"], 3)
+
+    def test_concurrent_note_and_hint_survive_the_shared_lock(self):
+        self.run_cli("solve", "start", "--problem", "two-sum")
+        script = ("import sys; sys.path.insert(0, sys.argv[1]); import coach; "
+                  "print('ready', flush=True); coach.main(sys.argv[2:])")
+        children = []
+        with session_lock(self.root):
+            for args in [("note", "--stage", "1", "--text", "kept"), ("hint",)]:
+                proc = subprocess.Popen([sys.executable, "-c", script, str(COACH.parent), "--root", str(self.root),
+                                         "solve", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.env)
+                children.append(proc)
+                self.assertEqual(proc.stdout.readline().strip(), "ready")
+                self.assertIsNone(proc.poll())
+        for proc in children:
+            out, err = proc.communicate(timeout=10)
+            self.assertEqual(proc.returncode, 0, err)
+        self.assertEqual(self.live()["notes"]["1"], "kept")
+        self.assertEqual(self.live()["rung"], 1)
+
     def test_solve_start_scaffolds_the_attempt_file(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
         live = self.live()
@@ -522,6 +589,7 @@ class CoachTest(unittest.TestCase):
         names = zipfile.ZipFile(dest).namelist()
         self.assertIn("dsa-coach/SKILL.md", names)
         self.assertIn("dsa-coach/scripts/coach.py", names)
+        self.assertIn("dsa-coach/scripts/session_lock.py", names)
         self.assertFalse(any("__pycache__" in n for n in names))
 
     def test_install_into_a_copy_of_the_workspace(self):

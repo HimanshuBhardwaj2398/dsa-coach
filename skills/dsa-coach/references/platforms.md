@@ -19,6 +19,10 @@ Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connec
 
 `python3 app/server.py` from the workspace opens a local page with a stage panel, an editor without autocomplete and a test runner. The server saves the attempt file and the statement (`problems/<slug>/problem.md`, fetched from LeetCode when a solve opens without one, or pasted; git ignores it) itself and asks `coach.py` for everything else (stages, notes, logging), so the chat in Claude Code or Codex sees every stage and note. Test runs aren't recorded. It listens on 127.0.0.1 only, prints the `http://127.0.0.1:<port>/` URL and opens it in the browser (`--no-browser` skips that). Pass `--port` for another port and `--root` for another notebook.
 
+The app saves pending examples before Run. If inputs change while it saves, Run asks you to try again. Browser requests carry a session identity, so actions from an ended solve cannot change a new solve. `coach.py solve stage|hint|note|break|block|end` accepts optional `--expected-session ID`; existing chat commands without it still work. All cooperating solve writers use `sessions/.solve.lock`, with a bounded wait. Keep `scripts/session_lock.py` beside `coach.py` in standalone installs.
+
+Unsaved work is kept as a draft in this browser. After a reload, choose Restore, Copy, or Discard; restoring does not overwrite notebook files, and a later Save still checks for external edits. Earlier sessions can only be copied or discarded. Code, stage answers, predicted examples and edge flags, plan cards, statement drafts, and stage-8 outcome/lesson are covered. A draft is separate from a notebook save and never grants learning credit. Browser storage is scoped to the origin: use the same browser, host and port to recover it. Clearing browser data or changing ports does not transfer drafts. If storage is unavailable, the page explains that you must save before closing.
+
 ### Standalone setup
 
 The ZIP contains the `dsa-coach/` skill folder, without learner data, the optional pane plugin or the study app (`app/` in the workspace). Extract it into the host's skills directory and run its `scripts/coach.py` from there.

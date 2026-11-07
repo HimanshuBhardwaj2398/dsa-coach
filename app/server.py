@@ -9,6 +9,8 @@ problem.md can be fetched from LeetCode (app/statement.py), one problem at a tim
 from __future__ import annotations
 
 import argparse
+import hashlib
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -32,6 +34,8 @@ import statement  # noqa: E402
 REPO = APP.parent
 COACH = REPO / "skills" / "dsa-coach" / "scripts" / "coach.py"
 STATIC = APP / "static"
+sys.path.insert(0, str(COACH.parent))
+from session_lock import session_lock, session_identity  # noqa: E402
 SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,254}")  # used with fullmatch; 255 is the longest name a folder can have
 HOSTS = {"127.0.0.1", "localhost"}
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
@@ -56,7 +60,7 @@ class Coach:
                               capture_output=True, text=True, env=self.env)
         if proc.returncode != 0:  # the status goes by how coach.py's message starts, not by a value it quotes
             message = (proc.stderr or proc.stdout).strip().removeprefix("error: ")
-            status = 409 if message.startswith("a solve is already live") else \
+            status = 409 if message.startswith(("a solve is already live", "the solve changed", "the solve is busy")) else \
                 404 if message.startswith("no live solve") else 400
             raise ApiError(status, message)
         return proc.stdout.strip()
@@ -88,9 +92,34 @@ def live_solve(coach: Coach) -> dict:
     return live
 
 
+@contextmanager
+def checked_solve(coach, data):
+    expected = need(data, "session_id", str)
+    try:
+        with session_lock(coach.root):
+            path = coach.root / "sessions" / "current.json"
+            live = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+            if live is None or session_identity(live) != expected:
+                raise ApiError(409, "the solve changed; refresh before trying again", {"stale_session": True})
+            yield live
+    except TimeoutError as exc:
+        raise ApiError(409, str(exc)) from None
+
+
 def read_attempt(path: Path, live: dict) -> dict:
-    text = path.read_text(encoding="utf-8")
-    out = {"file": live["file"], "path": str(path), "text": text, "mtime": path.stat().st_mtime_ns,
+    # Read text and metadata from one descriptor. Atomic path replacement cannot pair old bytes with a new mtime.
+    for _ in range(3):
+        with path.open("rb") as fh:
+            before = os.fstat(fh.fileno())
+            raw = fh.read()
+            after = os.fstat(fh.fileno())
+        if (before.st_mtime_ns, before.st_size) == (after.st_mtime_ns, after.st_size):
+            break
+    else:
+        raise ApiError(409, "the attempt is changing on disk; try again")
+    text = raw.decode("utf-8")
+    out = {"file": live["file"], "path": str(path), "text": text, "mtime": after.st_mtime_ns,
+           "revision": hashlib.sha256(raw).hexdigest(), "session_id": session_identity(live),
            "plan_card": attempt_file.read_plan_card(text), "examples": [], "examples_error": None}
     try:
         out["examples"] = attempt_file.read_examples(text)
@@ -127,9 +156,10 @@ def write_checked(path: Path, live: dict, text: str, d: dict) -> dict:
     """Write unless the file changed on disk since the page loaded it (pass force to overwrite anyway).
     A save that leaves the file as it is isn't a conflict."""
     with WRITE:
-        if not d.get("force") and not same_mtime(d.get("mtime"), path.stat().st_mtime_ns) \
-                and path.read_text(encoding="utf-8") != text:
-            raise ApiError(409, "the attempt file changed on disk since you loaded it", read_attempt(path, live))
+        disk = read_attempt(path, live)
+        matches = d["revision"] == disk["revision"] if "revision" in d else same_mtime(d.get("mtime"), disk["mtime"])
+        if not d.get("force") and not matches and disk["text"] != text:
+            raise ApiError(409, "the attempt file changed on disk since you loaded it", disk)
         write_whole(path, text)
         return read_attempt(path, live)
 
@@ -137,7 +167,7 @@ def write_checked(path: Path, live: dict, text: str, d: dict) -> dict:
 # routes -----------------------------------------------------------------------
 def get_state(coach, q):
     live = coach.json("solve", "show")
-    state = {"live": live, "next": None, "due": None, "attempt_mtime": None}
+    state = {"notebook_id": hashlib.sha256(str(coach.root.resolve()).encode()).hexdigest(), "live": live, "next": None, "due": None, "attempt_mtime": None}
     if live:
         path = coach.root / live["file"]
         state["attempt_mtime"] = path.stat().st_mtime_ns if path.exists() else None
@@ -147,35 +177,34 @@ def get_state(coach, q):
 
 
 def get_attempt(coach, q):
-    live = live_solve(coach)
-    return read_attempt(coach.root / live["file"], live)
+    with checked_solve(coach, q) as live:
+        return read_attempt(coach.root / live["file"], live)
 
 
 def put_attempt(coach, d):
-    live = live_solve(coach)
-    return write_checked(coach.root / live["file"], live, need(d, "text", str, blank_ok=True), d)
+    with checked_solve(coach, d) as live:
+        return write_checked(coach.root / live["file"], live, need(d, "text", str, blank_ok=True), d)
 
 
 def put_parts(coach, d):
-    live = live_solve(coach)
-    card, rows = d.get("plan_card", {}), d.get("examples", [])
-    if not isinstance(card, dict) or not all(isinstance(v, str) for v in card.values()):
-        raise ApiError(400, "plan_card must be an object whose values are text")
-    if not isinstance(rows, list) or not all(
-            isinstance(r, dict) and isinstance(r.get("args"), str) and isinstance(r.get("expected"), str)
-            and isinstance(r.get("edge", False), bool) for r in rows):
-        raise ApiError(400, "each example must be an object with args and expected as text, and edge true or false")
-    path = coach.root / live["file"]
-    text = path.read_text(encoding="utf-8")
-    try:
-        if "plan_card" in d:
-            text = attempt_file.write_plan_card(text, card)
-        if "examples" in d:
-            text = attempt_file.write_examples(text, rows)
-    except ValueError as e:
-        raise ApiError(400, str(e))
-    return write_checked(path, live, text, d)
-
+    with checked_solve(coach, d) as live:
+        card, rows = d.get("plan_card", {}), d.get("examples", [])
+        if not isinstance(card, dict) or not all(isinstance(v, str) for v in card.values()):
+            raise ApiError(400, "plan_card must be an object whose values are text")
+        if not isinstance(rows, list) or not all(
+                isinstance(r, dict) and isinstance(r.get("args"), str) and isinstance(r.get("expected"), str)
+                and isinstance(r.get("edge", False), bool) for r in rows):
+            raise ApiError(400, "each example must be an object with args and expected as text, and edge true or false")
+        path = coach.root / live["file"]
+        text = path.read_text(encoding="utf-8")
+        try:
+            if "plan_card" in d:
+                text = attempt_file.write_plan_card(text, card)
+            if "examples" in d:
+                text = attempt_file.write_examples(text, rows)
+        except ValueError as e:
+            raise ApiError(400, str(e))
+        return write_checked(path, live, text, d)
 
 def post_start(coach, d):  # --name=value, so a value such as "--unlabeled" can't be read as an option
     args = ["solve", "start", f"--problem={need(d, 'problem', str).strip().lower()}",
@@ -189,24 +218,24 @@ def post_start(coach, d):  # --name=value, so a value such as "--unlabeled" can'
 
 
 def post_stage(coach, d):
-    return {"message": coach.run("solve", "stage", str(need(d, "n", int)))}
+    return {"message": coach.run("solve", "stage", str(need(d, "n", int)), "--expected-session", need(d, "session_id", str))}
 
 
 def post_note(coach, d):
     stage, text = need(d, "stage", int), need(d, "text", str, blank_ok=True)
-    return {"message": coach.run("solve", "note", "--stage", str(stage), f"--text={text}")}
+    return {"message": coach.run("solve", "note", "--stage", str(stage), f"--text={text}", "--expected-session", need(d, "session_id", str))}
 
 
 def post_break(coach, d):
-    return {"message": coach.run("solve", "break")}
+    return {"message": coach.run("solve", "break", "--expected-session", need(d, "session_id", str))}
 
 
 def post_block(coach, d):
-    return {"message": coach.run("solve", "block")}
+    return {"message": coach.run("solve", "block", "--expected-session", need(d, "session_id", str))}
 
 
 def post_end(coach, d):
-    args = ["solve", "end", f"--outcome={need(d, 'outcome', str)}"]
+    args = ["solve", "end", f"--outcome={need(d, 'outcome', str)}", "--expected-session", need(d, "session_id", str)]
     if d.get("note"):
         args.append(f"--note={d['note']}")
     return {"message": coach.run(*args)}
@@ -239,7 +268,9 @@ def post_problem_fetch(coach, d):
 
 
 def post_run(coach, d):
-    return runner.run(coach.root / live_solve(coach)["file"])
+    with checked_solve(coach, d) as live:
+        path, identity = coach.root / live["file"], session_identity(live)
+    return {**runner.run(path), "session_id": identity}
 
 
 ROUTES = {
@@ -316,7 +347,7 @@ def make_handler(coach: Coach):
                     {k: v[0] for k, v in parse_qs(url.query).items()}
                 self.send(200, route(coach, data))
             except ApiError as e:
-                self.send(e.status, {"error": e.message, **e.extra})
+                self.send(e.status, {"error": e.message, "stale_session": e.message.startswith("the solve changed"), **e.extra})
             except ConnectionError:  # the page went away (a reload, a closed tab): there's no one to answer
                 return
             except Exception as e:  # a bug, or a file changed under it: the page still gets an answer to show

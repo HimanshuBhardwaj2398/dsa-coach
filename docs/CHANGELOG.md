@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.2 · 2026-11-07
+
+Practice saves, session ownership, and browser recovery.
+
+- **Run:** saves pending code and stage examples before execution. A failed save or typing during preparation stops the run with a retry message. Late save responses preserve newer typing.
+- **Session identity:** browser actions carry the solve they were started for; stale actions, including forced overwrites, cannot affect a replacement solve. The CLI accepts optional `--expected-session` on solve mutations while retaining existing chat commands.
+- **Cooperating writes:** a bounded cross-process lock serializes solve mutations and app attempt operations. Content revisions detect external edits, including edits that preserve a file timestamp.
+- **Draft recovery:** local browser drafts preserve code, stage fields, examples, plan cards, statement drafts, and finish fields. Restore is explicit and retains conflict checks; ended sessions are copy-only. Drafts do not count as notebook saves or completed attempts.
+- **Portability:** POSIX locking is tested on macOS. The standard-library Windows branch is implemented but has not been runtime-verified on this host.
+
+A calmer Solve tab (page only; the server, API and files are unchanged).
+
+- **Layout:** two panes. On the left, the Description, Stage and Notes tabs. On the right, the editor above a collapsible console. The bar has the problem (its path on hover), eight stage dots with the stage's name, the timer, and Ask coach, Save and Run; unsaved code shows as a dot on Run. The hint rung appears once a hint is used.
+- **Editor:** on load, the plan-card docstring, EXAMPLES and the run block fold into one-line markers. They are still in the file, and a fold he opens stays open across saves and polls.
+- **Console:** Testcases shows a chip per EXAMPLES row, edge rows marked. After Run, Result gives a verdict and a pass/fail chip per case, with its input, error, output, expected value and stdout. Tracebacks keep only the attempt file's frames.
+- **Description:** renders the fetched statement (examples as blocks, constraints as a list) and reads `problem.md` again each time the tab opens. A first load with no statement opens on it, with the fetch/paste flow.
+- **Timer:** an overrun block reads "over by 9 h 47 min", not "593 of 15 min", and clicking it brings back the end-of-block choices after the banner is closed.
+- **Start screen:** one card with the next pick. Pattern and the due line are under More options.
+- **Design context:** `PRODUCT.md` records who the page is for and the principles it follows.
+
 ## 0.5.1 · 2026-11-07
 
 The Solve tab fetches the problem statement.
