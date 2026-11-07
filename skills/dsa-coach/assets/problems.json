@@ -1,0 +1,1346 @@
+{
+ "arrays-hashing": [
+  {
+   "slug": "contains-duplicate",
+   "title": "Contains Duplicate",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "valid-anagram",
+   "title": "Valid Anagram",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "two-sum",
+   "title": "Two Sum",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "group-anagrams",
+   "title": "Group Anagrams",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "top-k-frequent-elements",
+   "title": "Top K Frequent Elements",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "encode-and-decode-strings",
+   "title": "Encode and Decode Strings",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "product-of-array-except-self",
+   "title": "Product of Array Except Self",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "valid-sudoku",
+   "title": "Valid Sudoku",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-consecutive-sequence",
+   "title": "Longest Consecutive Sequence",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  }
+ ],
+ "two-pointers": [
+  {
+   "slug": "valid-palindrome",
+   "title": "Valid Palindrome",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "two-sum-ii-input-array-is-sorted",
+   "title": "Two Sum II - Input Array Is Sorted",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "3sum",
+   "title": "3Sum",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "container-with-most-water",
+   "title": "Container With Most Water",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "trapping-rain-water",
+   "title": "Trapping Rain Water",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "sliding-window": [
+  {
+   "slug": "best-time-to-buy-and-sell-stock",
+   "title": "Best Time to Buy and Sell Stock",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-substring-without-repeating-characters",
+   "title": "Longest Substring Without Repeating Characters",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-repeating-character-replacement",
+   "title": "Longest Repeating Character Replacement",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "permutation-in-string",
+   "title": "Permutation in String",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "minimum-window-substring",
+   "title": "Minimum Window Substring",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "sliding-window-maximum",
+   "title": "Sliding Window Maximum",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "prefix-sums": [
+  {
+   "slug": "range-sum-query-immutable",
+   "title": "Range Sum Query - Immutable",
+   "difficulty": "easy",
+   "lists": [
+    "roadmap"
+   ]
+  },
+  {
+   "slug": "subarray-sum-equals-k",
+   "title": "Subarray Sum Equals K",
+   "difficulty": "medium",
+   "lists": [
+    "roadmap"
+   ]
+  },
+  {
+   "slug": "continuous-subarray-sum",
+   "title": "Continuous Subarray Sum",
+   "difficulty": "medium",
+   "lists": [
+    "roadmap"
+   ]
+  }
+ ],
+ "stack": [
+  {
+   "slug": "valid-parentheses",
+   "title": "Valid Parentheses",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "min-stack",
+   "title": "Min Stack",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "evaluate-reverse-polish-notation",
+   "title": "Evaluate Reverse Polish Notation",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "generate-parentheses",
+   "title": "Generate Parentheses",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "daily-temperatures",
+   "title": "Daily Temperatures",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "car-fleet",
+   "title": "Car Fleet",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "largest-rectangle-in-histogram",
+   "title": "Largest Rectangle in Histogram",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "binary-search": [
+  {
+   "slug": "binary-search",
+   "title": "Binary Search",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "search-a-2d-matrix",
+   "title": "Search a 2D Matrix",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "koko-eating-bananas",
+   "title": "Koko Eating Bananas",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "find-minimum-in-rotated-sorted-array",
+   "title": "Find Minimum in Rotated Sorted Array",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "search-in-rotated-sorted-array",
+   "title": "Search in Rotated Sorted Array",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "time-based-key-value-store",
+   "title": "Time Based Key-Value Store",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "median-of-two-sorted-arrays",
+   "title": "Median of Two Sorted Arrays",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "linked-list": [
+  {
+   "slug": "reverse-linked-list",
+   "title": "Reverse Linked List",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "merge-two-sorted-lists",
+   "title": "Merge Two Sorted Lists",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "linked-list-cycle",
+   "title": "Linked List Cycle",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "reorder-list",
+   "title": "Reorder List",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "remove-nth-node-from-end-of-list",
+   "title": "Remove Nth Node From End of List",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "copy-list-with-random-pointer",
+   "title": "Copy List with Random Pointer",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "add-two-numbers",
+   "title": "Add Two Numbers",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "find-the-duplicate-number",
+   "title": "Find the Duplicate Number",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "lru-cache",
+   "title": "LRU Cache",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "merge-k-sorted-lists",
+   "title": "Merge k Sorted Lists",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "reverse-nodes-in-k-group",
+   "title": "Reverse Nodes in k-Group",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "trees": [
+  {
+   "slug": "invert-binary-tree",
+   "title": "Invert Binary Tree",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "maximum-depth-of-binary-tree",
+   "title": "Maximum Depth of Binary Tree",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "diameter-of-binary-tree",
+   "title": "Diameter of Binary Tree",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "balanced-binary-tree",
+   "title": "Balanced Binary Tree",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "same-tree",
+   "title": "Same Tree",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "subtree-of-another-tree",
+   "title": "Subtree of Another Tree",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "lowest-common-ancestor-of-a-binary-search-tree",
+   "title": "Lowest Common Ancestor of a Binary Search Tree",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "binary-tree-level-order-traversal",
+   "title": "Binary Tree Level Order Traversal",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "binary-tree-right-side-view",
+   "title": "Binary Tree Right Side View",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "count-good-nodes-in-binary-tree",
+   "title": "Count Good Nodes in Binary Tree",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "validate-binary-search-tree",
+   "title": "Validate Binary Search Tree",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "kth-smallest-element-in-a-bst",
+   "title": "Kth Smallest Element in a BST",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "construct-binary-tree-from-preorder-and-inorder-traversal",
+   "title": "Construct Binary Tree from Preorder and Inorder Traversal",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "binary-tree-maximum-path-sum",
+   "title": "Binary Tree Maximum Path Sum",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "serialize-and-deserialize-binary-tree",
+   "title": "Serialize and Deserialize Binary Tree",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  }
+ ],
+ "heap": [
+  {
+   "slug": "kth-largest-element-in-a-stream",
+   "title": "Kth Largest Element in a Stream",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "last-stone-weight",
+   "title": "Last Stone Weight",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "k-closest-points-to-origin",
+   "title": "K Closest Points to Origin",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "kth-largest-element-in-an-array",
+   "title": "Kth Largest Element in an Array",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "task-scheduler",
+   "title": "Task Scheduler",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "design-twitter",
+   "title": "Design Twitter",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "find-median-from-data-stream",
+   "title": "Find Median from Data Stream",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  }
+ ],
+ "backtracking": [
+  {
+   "slug": "subsets",
+   "title": "Subsets",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "combination-sum",
+   "title": "Combination Sum",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "combination-sum-ii",
+   "title": "Combination Sum II",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "permutations",
+   "title": "Permutations",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "subsets-ii",
+   "title": "Subsets II",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "word-search",
+   "title": "Word Search",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "palindrome-partitioning",
+   "title": "Palindrome Partitioning",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "letter-combinations-of-a-phone-number",
+   "title": "Letter Combinations of a Phone Number",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "n-queens",
+   "title": "N-Queens",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "graphs": [
+  {
+   "slug": "number-of-islands",
+   "title": "Number of Islands",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "max-area-of-island",
+   "title": "Max Area of Island",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "clone-graph",
+   "title": "Clone Graph",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "walls-and-gates",
+   "title": "Walls and Gates",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "rotting-oranges",
+   "title": "Rotting Oranges",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "pacific-atlantic-water-flow",
+   "title": "Pacific Atlantic Water Flow",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "surrounded-regions",
+   "title": "Surrounded Regions",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "course-schedule",
+   "title": "Course Schedule",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "course-schedule-ii",
+   "title": "Course Schedule II",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "graph-valid-tree",
+   "title": "Graph Valid Tree",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "number-of-connected-components-in-an-undirected-graph",
+   "title": "Number of Connected Components in an Undirected Graph",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "redundant-connection",
+   "title": "Redundant Connection",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "word-ladder",
+   "title": "Word Ladder",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "tries": [
+  {
+   "slug": "implement-trie-prefix-tree",
+   "title": "Implement Trie (Prefix Tree)",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "design-add-and-search-words-data-structure",
+   "title": "Design Add and Search Words Data Structure",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "word-search-ii",
+   "title": "Word Search II",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  }
+ ],
+ "intervals": [
+  {
+   "slug": "insert-interval",
+   "title": "Insert Interval",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "merge-intervals",
+   "title": "Merge Intervals",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "non-overlapping-intervals",
+   "title": "Non-overlapping Intervals",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "meeting-rooms",
+   "title": "Meeting Rooms",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "meeting-rooms-ii",
+   "title": "Meeting Rooms II",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "minimum-interval-to-include-each-query",
+   "title": "Minimum Interval to Include Each Query",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "greedy": [
+  {
+   "slug": "maximum-subarray",
+   "title": "Maximum Subarray",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "jump-game",
+   "title": "Jump Game",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "jump-game-ii",
+   "title": "Jump Game II",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "gas-station",
+   "title": "Gas Station",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "hand-of-straights",
+   "title": "Hand of Straights",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "merge-triplets-to-form-target-triplet",
+   "title": "Merge Triplets to Form Target Triplet",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "partition-labels",
+   "title": "Partition Labels",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "valid-parenthesis-string",
+   "title": "Valid Parenthesis String",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "1d-dp": [
+  {
+   "slug": "climbing-stairs",
+   "title": "Climbing Stairs",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "min-cost-climbing-stairs",
+   "title": "Min Cost Climbing Stairs",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "house-robber",
+   "title": "House Robber",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "house-robber-ii",
+   "title": "House Robber II",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-palindromic-substring",
+   "title": "Longest Palindromic Substring",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "palindromic-substrings",
+   "title": "Palindromic Substrings",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "decode-ways",
+   "title": "Decode Ways",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "coin-change",
+   "title": "Coin Change",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "maximum-product-subarray",
+   "title": "Maximum Product Subarray",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "word-break",
+   "title": "Word Break",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-increasing-subsequence",
+   "title": "Longest Increasing Subsequence",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "partition-equal-subset-sum",
+   "title": "Partition Equal Subset Sum",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "combination-sum-iv",
+   "title": "Combination Sum IV",
+   "difficulty": "medium",
+   "lists": [
+    "blind75"
+   ]
+  }
+ ],
+ "2d-dp": [
+  {
+   "slug": "unique-paths",
+   "title": "Unique Paths",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-common-subsequence",
+   "title": "Longest Common Subsequence",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "best-time-to-buy-and-sell-stock-with-cooldown",
+   "title": "Best Time to Buy and Sell Stock with Cooldown",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "coin-change-ii",
+   "title": "Coin Change II",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "target-sum",
+   "title": "Target Sum",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "interleaving-string",
+   "title": "Interleaving String",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "longest-increasing-path-in-a-matrix",
+   "title": "Longest Increasing Path in a Matrix",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "distinct-subsequences",
+   "title": "Distinct Subsequences",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "edit-distance",
+   "title": "Edit Distance",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "burst-balloons",
+   "title": "Burst Balloons",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "regular-expression-matching",
+   "title": "Regular Expression Matching",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "advanced-graphs": [
+  {
+   "slug": "reconstruct-itinerary",
+   "title": "Reconstruct Itinerary",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "min-cost-to-connect-all-points",
+   "title": "Min Cost to Connect All Points",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "network-delay-time",
+   "title": "Network Delay Time",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "swim-in-rising-water",
+   "title": "Swim in Rising Water",
+   "difficulty": "hard",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "alien-dictionary",
+   "title": "Alien Dictionary",
+   "difficulty": "hard",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "cheapest-flights-within-k-stops",
+   "title": "Cheapest Flights Within K Stops",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "math-geometry": [
+  {
+   "slug": "rotate-image",
+   "title": "Rotate Image",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "spiral-matrix",
+   "title": "Spiral Matrix",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "set-matrix-zeroes",
+   "title": "Set Matrix Zeroes",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "happy-number",
+   "title": "Happy Number",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "plus-one",
+   "title": "Plus One",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "powx-n",
+   "title": "Pow(x, n)",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "multiply-strings",
+   "title": "Multiply Strings",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "detect-squares",
+   "title": "Detect Squares",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ],
+ "bit-manipulation": [
+  {
+   "slug": "single-number",
+   "title": "Single Number",
+   "difficulty": "easy",
+   "lists": [
+    "nc150"
+   ]
+  },
+  {
+   "slug": "number-of-1-bits",
+   "title": "Number of 1 Bits",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "counting-bits",
+   "title": "Counting Bits",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "reverse-bits",
+   "title": "Reverse Bits",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "missing-number",
+   "title": "Missing Number",
+   "difficulty": "easy",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "sum-of-two-integers",
+   "title": "Sum of Two Integers",
+   "difficulty": "medium",
+   "lists": [
+    "blind75",
+    "nc150"
+   ]
+  },
+  {
+   "slug": "reverse-integer",
+   "title": "Reverse Integer",
+   "difficulty": "medium",
+   "lists": [
+    "nc150"
+   ]
+  }
+ ]
+}

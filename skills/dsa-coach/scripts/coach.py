@@ -53,6 +53,7 @@ CARD_TYPES = ["trigger", "invariant", "trap", "complexity", "bug", "pytrap", "tr
 GRADES = ["pass", "fail"]
 TIMED_MODES = ("practice", "review", "mock")
 LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purpose, never picked by `next`
+LISTS = ("blind75", "nc150", "roadmap")  # problems.json: the two lists, or a canonical problem outside both
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
 STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase)
@@ -167,6 +168,40 @@ def load_roadmap() -> dict:
     if data is None:
         die(f"missing {ASSETS / 'roadmap.json'}")
     return data
+
+
+def load_catalogue() -> dict:
+    data = read_json(ASSETS / "problems.json", None)
+    if data is None:
+        die(f"missing {ASSETS / 'problems.json'}")
+    return data
+
+
+def catalogue_issues(catalogue: dict, roadmap: dict) -> list:
+    """What in problems.json doesn't fit the roadmap or the format: for validate."""
+    issues, seen = [], set()
+    patterns = {p["key"]: p for p in roadmap["patterns"]}
+    issues += [f"problems.json: {key} isn't a roadmap pattern" for key in catalogue if key not in patterns]
+    for key, p in patterns.items():
+        listed = {r.get("slug") for r in catalogue.get(key, [])}
+        if key not in LONG_FORMATS:
+            issues += [f"problems.json: {key} lacks its canonical problem {s}"
+                       for s in p.get("canonical", []) if s not in listed]
+    for key, rows in catalogue.items():
+        for r in rows:
+            slug = r.get("slug", "")
+            if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", slug):
+                issues.append(f"problems.json: bad slug {slug!r} in {key}")
+            elif slug in seen:
+                issues.append(f"problems.json: {slug} is listed twice")
+            seen.add(slug)
+            if not r.get("title"):
+                issues.append(f"problems.json: {slug} has no title")
+            if r.get("difficulty") not in DIFFICULTIES:
+                issues.append(f"problems.json: {slug} has difficulty {r.get('difficulty')!r}")
+            if not r.get("lists") or set(r["lists"]) - set(LISTS):
+                issues.append(f"problems.json: {slug} has lists {r.get('lists')}")
+    return issues
 
 
 def pattern_keys() -> list:
@@ -1647,6 +1682,7 @@ def cmd_validate(args) -> None:
     keys = [p["key"] for p in roadmap["patterns"]]
     if len(keys) != len(set(keys)):
         issues.append("roadmap.json has duplicate pattern keys")
+    issues += catalogue_issues(load_catalogue(), roadmap)
     root = None
     try:
         root = find_root(args.root) if (args.root or os.environ.get("DSA_NOTEBOOK") or (Path.cwd() / "notebook" / "config.json").exists() or (WORKSPACE / "notebook" / "config.json").exists()) else None
