@@ -262,3 +262,38 @@ table.examples td:last-child button { background: transparent; border-color: tra
   #console { height: auto; }
   .start-card .row { grid-template-columns: 1fr; }
 }
+
+/* --- views: body[data-view] is set by nav.js --- */
+body:not([data-view=solve]) #start, body:not([data-view=solve]) #solve,
+body:not([data-view=solve]) #progress, body:not([data-view=solve]) #actions { display: none !important; }
+body:not([data-view=map]) #map, body:not([data-view=learn]) #learn { display: none !important; }
+#home { color: var(--muted); text-decoration: none; font-weight: 600; }
+#home:hover { color: var(--fg); }
+
+#map, #learn { flex: 1; overflow: auto; padding: 24px; }
+.next-strip { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; max-width: 960px; margin-bottom: 24px; }
+.next-strip p { margin: 0; }
+.weeks { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); gap: 16px; overflow-x: auto; padding-bottom: 12px; }
+.week { display: flex; flex-direction: column; gap: 8px; }
+.node { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+        background: var(--bg); color: var(--fg); text-decoration: none; transition: border-color .15s var(--ease); }
+a.node:hover { border-color: var(--accent); }
+.node .status, .node .meta { font-size: 12px; color: var(--muted); }
+.node .due { font-size: 12px; color: var(--nudge); font-weight: 600; }
+.node.stub { border-style: dashed; color: var(--muted); }
+.node.s-learning .status, .node.s-exploring .status { color: var(--nudge); }
+.node.s-practicing .status, .node.s-retained .status, .node.s-ready .status { color: var(--ok); }
+
+.learn { max-width: 760px; }
+.learn h1 { font-size: 26px; margin: 4px 0 12px; }
+.learn h2 { font-size: 15px; margin: 22px 0 6px; }
+.learn pre { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.learn .explainer { margin: 24px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+a.button { display: inline-block; padding: 7px 14px; border-radius: 6px; text-decoration: none; }
+a.button.primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+table.problems td, table.problems th { padding: 7px 6px; border-bottom: 1px solid var(--line); }
+table.problems .tag { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--accent); }
+@media (max-width: 860px) {
+  #map, #learn { padding: 16px; }
+  .weeks { grid-auto-flow: row; grid-auto-columns: auto; }
+}
