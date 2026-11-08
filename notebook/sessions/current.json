@@ -14,15 +14,23 @@
   "blocks": [
     {
       "start": "2026-11-07T01:14:45+05:30",
-      "end": "2026-11-07T11:40:26+05:30"
+      "end": "2026-11-07T01:29:45+05:30",
+      "paused": 0
     },
     {
       "start": "2026-11-07T11:40:26+05:30",
-      "end": "2026-11-07T18:09:40+05:30"
+      "end": "2026-11-07T11:55:26+05:30",
+      "paused": 0
     },
     {
       "start": "2026-11-07T18:09:40+05:30",
-      "end": null
+      "end": "2026-11-07T18:24:40+05:30",
+      "paused": 0
+    },
+    {
+      "start": "2026-11-08T12:29:16+05:30",
+      "end": null,
+      "paused": 0
     }
   ],
   "started": "2026-11-07T01:14:45+05:30",
@@ -31,5 +39,7 @@
     "1": "The problem is searching the element in remaining list, and scanning is o(n) so we will use hash set here",
     "2": "If element occurs more than once we have a True case, we will check an element against every other element of the list",
     "3": "Outermost line will run n times and inner will run n-i times where i is the position of element against which we are checking ...\n\nSo, other number of iterations will be : n(n-i) from i 1 to n where n is lenght of list"
-  }
+  },
+  "resumed": "2026-11-08T12:29:16+05:30",
+  "last_active": "2026-11-08T12:29:16+05:30"
 }
