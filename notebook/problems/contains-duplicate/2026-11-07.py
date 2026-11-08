@@ -31,8 +31,9 @@ class Solution:
 # Stage 1: your predicted examples, one per line: ((args, ...), expected). Mark edge cases with "# edge".
 # One input needs a trailing comma: (([7, 1, 5, 3, 6, 4],), 5).
 EXAMPLES = [
-    (([1,2,3,4],), False),
+    (([1,2,3,4],), False),  # edge
     (([1,1,2,2,3,4,5,6],), True),
+    (([4],), False),  # edge
 ]
 
 

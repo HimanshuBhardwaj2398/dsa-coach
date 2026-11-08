@@ -1,7 +1,7 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-07 by coach.py snapshot · skill 0.6.0
+DSA COACH LEARNER SUMMARY · generated 2026-11-08 by coach.py snapshot · skill 0.6.0
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
-Plan: day 9 of 90, week 2 of 12, phase Foundations, target date 2027-01-28
+Plan: day 10 of 90, week 2 of 12, phase Foundations, target date 2027-01-28
 Focus: Binary Search (learning)
 
 Patterns started (status, attempted/unaided/retained/ready of target):
@@ -12,7 +12,7 @@ Patterns started (status, attempted/unaided/retained/ready of target):
 - Binary Search: learning, 1/0/0/0 of 7
 Other concepts: python-collections
 
-Due today: 16 re-solve(s) [contains-duplicate, valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings], 0 card(s), 7 draft card(s), 0 inbox delta(s)
+Due today: 17 re-solve(s) [contains-duplicate, valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings], 0 card(s), 7 draft card(s), 0 inbox delta(s)
 Weak spots (30 days): boundary×1, process×1
 Calibration: avg confidence before unaided solves n/a, before other attempts 3.0; high-confidence misses: none
 Last session: 2026-11-06: Logged 16 prior Blind 75 solves (two-sum unaided, 15 assisted); started Binary Search: binary-search solved with rung 2 (left < right missed the last candida...
