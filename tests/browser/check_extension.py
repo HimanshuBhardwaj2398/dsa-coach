@@ -57,8 +57,10 @@ def main():
                     str(Path(temp) / "browser"), channel="chromium", headless=True,
                     args=[f"--disable-extensions-except={extension}", f"--load-extension={extension}"],
                     viewport={"width": 390, "height": 844})
+                editor = ("<script>window.monaco = {editor: {getEditors: () => [{getModel: () => ({getValue: () => "
+                          "'class Solution:\\n    def twoSum(self, nums, target): ...'})}]}};</script>")
                 context.route("https://leetcode.com/**", lambda route: route.fulfill(
-                    content_type="text/html", body="<h1>LeetCode fixture</h1>"))
+                    content_type="text/html", body=editor + "<h1>LeetCode fixture</h1>"))
                 context.route("**/api/problem/fetch", lambda route: route.fulfill(
                     content_type="application/json", body=json.dumps({"text": "# Two Sum\n\nFind the pair."})))
                 worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker")
@@ -119,6 +121,18 @@ def main():
                     print("Chat status:", workspace.locator("#companion-chat-status").inner_text(), "Page errors:", errors)
                     panel.screenshot(path=str(out / "failure.png"))
                     raise
+                # The rung the reply gave is on the hint ladder, and the RUNG line itself isn't shown.
+                expect(workspace.locator(".message-note")).to_have_text("Hint rung 2 recorded (a nudge for this problem).")
+                expect(workspace.locator("#companion-messages")).not_to_contain_text("RUNG:")
+                assert json.loads(coach("solve", "show", "--json").stdout)["rung"] == 2
+                # The coach asks to look. Without screen access the panel says how to grant it.
+                tap(workspace.locator("#companion-attachment summary"))
+                tap(workspace.locator("#capture-clear"))
+                workspace.locator("#companion-question").fill("Does my layout look right?")
+                tap(workspace.locator("#companion-send"))
+                expect(workspace.locator("#companion-messages")).to_contain_text("I need to see the page. Choose Allow screenshots", timeout=20000)
+                expect(panel.locator("#screen-access")).to_be_visible()
+                expect(workspace.locator("#companion-messages")).not_to_contain_text("[[LOOK]]")
                 tap(workspace.locator("#companion-tab-stages"))
                 note = workspace.locator("#panel textarea").first
                 note.fill("Keep this unsaved reasoning")

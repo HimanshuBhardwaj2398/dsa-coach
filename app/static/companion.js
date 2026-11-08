@@ -3,6 +3,9 @@
 const COMPANION_PARENT = "chrome-extension://fiahbfhmngefgmcnlacogkhhhflfomoh";
 let companionEnabled = false, companionImage = null, companionKey = null, companionBusy = false;
 let captureRequest = null;
+const captures = new Map();  // id -> resolve: captures taken on their own as part of a message, not for the drawer
+const RUNG_NAMES = ["", "a general question", "a nudge for this problem", "name the pattern", "the invariant or state",
+  "a skeleton with blanks", "one concrete sub-step", "the full solution"];
 const companionThreads = new Map();
 const COMPANION_STAGE_NAMES = ["Understand", "Brute force", "Count", "Repeated work", "Choose state", "Plan", "Code", "Look back"];
 let companionTab = "chat", companionPreviewStage = null, companionStageSession = null;
@@ -156,6 +159,7 @@ function renderConversation() {
     const article = elem("article");
     article.className = "message-" + message.role;
     article.append(elem("strong", message.role === "user" ? "You" : "Coach"), elem("p", message.text));
+    if (message.note) article.append(Object.assign(elem("small", message.note), {className: "message-note"}));
     return article;
   }));
   $("companion-scroll").scrollTop = $("companion-scroll").scrollHeight;
@@ -218,31 +222,34 @@ async function companionAsk(question) {
   $("companion-attachment").open = false;
   renderCompanion();
   renderConversation();
-  $("companion-chat-status").textContent = "Coach is thinking…";
   try {
-    const started = await api("POST", "/api/coaching", {
-      problem, session_id: live?.session_id || null, question: prompt,
-      page_text: $("captured-text").value, screenshot: companionImage,
-      history: thread.slice(-12).map(message => ({...message, text: message.text.slice(0, 10000)})),
+    // The code and the end of the page go with every message, read from the LeetCode tab as it is now.
+    $("companion-chat-status").textContent = "Reading the LeetCode page…";
+    const page = await captureNow("context");
+    const ask = screenshot => askCoaching({
+      problem, session_id: live?.session_id || null, question: prompt, code: page.code || "",
+      page_text: [$("captured-text").value, page.text].filter(Boolean).join("\n\n").slice(-24000), screenshot,
+      history: thread.slice(-12).map(message => ({role: message.role, text: message.text.slice(0, 10000)})),
     });
-    const deadline = Date.now() + 200000;
-    while (true) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const result = await api("GET", "/api/coaching?id=" + encodeURIComponent(started.id));
-      if (result.state === "error") throw new Error(result.error);
-      if (result.state === "done") {
-        companionPending = null;
-        thread.push({role: "user", text: prompt}, {role: "assistant", text: result.reply});
-        companionThreads.set(key, thread.slice(-24));
-        if (key === companionIdentity()) {
-          if ($("companion-question").value.trim() === prompt) $("companion-question").value = "";
-          renderConversation();
-          $("companion-chat-status").textContent = "";
-        } else $("companion-chat-status").textContent = "Reply received for the previous problem. Return to it to read the reply.";
-        break;
+    let result = await ask(companionImage);
+    if (result.look) {  // the coach asked to see the screen: take a screenshot and ask once more
+      $("companion-chat-status").textContent = "Coach is looking at the page…";
+      const shot = await captureNow("screenshot");
+      if (shot.screenshot) result = await ask(shot.screenshot);
+      if (!shot.screenshot || result.look) {
+        result = {...result, reply: shot.error ? `I need to see the page. ${shot.error}`
+          : "I couldn't see enough. Paste a screenshot here and ask again."};
       }
-      if (Date.now() > deadline) throw new Error("The coach did not finish. Check the local server and try again.");
     }
+    companionPending = null;
+    const note = result.recorded_rung ? `Hint rung ${result.recorded_rung} recorded (${RUNG_NAMES[result.recorded_rung]}).` : "";
+    thread.push({role: "user", text: prompt}, {role: "assistant", text: result.reply, note});
+    companionThreads.set(key, thread.slice(-24));
+    if (key === companionIdentity()) {
+      if ($("companion-question").value.trim() === prompt) $("companion-question").value = "";
+      renderConversation();
+      $("companion-chat-status").textContent = "";
+    } else $("companion-chat-status").textContent = "Reply received for the previous problem. Return to it to read the reply.";
   } catch (error) {
     $("companion-chat-status").textContent = error.message;
   } finally {
@@ -251,6 +258,32 @@ async function companionAsk(question) {
     renderCompanion();
     renderConversation();
   }
+}
+
+async function askCoaching(body) {
+  $("companion-chat-status").textContent = "Coach is thinking…";
+  const started = await api("POST", "/api/coaching", body);
+  const deadline = Date.now() + 200000;
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await api("GET", "/api/coaching?id=" + encodeURIComponent(started.id));
+    if (result.state === "error") throw new Error(result.error);
+    if (result.state === "done") return result;
+    if (Date.now() > deadline) throw new Error("The coach did not finish. Check the local server and try again.");
+  }
+}
+
+// A capture the coach needs right now. It never fails the message: on any problem it resolves with {error}.
+function captureNow(kind) {
+  if (!companionProblem) return Promise.resolve({error: "No LeetCode problem is open in this window."});
+  const id = crypto.randomUUID(), problem = companionProblem;
+  return new Promise(resolve => {
+    const done = data => { captures.delete(id); resolve(data); };
+    captures.set(id, data => done(data.error ? {error: data.error}
+      : data.slug !== problem || companionProblem !== problem ? {error: "The problem changed."} : data));
+    setTimeout(() => { if (captures.has(id)) done({error: "The LeetCode tab didn't answer."}); }, 10000);
+    window.parent.postMessage({type: "dsa-coach:capture", id, kind}, COMPANION_PARENT);
+  });
 }
 
 function requestCapture(kind) {
@@ -346,6 +379,10 @@ document.addEventListener("DOMContentLoaded", () => {
       companionProblem = slug;
       renderCompanion();
       if (state && !state.live) renderStart();
+    } else if (event.data?.type === "dsa-coach:activity") {
+      touchActivity();
+    } else if (event.data?.type === "dsa-coach:captured" && captures.has(event.data.id)) {
+      captures.get(event.data.id)(event.data);
     } else if (event.data?.type === "dsa-coach:captured" && event.data.id === captureRequest?.id) {
       const requested = captureRequest;
       captureRequest = null;

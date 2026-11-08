@@ -614,6 +614,40 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(args[args.index("--tools") + 1], "")
             self.assertTrue(start.call_args.kwargs["collect"])
 
+    def test_touch_keeps_the_clock_going_and_is_bound_to_the_solve(self):
+        self.start()
+        before = json.loads((self.root / "sessions/current.json").read_text())["last_active"]
+        self.assertEqual(self.call("POST", "/api/solve/touch", {}), (200, {}))
+        self.assertGreaterEqual(json.loads((self.root / "sessions/current.json").read_text())["last_active"], before)
+        self.assertEqual(self.call("POST", "/api/solve/touch", {"session_id": "stale"})[0], 409)
+        self.assertEqual(self.call("POST", "/api/solve/touch", {}, auto_session=False)[0], 400)
+
+    def coaching_reply(self, result):
+        """Ask the panel's coach once and return the finished status, with the CLI's output faked as `result`."""
+        live = self.call("GET", "/api/state")[1]["live"]
+        request = {"problem": live["problem"], "session_id": live["session_id"], "question": "Hint?"}
+        output = json.dumps({"type": "result", "is_error": False, "result": result})
+        with unittest.mock.patch.object(self.server.coach.chat_jobs, "start"):
+            key = self.call("POST", "/api/coaching", request)[1]["id"]
+        with unittest.mock.patch.object(self.server.coach.chat_jobs, "status",
+                                        side_effect=lambda k: {"state": "done", "error": None, "output": output}):
+            first = self.call("GET", f"/api/coaching?id={key}")[1]
+            again = self.call("GET", f"/api/coaching?id={key}")[1]
+        return first, again
+
+    def test_the_rung_a_panel_reply_gives_is_recorded_once_and_never_lowers(self):
+        self.start()
+        first, again = self.coaching_reply("It's a lookup problem: think hash set.\nRUNG: 3")
+        self.assertEqual((first["reply"], first["rung"], first["recorded_rung"]), ("It's a lookup problem: think hash set.", 3, 3))
+        self.assertNotIn("recorded_rung", again)
+        self.assertEqual(self.call("GET", "/api/state")[1]["live"]["rung"], 3)
+        lower, _ = self.coaching_reply("What is the unknown?\nRUNG: 1")
+        self.assertIsNone(lower["recorded_rung"])
+        self.assertEqual(self.call("GET", "/api/state")[1]["live"]["rung"], 3)
+        look, _ = self.coaching_reply("[[LOOK]]\nRUNG: 0")
+        self.assertTrue(look["look"])
+        self.assertNotIn("recorded_rung", look)
+
     def test_a_page_that_went_away_gets_no_500_and_the_terminal_stays_quiet(self):
         """A reload or a closed tab before the answer: writing it raises BrokenPipe or ConnectionReset."""
         handler = self.server.RequestHandlerClass

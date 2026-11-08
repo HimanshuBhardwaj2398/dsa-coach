@@ -18,7 +18,7 @@ const PANE = {
 const T0 = Date.parse('2026-11-05T10:00:00+05:30')
 const MIN = 60_000
 
-const live = (labeled: boolean) =>
+const live = (labeled: boolean, active = { last: '2026-11-05T10:15:00+05:30', paused: 0 }) =>
   JSON.stringify({
     problem: 'two-sum',
     pattern: 'arrays-hashing',
@@ -30,7 +30,8 @@ const live = (labeled: boolean) =>
     stage: 4,
     rung: 2,
     block_minutes: 15,
-    blocks: [{ start: '2026-11-05T10:00:00+05:30', end: null }],
+    blocks: [{ start: '2026-11-05T10:00:00+05:30', end: null, paused: active.paused }],
+    last_active: active.last,
   })
 
 const JOURNEY = JSON.stringify({
@@ -120,6 +121,16 @@ test('a block that runs out is announced once', async ($, on) => {
   expect(toasts[0]).toContain('Focus block 1 is over')
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
   expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 16 of 15 min · block over')
+  await ui.unmount()
+})
+
+test('idle time does not count: the clock stops at the last activity, less paused minutes', async ($, on) => {
+  mock.clock(on, { now: T0 + 30 * MIN })
+  const current = live(false, { last: '2026-11-05T10:10:00+05:30', paused: 120 })
+  engine(on, { ...files(null), 'notebook/sessions/current.json': current })
+  await $.session.start({ cwd: '/ws', surface: 'vscode', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
+  expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 8 of 15 min')
   await ui.unmount()
 })
 

@@ -64,8 +64,21 @@ async function capture(kind) {
   const [tab] = await chrome.tabs.query({active: true, windowId});
   const slug = CoachExtension.problemSlug(tab?.url);
   if (!slug) throw new Error("Open a LeetCode problem in this window first.");
-  let text = "", screenshot = null;
-  if (kind === "text") {
+  let text = "", screenshot = null, code = "";
+  if (kind === "context") {  // with every message: the editor's code and the end of the page (the test results)
+    const [editor] = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: "MAIN", func: () => {
+      try {
+        const m = window.monaco?.editor;
+        return (m?.getEditors?.()[0]?.getModel() || m?.getModels?.()[0])?.getValue() ?? null;
+      } catch { return null; }
+    }});
+    const [page] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => ({
+      lines: [...document.querySelectorAll(".view-lines .view-line")].map(line => line.innerText).join("\n"),
+      text: (document.querySelector("main") || document.body).innerText.slice(-6000),
+    })});
+    code = (editor?.result ?? page?.result?.lines ?? "").slice(0, 24000);
+    text = page?.result?.text || "";
+  } else if (kind === "text") {
     const [result] = await chrome.scripting.executeScript({
       target: {tabId: tab.id},
       func: () => (window.getSelection()?.toString() || document.querySelector("main")?.innerText || document.body.innerText).slice(0, 24000),
@@ -76,12 +89,13 @@ async function capture(kind) {
     try {
       screenshot = await chrome.tabs.captureVisibleTab(windowId, {format: "jpeg", quality: 75});
     } catch {
-      throw new Error("Click the DSA Coach toolbar icon while on LeetCode to allow screenshots, then try again. You can also paste an image here.");
+      document.getElementById("screen-access").hidden = false;
+      throw new Error("Choose Allow screenshots at the top of the panel, then ask again. You can also paste an image here.");
     }
   } else throw new Error("Choose page text or screenshot.");
   const [after] = await chrome.tabs.query({active: true, windowId});
   if (after?.id !== tab.id || after?.url !== tab.url) throw new Error("The tab changed during capture. Try again.");
-  return {slug, text, screenshot};
+  return {slug, text, screenshot, code};
 }
 
 window.addEventListener("message", async event => {
@@ -110,6 +124,17 @@ document.getElementById("settings").addEventListener("submit", async event => {
   const button = event.submitter;
   button.disabled = true;
   try { await connect(address.value); } finally { button.disabled = false; }
+});
+
+// Screenshots need <all_urls> (or a fresh toolbar click); the coach asks for one only when text isn't enough.
+document.getElementById("allow-screen").onclick = async () => {
+  if (await chrome.permissions.request({origins: ["<all_urls>"]})) document.getElementById("screen-access").hidden = true;
+};
+
+// Activity on the LeetCode tab in this window keeps the solve's clock running (activity.js).
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type !== "dsa-coach:activity" || sender.tab?.windowId !== windowId || !sender.tab.active || !ready) return;
+  frame.contentWindow.postMessage({type: "dsa-coach:activity"}, serverOrigin);
 });
 
 chrome.tabs.onActivated.addListener(info => { if (info.windowId === windowId) activeProblem().catch(console.error); });

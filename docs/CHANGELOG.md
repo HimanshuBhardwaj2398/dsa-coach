@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased · 2026-11-07 · Browser companion 0.1.0
+## 0.7.0 · 2026-11-08 · Solve flow (extension 0.2.0)
+
+Focus blocks count active time, coming back is a fresh start, and the panel's coach sees the page and records its hints.
+
+- **Active time:** a block counted wall-clock time, so an open block read "1044 of 15 min" and ending the solve would have logged 2059 minutes. Now five quiet minutes stop the clock at the last activity, and the quiet time is paused out of the block (`paused` seconds per block, `last_active` on the solve). After 30 minutes away the block closes at the last activity and a fresh one starts (`resumed`). Breaks still go by his choice, as `learning-principles.md` asks: nothing is enforced.
+- **Activity:** `coach.py solve touch` (and every solve command) records it. The study app touches on typing and clicks (at most once a minute, visible page only), the browser panel relays typing on the LeetCode tab, and a `UserPromptSubmit` hook touches on each chat message (`install` adds it).
+- **Old solves:** blocks from before 0.7.0 are capped at the block length, so the live solve now reads 45 minutes, not 2059.
+- **Welcome back:** after a long absence the app shows the stage and last note once, and the status line says "back at HH:MM, fresh block". The block-over banner no longer comes back after a reload.
+- **The panel sees the page:** each message carries the code from LeetCode's editor and the end of the page. When that isn't enough, the coach replies `[[LOOK]]`; the panel takes a screenshot and asks again, once. Screenshots without a toolbar click need the optional all-sites permission (one button).
+- **Panel hints on the ladder:** each reply ends with `RUNG: n`. The server strips it and records a higher rung with `solve hint`.
+- **The pane** counts minutes by the same rule.
+
+## 2026-11-07 · Browser companion 0.1.0
 
 - **Browser extension:** `extensions/dsa-coach` adds a Chrome/Edge side panel beside LeetCode. App problem links can open it, and the toolbar opens it directly. The panel follows the current problem without replacing an active solve.
 - **Coaching in the panel:** questions, saved stage answers, plan cards, examples and optional page text/screenshots go to the local Claude CLI. Replies appear in the panel. The coach has no tools and cannot modify code or execute tests. Coding and running remain in LeetCode; final attempt logging remains in the main coach chat.

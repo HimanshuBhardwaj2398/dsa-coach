@@ -20,7 +20,7 @@ from session_lock import session_lock, session_identity
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.6.0"
+SKILL_VERSION = "0.7.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -69,6 +69,8 @@ STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase)
 RUNGS = ["none", "a general question", "a nudge for this problem", "the pattern name", "the invariant or state",
          "a skeleton with blanks", "one concrete sub-step", "the full worked solution"]
 FOCUS_MINUTES = {"easy": 15, "medium": 25, "hard": 25}  # one genuine attempt = one focused block
+IDLE_MINUTES = 5  # quiet this long and the block's clock stops at the last activity
+RESUME_AFTER_MINUTES = 30  # away this long and coming back starts a fresh block
 DEFAULT_CONFIG = {
     "learner": "learner",
     "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -1230,21 +1232,65 @@ def load_live(root: Path, required: bool = True) -> dict | None:
     return live
 
 
-def block_minutes(block: dict, at: datetime) -> float:
+def block_minutes(block: dict, at: datetime, length: int) -> float:
+    """Active minutes in a block: its span less the idle time paused out of it. A block from before 0.7.0
+    (no `paused`) counted wall-clock time, so it is capped at the block length."""
     end = datetime.fromisoformat(block["end"]) if block.get("end") else at
-    return max(0.0, (end - datetime.fromisoformat(block["start"])).total_seconds() / 60)
+    minutes = max(0.0, (end - datetime.fromisoformat(block["start"])).total_seconds() / 60 - block.get("paused", 0) / 60)
+    return minutes if "paused" in block else min(minutes, length)
+
+
+def last_activity(live: dict) -> datetime:
+    if live.get("last_active"):
+        return datetime.fromisoformat(live["last_active"])
+    last = live["blocks"][-1]  # a solve from before 0.7.0: assume its last block ran no longer than its length
+    if last.get("end"):
+        return datetime.fromisoformat(last["end"])
+    return datetime.fromisoformat(last["start"]) + timedelta(minutes=live["block_minutes"])
+
+
+def counted_until(live: dict, at: datetime) -> datetime:
+    """The clock runs while he is active; after IDLE_MINUTES of quiet it stops at his last activity."""
+    last = last_activity(live)
+    return at if at - last <= timedelta(minutes=IDLE_MINUTES) else last
+
+
+def touch(live: dict, at: datetime, resume: bool = True) -> None:
+    """Record activity. A short gap is paused out of the open block; a long one closes the block at the last
+    activity and, with `resume`, opens a fresh block marked `resumed` (the welcome-back)."""
+    last = last_activity(live)
+    if "last_active" not in live:  # adopt a solve from before 0.7.0: cap its blocks, then count from here on
+        for b in live["blocks"]:
+            if "paused" not in b:
+                if b.get("end"):
+                    b["end"] = min(datetime.fromisoformat(b["end"]),
+                                   datetime.fromisoformat(b["start"]) + timedelta(minutes=live["block_minutes"])).isoformat()
+                b["paused"] = 0
+    gap = (at - last).total_seconds()
+    blocks = live["blocks"]
+    current = blocks[-1] if blocks and not blocks[-1].get("end") else None
+    if current and gap > RESUME_AFTER_MINUTES * 60:
+        current["end"] = max(last, datetime.fromisoformat(current["start"])).isoformat()
+        if resume:
+            blocks.append({"start": at.isoformat(timespec="seconds"), "end": None, "paused": 0})
+            live["resumed"] = blocks[-1]["start"]
+    elif current and gap > IDLE_MINUTES * 60:
+        current["paused"] = current.get("paused", 0) + int(gap)
+    live["last_active"] = at.isoformat(timespec="seconds")
 
 
 def live_view(live: dict) -> dict:
-    """The live solve plus what follows from it: stage and rung names, minutes so far, the current block."""
-    at = now()
-    blocks = live["blocks"]
+    """The live solve plus what follows from it: stage and rung names, active minutes so far, the current block,
+    and `resumed` while the open block is the one started by coming back."""
+    at = counted_until(live, now())
+    blocks, length = live["blocks"], live["block_minutes"]
     current = blocks[-1] if blocks and not blocks[-1].get("end") else None
     stage, phase = STAGES[live["stage"] - 1]
+    resumed = live.get("resumed") if current and current["start"] == live.get("resumed") else None
     return dict(live, session_id=session_identity(live), stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]],
-                minutes=int(sum(block_minutes(b, at) for b in blocks) + 0.5),
-                block={"number": len(blocks), "open": current is not None, "length": live["block_minutes"],
-                       "elapsed": int(block_minutes(current, at)) if current else None})
+                minutes=int(sum(block_minutes(b, at, length) for b in blocks) + 0.5), resumed=resumed,
+                block={"number": len(blocks), "open": current is not None, "length": length,
+                       "elapsed": int(block_minutes(current, at, length)) if current else None})
 
 
 def describe_live(v: dict) -> str:
@@ -1252,8 +1298,9 @@ def describe_live(v: dict) -> str:
     b = v["block"]
     timer = f"block {b['number']}: {b['elapsed']} of {b['length']} min" if b["open"] else f"on a break after block {b['number']}"
     label = f" ({v['pattern_name']})" if v["labeled"] else ""
+    back = f" · back at {v['resumed'][11:16]}, fresh block" if v.get("resumed") else ""
     return (f"{v['problem']}{label} · stage {v['stage']}/8 {v['stage_name']} · hint rung {v['rung']}/7 · "
-            f"{timer} · {v['minutes']} min in all")
+            f"{timer} · {v['minutes']} min in all{back}")
 
 
 def solve_start(root: Path, args) -> None:
@@ -1285,7 +1332,8 @@ def solve_start(root: Path, args) -> None:
         "difficulty": difficulty, "mode": args.mode, "confidence": args.confidence, "url": url,
         "session_id": os.urandom(16).hex(),
         "file": f"problems/{slug}/{name}", "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
-        "blocks": [{"start": started, "end": None}], "started": started, "skill_version": SKILL_VERSION,
+        "blocks": [{"start": started, "end": None, "paused": 0}], "started": started, "last_active": started,
+        "skill_version": SKILL_VERSION,
     }
     write_json(root / LIVE, live)
     print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
@@ -1346,6 +1394,8 @@ def solve_command(root, args) -> None:
     live = load_live(root, required=not (expected is not None or action == "show" or (action == "end" and args.discard)))
     if expected is not None and (live is None or session_identity(live) != expected):
         die("the solve changed; refresh before trying again")
+    if action == "touch" and live is None:
+        return
     if action == "show" or live is None:
         if live is None:
             print("null" if getattr(args, "json", False) else "No live solve.")
@@ -1354,6 +1404,7 @@ def solve_command(root, args) -> None:
         else:
             print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
         return
+    touch(live, now(), resume=action not in ("break", "block", "end"))
     if action == "end":
         return solve_end(root, live, args)
     blocks = live["blocks"]
@@ -1372,9 +1423,10 @@ def solve_command(root, args) -> None:
         if open_block:
             open_block["end"] = stamp()
         if action == "block":
-            blocks.append({"start": stamp(), "end": None})
+            blocks.append({"start": stamp(), "end": None, "paused": 0})
     write_json(root / LIVE, live)
-    print(f"Live solve: {describe_live(live_view(live))}")
+    if not (action == "touch" and args.quiet):
+        print(f"Live solve: {describe_live(live_view(live))}")
 
 
 def cmd_guard(args) -> None:
@@ -1670,7 +1722,7 @@ def cmd_install(args) -> None:
 
 
 def install_hook() -> str:
-    """The SessionStart status hook and the PreToolUse guard for attempt files."""
+    """The SessionStart status hook, the PreToolUse guard for attempt files, and the activity touch."""
     path = WORKSPACE / ".claude" / "settings.json"
     base = 'python3 "$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py" --root "$CLAUDE_PROJECT_DIR/notebook"'
     wanted = [
@@ -1678,6 +1730,8 @@ def install_hook() -> str:
          "Claude Code loads your status at the start of each session"),
         ("PreToolUse", "Write|Edit|MultiEdit", f"{base} guard",
          "Claude can't write in your attempt file during a live solve"),
+        ("UserPromptSubmit", "", f"{base} solve touch --quiet",
+         "talking to the coach counts as activity on the solve timer"),
     ]
     settings = read_json(path, {}) if path.exists() else {}
     msgs = []
@@ -1686,7 +1740,8 @@ def install_hook() -> str:
         if any(x.get("command") == command for h in hooks for x in h.get("hooks", [])):
             msgs.append(f"{event} hook already present in {path}")
             continue
-        hooks.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+        hooks.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]} if matcher
+                     else {"hooks": [{"type": "command", "command": command}]})
         msgs.append(f"{event} hook added to {path} ({why})")
     write_json(path, settings)
     return "\n".join(msgs)
@@ -1885,6 +1940,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--text", required=True)
     solve.add_parser("break", help="end the current focus block")
     solve.add_parser("block", help="start a new focus block")
+    s = solve.add_parser("touch", help="record activity: idle time pauses the block, a long absence starts a fresh one")
+    s.add_argument("--quiet", action="store_true", help="print nothing (for hooks)")
     s = solve.add_parser("show", help="the live solve")
     s.add_argument("--json", action="store_true")
     s = solve.add_parser("end", help="log the attempt from the live solve, or --discard it")

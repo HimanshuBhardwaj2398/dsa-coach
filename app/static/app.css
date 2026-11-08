@@ -328,6 +328,7 @@ body.companion { height: 100dvh; min-height: 0; overflow: hidden; }
 #companion-messages article p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; line-height: 1.65; }
 #companion-messages .message-user { background: var(--chrome); padding: 10px 12px; border-radius: 9px; align-self: flex-end; max-width: 92%; }
 #companion-messages .message-assistant { padding-right: 8px; }
+#companion-messages .message-note { display: block; margin-top: 4px; color: var(--muted, #777); font-size: 12px; }
 #companion-compose { flex: 0 0 auto; padding: 10px 14px 12px; border-top: 1px solid var(--line); background: var(--bg); }
 #companion-form { margin-top: 8px; }
 #companion-question { resize: vertical; min-height: 76px; max-height: 24vh; font-size: 14px; padding: 10px 12px; }

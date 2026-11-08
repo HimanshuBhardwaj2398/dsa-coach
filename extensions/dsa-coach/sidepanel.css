@@ -28,3 +28,5 @@ button:disabled { opacity: .5; cursor: wait; }
 code { user-select: all; overflow-wrap: anywhere; }
 #status { padding: 16px; margin: 0; }
 iframe { border: 0; width: 100%; flex: 1; min-height: 0; background: var(--bg); }
+
+#screen-access { margin: 0; padding: 6px 12px; font-size: 13px; }

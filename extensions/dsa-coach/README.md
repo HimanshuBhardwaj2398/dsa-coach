@@ -25,7 +25,10 @@ Chrome 116 or later is required. The same manifest targets Edge's compatible sid
 
 - Clicking an ordinary LeetCode problem link in the study app opens LeetCode normally and also opens the coach panel. Refresh an already-open app tab after installing the extension. Modifier clicks keep their usual behavior; use the toolbar icon if necessary.
 - With no active solve, the current problem is offered in the start form. Choose your confidence and **Start solving**, or ask a question before starting. Navigating to another problem never replaces an active solve.
-- Expand **Page context** and choose **Read page text**. Selected text takes priority; otherwise it reads the page's main text, up to 24,000 characters. Virtualized editors may expose only visible lines. Paste the relevant code if it is missing.
+- Every message carries your LeetCode code, read from the editor, and the end of the page (usually the test results). You don't need to attach them. When text isn't enough, the coach asks to see the screen and the panel takes a screenshot and asks again on its own. The first time, choose **Allow screenshots** at the top of the panel: Chrome only allows screenshots without a toolbar click under the optional all-sites permission.
+- Typing or clicking on the LeetCode problem keeps the focus block's clock running (`activity.js` sends only that there was activity, at most every 30 seconds). Five quiet minutes pause the clock.
+- Each reply ends with the hint rung it gave away. A higher rung is recorded on the solve's hint ladder, and a note under the reply says so.
+- To add more context yourself, expand **Page context** and choose **Read page text**. Selected text takes priority; otherwise it reads the page's main text, up to 24,000 characters. Virtualized editors may expose only visible lines. Paste the relevant code if it is missing.
 - Choose **Take screenshot** for the visible LeetCode tab. If Chrome asks for access, click the DSA Coach toolbar icon while on LeetCode and reopen the panel, then retry. Screenshots require a toolbar invocation under Chrome's [activeTab permission](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). You can also paste an image in the conversation area or attach a PNG/JPEG under 4 MB.
 - Review or edit the attached text, type a question, then choose **Ask coach**. Stage-specific **Ask coach** controls save your stage answer before asking. The conversation form uses already-saved stage answers; save a stage answer first if you want it included.
 - When changing problems, attachments are cleared. A different active solve is shown explicitly, and coaching is paused until you return to that problem or finish that solve.
@@ -37,9 +40,9 @@ Clicking a capture button only attaches context for review. **Ask coach** sends 
 
 Stage answers and start/stage controls use the existing notebook. Chat history and captures are temporary and are not saved in the notebook; reopening/reloading the panel starts a fresh chat. Copy any reply you want to keep. The existing study app's recovery behavior still protects stage notes.
 
-The coach is read-only: its CLI invocation has tools and MCP servers disabled. It cannot edit code, run tests, click Submit, change stages or log attempts. It asks you to run checks in LeetCode. **Review with coach** reviews your final answers; use your main coach chat to record the completed attempt. The full app remains available from the panel header.
+The coach is read-only: its CLI invocation has tools and MCP servers disabled. It cannot edit code, run tests, click Submit, change stages or log attempts. The server records the hint rung a reply reports, and only upward. It asks you to run checks in LeetCode. **Review with coach** reviews your final answers; use your main coach chat to record the completed attempt. The full app remains available from the panel header.
 
-This is on-demand browser context capture, not continuous desktop recording or autonomous computer control. Only the active LeetCode problem tab is captured. Page content is treated as evidence, not instructions to the coach.
+This is per-message browser context capture, not continuous recording or autonomous computer control. Only the active LeetCode problem tab is read or captured, and only when you send a message. Page content is treated as evidence, not instructions to the coach.
 
 ## Troubleshooting
 

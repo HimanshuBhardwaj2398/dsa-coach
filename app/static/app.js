@@ -32,7 +32,8 @@ let focusNext = false;   // after Done: focus the next stage's first box once it
 let barFile = null;      // the solve the bar's problem link and stage buttons were built for
 let lastPick = null;     // the start screen's pick when the slug box was last filled from it
 let companionProblem = null; // offered by the browser panel; never starts or replaces a solve
-let blockBanner = null;  // the block number the "block is over" banner was shown for
+const shownOnce = {};     // once() falls back to this when sessionStorage is blocked
+let lastTouch = 0;       // when the page last told the server he was active
 let finishSent = null;   // the solve whose stage-8 finish prompt was copied: the coach logs it from the chat
 let warnedMtime = null;  // the disk mtime we already warned about
 let busy = false;        // a refresh is running
@@ -296,7 +297,7 @@ function solveGone() {
   if ($("banner").dataset.kind === "solve") $("banner").hidden = true;  // its buttons were for that solve
   if (attempt && (dirty || fields)) rescue(dirty ? getCode() : "", fields);
   else if (attempt && finishSent === attempt.file) banner("The coach logged the solve.");
-  attempt = problemText = fetchState = view = lastStage = blockBanner = warnedMtime = savePanel = finishSent = null;
+  attempt = problemText = fetchState = view = lastStage = warnedMtime = savePanel = finishSent = null;
   askCoach = lastRun = notesDrawn = null;
   panelDirty = focusNext = false;
   tab = "stage";
@@ -573,10 +574,38 @@ function renderBar() {
       $("timer").replaceChildren(b);
     } else $("timer").textContent = text;
   }
-  if (over && blockBanner !== blk.number) {
-    blockBanner = blk.number;
-    blockOver();
+  if (live.resumed && once(`welcome:${live.session_id}`, live.resumed)) welcomeBack(live);
+  else if (over && once(`block-over:${live.session_id}`, String(blk.number))) blockOver();
+}
+
+// True the first time a key gets this value in this tab, so a banner isn't shown again after a reload.
+function once(key, value) {
+  try {
+    if (sessionStorage.getItem("dsa-coach:" + key) === value) return false;
+    sessionStorage.setItem("dsa-coach:" + key, value);
+  } catch {
+    if (shownOnce[key] === value) return false;
+    shownOnce[key] = value;
   }
+  return true;
+}
+
+// After a long absence coach.py starts a fresh block; this says where he was, so he can pick up at once.
+function welcomeBack(live) {
+  const notes = live.notes || {};
+  const last = notes[live.stage] || notes[Object.keys(notes).map(Number).sort((a, b) => b - a)[0]] || "";
+  const note = last.trim().split("\n")[0];
+  banner(`Welcome back. You were at stage ${live.stage} · ${STAGES[live.stage - 1][0]}.` +
+    (note ? ` Last note: "${note.length > 140 ? note.slice(0, 140) + "…" : note}".` : "") +
+    ` Block ${live.block.number} started fresh; the time away isn't counted.`, [], "solve");
+}
+
+// Typing, clicking or working on LeetCode (the browser panel relays that) keeps the block's clock running.
+// coach.py stops the clock after five quiet minutes. At most one touch a minute, and only from a visible page.
+function touchActivity() {
+  if (!state?.live || document.visibilityState !== "visible" || Date.now() - lastTouch < 60_000) return;
+  lastTouch = Date.now();
+  api("POST", "/api/solve/touch", {}).catch(() => {});  // a missed touch costs at most a minute of the clock
 }
 const minutes = (m) => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
 
@@ -1306,6 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("visibilitychange", () => { if (document.hidden) persistDraft(); });
   window.addEventListener("pagehide", persistDraft);
   document.addEventListener("keydown", saveKey);
+  for (const type of ["keydown", "input", "pointerdown"]) document.addEventListener(type, touchActivity, true);
   window.addEventListener("beforeunload", (e) => {  // closing or reloading the tab would drop unsaved text
     if (dirty || panelDirty || statementDraft()) { e.preventDefault(); e.returnValue = ""; }
   });

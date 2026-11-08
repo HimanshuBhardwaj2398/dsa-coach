@@ -64,6 +64,7 @@ class Coach:
         self.root, self.env = Path(root), env
         self.jobs = claude_job.Jobs()
         self.chat_jobs = claude_job.Jobs()
+        self.chat_sessions = {}  # coaching request id -> the solve it was asked in, to record the rung it gave
         # An empty cwd avoids loading project instructions or local notebook hooks in the read-only chat.
         self.chat_directory = tempfile.TemporaryDirectory(prefix="dsa-coach-chat-")
 
@@ -246,6 +247,11 @@ def post_block(coach, d):
     return {"message": coach.run("solve", "block", "--expected-session", need(d, "session_id", str))}
 
 
+def post_touch(coach, d):  # activity: typing, running code or working on LeetCode keeps the block's clock going
+    coach.run("solve", "touch", "--quiet", "--expected-session", need(d, "session_id", str))
+    return {}
+
+
 def post_end(coach, d):
     args = ["solve", "end", f"--outcome={need(d, 'outcome', str)}", "--expected-session", need(d, "session_id", str)]
     if d.get("note"):
@@ -368,6 +374,8 @@ def post_coaching(coach, d):
                               coach.chat_directory.name, 180, input_text=stream, collect=True)
     except claude_job.Busy as exc:
         raise ApiError(409, str(exc)) from None
+    if live:
+        coach.chat_sessions[key] = live["session_id"]
     return {"id": key, "state": "running"}
 
 
@@ -381,10 +389,25 @@ def get_coaching(coach, q):
     output = status.pop("output", None)
     if status["state"] == "done":
         try:
-            status["reply"] = companion.response(output or "")
+            status.update(companion.response(output or ""))
         except ValueError as exc:
             return {"state": "error", "error": str(exc)}
+        session = coach.chat_sessions.pop(key, None)  # pop: the page polls again, the rung is recorded once
+        if session and status["rung"]:
+            status["recorded_rung"] = record_rung(coach, session, status["rung"])
     return status
+
+
+def record_rung(coach, session, rung):
+    """Record the rung the panel's coach gave on the hint ladder, which only goes up. None if nothing changed."""
+    try:
+        before = coach.json("solve", "show")
+        if not before or before["session_id"] != session or rung <= before["rung"]:
+            return None
+        coach.run("solve", "hint", "--rung", str(rung), "--expected-session", session)
+        return rung
+    except ApiError:
+        return None
 
 
 def explainer_file(coach, key: str) -> Path:
@@ -406,6 +429,7 @@ ROUTES = {
     ("POST", "/api/solve/note"): post_note,
     ("POST", "/api/solve/break"): post_break,
     ("POST", "/api/solve/block"): post_block,
+    ("POST", "/api/solve/touch"): post_touch,
     ("POST", "/api/solve/end"): post_end,
     ("GET", "/api/problem"): get_problem,
     ("POST", "/api/problem/fetch"): post_problem_fetch,

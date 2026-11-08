@@ -459,13 +459,64 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "hint", "--rung", "3", now="10:12")
         self.run_cli("solve", "hint", "--rung", "2", now="10:13")  # the highest rung stays
         self.assertEqual((self.live()["stage"], self.live()["rung"]), (3, 3))
+        self.run_cli("solve", "touch", now="10:16")
         self.run_cli("solve", "break", now="10:20")
         self.run_cli("solve", "block", now="10:30")
+        self.run_cli("solve", "touch", now="10:35")
+        self.run_cli("solve", "touch", now="10:39")
         self.run_cli("solve", "end", "--outcome", "solved", "--note", "complement lookup", now="10:42")
         self.assertIsNone(self.live())
         [a] = self.attempts()
         self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
         self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (32, 3, 3, "solved"))
+
+    def view(self, now):
+        return json.loads(self.run_cli("solve", "show", "--json", now=now).stdout)
+
+    def test_solve_timer_counts_active_time_only(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.assertEqual(self.view("10:04")["block"]["elapsed"], 4)  # within IDLE the clock runs
+        self.assertEqual(self.view("10:20")["block"]["elapsed"], 0)  # idle: frozen at the last activity
+        self.run_cli("solve", "touch", now="10:03")
+        self.run_cli("solve", "touch", now="10:15")  # 12 quiet minutes are paused out, same block
+        v = self.view("10:17")
+        self.assertEqual((v["block"]["number"], v["block"]["elapsed"], v["resumed"]), (1, 5, None))
+        self.assertEqual(self.run_cli("solve", "touch", "--quiet", now="10:18").stdout, "")
+
+    def test_solve_long_absence_starts_a_fresh_block_and_says_so(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "touch", now="10:04")
+        out = self.run_cli("solve", "touch", now="11:00").stdout
+        self.assertIn("block 2: 0 of 15 min · 4 min in all · back at 11:00, fresh block", out)
+        live = self.live()
+        self.assertEqual(live["blocks"][0]["end"], "2026-11-01T10:04:00+05:30")
+        self.assertEqual(live["resumed"], live["blocks"][1]["start"])
+        self.run_cli("solve", "break", now="11:02")
+        self.assertIsNone(self.view("11:03")["resumed"])  # only while that block is open
+
+    def test_solve_break_after_an_absence_closes_at_the_last_activity(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "touch", now="10:05")
+        self.run_cli("solve", "touch", now="10:09")
+        self.run_cli("solve", "break", now="12:00")
+        v = self.view("12:01")
+        self.assertEqual((v["block"]["number"], v["block"]["open"], v["minutes"]), (1, False, 9))
+        self.run_cli("solve", "end", "--outcome", "partial", now="12:05")
+        self.assertEqual(self.attempts()[0]["minutes"], 9)
+
+    def test_solve_from_before_active_time_is_capped_then_adopted(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="08:00")
+        live = self.live()
+        del live["last_active"]
+        live["blocks"] = [{"start": "2026-11-01T08:00:00+05:30", "end": "2026-11-01T09:00:00+05:30"},
+                          {"start": "2026-11-01T09:00:00+05:30", "end": None}]
+        (self.root / "sessions" / "current.json").write_text(json.dumps(live))
+        self.assertEqual(self.view("20:00")["minutes"], 30)  # wall clock said 720
+        self.run_cli("solve", "touch", now="20:00")
+        live = self.live()
+        self.assertEqual([b["end"] for b in live["blocks"]],
+                         ["2026-11-01T08:15:00+05:30", "2026-11-01T09:15:00+05:30", None])
+        self.assertEqual(self.view("20:02")["minutes"], 32)
 
     def test_solve_note_is_kept_and_written_to_problem_notes(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
@@ -519,6 +570,7 @@ class CoachTest(unittest.TestCase):
 
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
+        self.run_cli("solve", "touch", "--quiet", now="10:05")
         text = (self.root / self.live()["file"]).read_text()
         shown = self.run_cli("solve", "show", now="10:07").stdout
         status = [line for line in self.run_cli("status", "--brief", now="10:07").stdout.splitlines()

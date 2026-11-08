@@ -258,3 +258,23 @@ test('textarea fallback preserves and restores code without CodeMirror',()=>{
   assert.equal(h.run('dirty'),true);
   assert.equal(h.run('attempt.revision'),'r1');
 });
+
+test('activity touches the server at most once a minute, and only from a visible page with a live solve', async () => {
+  const h = harness();
+  h.run(`api = async (method, path) => messages.push(method + ' ' + path); document.visibilityState = 'hidden';`);
+  h.run('touchActivity()');
+  assert.equal(h.messages.length, 0);
+  h.run(`document.visibilityState = 'visible'; touchActivity(); touchActivity();`);
+  assert.deepEqual(h.messages, ['POST /api/solve/touch']);
+  h.run(`lastTouch -= 61000; touchActivity(); state.live = null; lastTouch = 0; touchActivity();`);
+  assert.equal(h.messages.length, 2);
+});
+
+test('coming back after a long absence says where he was, once per fresh block', () => {
+  const h = harness();
+  h.run(`state.live = {session_id: 'A', stage: 4, notes: {'2': 'all pairs', '4': 'seen set\\nmore'}, resumed: 'T1', block: {number: 4}};`);
+  h.run(`if (once('welcome:A', 'T1')) welcomeBack(state.live); if (once('welcome:A', 'T1')) welcomeBack(state.live);`);
+  assert.equal(h.messages.length, 1);
+  assert.match(h.messages[0], /stage 4 · Find the repeated work\. Last note: "seen set"\. Block 4 started fresh/);
+  assert.equal(h.run(`once('welcome:A', 'T2')`), true);
+});

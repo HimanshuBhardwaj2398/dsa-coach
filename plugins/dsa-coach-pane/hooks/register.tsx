@@ -10,6 +10,8 @@ const PANE = 'dsa-coach'
 const TITLE = 'DSA coach'
 const NOTEBOOK = 'notebook' // relative to the folder Claude Code was started in
 const TICK_MS = 30_000
+const MIN = 60_000
+const IDLE_MIN = 5 // the same rule as coach.py: after 5 quiet minutes the clock stops at the last activity
 
 const STAGES: readonly (readonly [string, string])[] = [
   ['Unknown, data, condition', 'Understand'],
@@ -41,9 +43,23 @@ function openBlock(l: Live): Block | null {
   return last && !last.end ? last : null
 }
 
-function minutes(b: Block, at: number): number {
+// Active minutes, as coach.py's block_minutes counts them: the span less the paused idle time.
+// A block from before 0.7.0 (no `paused`) counted wall-clock time, so it is capped at the block length.
+function minutes(b: Block, at: number, length: number): number {
   const end = b.end ? Date.parse(b.end) : at
-  return Math.max(0, Math.floor((end - Date.parse(b.start)) / 60_000))
+  const m = Math.max(0, Math.floor((end - Date.parse(b.start) - (b.paused ?? 0) * 1000) / MIN))
+  return b.paused === undefined ? Math.min(m, length) : m
+}
+
+function lastActivity(l: Live): number {
+  if (l.last_active) return Date.parse(l.last_active)
+  const last = l.blocks[l.blocks.length - 1]
+  return last.end ? Date.parse(last.end) : Date.parse(last.start) + l.block_minutes * MIN
+}
+
+function countedUntil(l: Live, at: number): number {
+  const last = lastActivity(l)
+  return at - last <= IDLE_MIN * MIN ? at : last
 }
 
 function toDue(j: unknown): Due | null {
@@ -68,7 +84,7 @@ async function refresh($: EngineInterface): Promise<void> {
   await update($, now, () => at)
 
   const block = current && openBlock(current)
-  if (!current || !block || minutes(block, at) < current.block_minutes) return
+  if (!current || !block || minutes(block, countedUntil(current, at), current.block_minutes) < current.block_minutes) return
   const id = `${current.file}#${current.blocks.length}`
   let isNew = false
   await update($, toasted, last => {
@@ -148,8 +164,9 @@ export const register: Register = on => {
 
     const [stage, phase] = STAGES[l.stage - 1] ?? ['?', '?']
     const block = openBlock(l)
-    const total = l.blocks.reduce((sum, b) => sum + minutes(b, at), 0)
-    const elapsed = block ? minutes(block, at) : 0
+    const until = countedUntil(l, at)
+    const total = l.blocks.reduce((sum, b) => sum + minutes(b, until, l.block_minutes), 0)
+    const elapsed = block ? minutes(block, until, l.block_minutes) : 0
     const isOver = !!block && elapsed >= l.block_minutes
     const timer = block
       ? `Block ${l.blocks.length} · ${elapsed} of ${l.block_minutes} min${isOver ? ' · block over' : ''}`
