@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-06",
-  "skill_version": "0.4.1",
+  "generated": "2026-11-07",
+  "skill_version": "0.6.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -11,7 +11,7 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 8,
+    "day": 9,
     "total_days": 90,
     "week": 2,
     "plan_weeks": 12,
@@ -621,104 +621,111 @@
         "problem": "contains-duplicate",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "valid-anagram",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "group-anagrams",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "top-k-frequent-elements",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "encode-and-decode-strings",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "product-of-array-except-self",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "longest-consecutive-sequence",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "valid-palindrome",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "3sum",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "container-with-most-water",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "best-time-to-buy-and-sell-stock",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "longest-substring-without-repeating-characters",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "longest-repeating-character-replacement",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "minimum-window-substring",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 0,
+        "overdue_days": 1,
         "status": "learning"
       },
       {
         "problem": "valid-parentheses",
         "pattern": "stack",
         "due": "2026-11-06",
+        "overdue_days": 1,
+        "status": "learning"
+      },
+      {
+        "problem": "binary-search",
+        "pattern": "binary-search",
+        "due": "2026-11-07",
         "overdue_days": 0,
         "status": "learning"
       }

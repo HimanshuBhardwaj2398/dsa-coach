@@ -1,0 +1,31 @@
+{
+  "problem": "contains-duplicate",
+  "pattern": "arrays-hashing",
+  "pattern_name": "Arrays & Hashing",
+  "labeled": true,
+  "difficulty": "easy",
+  "mode": "review",
+  "confidence": 4,
+  "url": "https://leetcode.com/problems/contains-duplicate/",
+  "file": "problems/contains-duplicate/2026-11-07.py",
+  "stage": 1,
+  "rung": 0,
+  "block_minutes": 15,
+  "blocks": [
+    {
+      "start": "2026-11-07T01:14:45+05:30",
+      "end": "2026-11-07T11:40:26+05:30"
+    },
+    {
+      "start": "2026-11-07T11:40:26+05:30",
+      "end": "2026-11-07T18:09:40+05:30"
+    },
+    {
+      "start": "2026-11-07T18:09:40+05:30",
+      "end": null
+    }
+  ],
+  "started": "2026-11-07T01:14:45+05:30",
+  "skill_version": "0.5.0",
+  "notes": {}
+}
