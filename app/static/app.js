@@ -615,6 +615,12 @@ function blockOver() {
 // --- the stage panel ---------------------------------------------------------
 function askPrompt(n) {
   const live = state.live;
+  if (typeof companionEnabled !== "undefined" && companionEnabled) {
+    const context = n === 7
+      ? "Review the attached LeetCode code against my supplied plan card. If code is missing or cut off, ask me to attach the code."
+      : "Review my supplied saved stage notes, plan card, examples, and any attached LeetCode context.";
+    return `Check my work for stage ${n} of ${live.problem}. ${context}`;
+  }
   if (n === 7) return `Check my attempt in ${attempt.path}.`;
   return `I'm done with stage ${n} of ${live.problem}. Check it: my notes are in \`coach.py solve show --json\` and my attempt file is ${attempt.path}.`;
 }
@@ -921,7 +927,7 @@ function renderPanel() {
     panel.append(nudge);
   }
   done.className = "primary";
-  // The prompt sends the coach to the file and to `solve show --json`, so both are saved before it's copied.
+  // Save first so both the panel's supplied context and the main chat's file reads see the latest work.
   askCoach = async () => {
     if (dirty && !(await save())) return;
     await saveNote();

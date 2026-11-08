@@ -39,6 +39,30 @@ function harness() {
 function deferred() {let resolve; const promise = new Promise(r => {resolve = r;}); return {promise, resolve};}
 function saved(text, session_id='A') {return {session_id, file:'a.py', path:'/a.py', text, revision:'r2', mtime:2};}
 
+test('Ask coach in the companion requests review of supplied context, without file or command instructions', async () => {
+  const h = harness();
+  h.run(`let companionEnabled = true;
+    const companionAsk = async text => messages.push(text);
+    state.live.problem = 'contains-duplicate';`);
+  for (let stage = 1; stage <= 8; stage++) {
+    await h.run(`copyPrompt(askPrompt(${stage}))`);
+    const prompt = h.messages.at(-1);
+    assert.doesNotMatch(prompt, /coach\.py|\/a\.py|attempt file/i);
+    assert.match(prompt, new RegExp(`stage ${stage}\\b`, 'i'));
+    assert.match(prompt, /contains-duplicate/);
+    assert.match(prompt, /supplied|attached/i);
+    if (stage === 7) assert.match(prompt, /attach.*code/i);
+  }
+});
+
+test('Ask coach in the full study app still copies local workspace instructions', async () => {
+  const h = harness();
+  await h.run('copyPrompt(askPrompt(4))');
+  assert.match(h.messages[0], /coach\.py solve show --json/);
+  assert.match(h.messages[0], /\/a\.py/);
+  assert.match(h.run('askPrompt(7)'), /Check my attempt in \/a\.py/);
+});
+
 for (const mode of ['code', 'examples', 'both']) test(`Run saves ${mode} before execution without advancing stage`, async () => {
   const h = harness(), calls=[];
   h.c.calls=calls;
