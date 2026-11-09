@@ -80,7 +80,7 @@ test('an unlabeled solve shows its stage, timer and rung but never its pattern',
   for (const surface of ['vscode', 'terminal'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ type: 'Text', text: /Arrays|arrays-hashing/ })).toBeUndefined()
-    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 4/8 · Find the repeated work')
+    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 2/4 · Find an approach')  // a legacy eight-stage solve at stage 4
     expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 7 of 15 min')
     expect((await ui.find({ type: 'Text', text: /^Hints/ }))?.text).toBe('Hints used: 2/7')
     await ui.unmount()
@@ -105,7 +105,7 @@ test('the buttons talk to the coach in the chat', async ($, on) => {
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
   await ui.press({ key: 'hint' })
   await ui.press({ key: 'check' })
-  expect(sent[0]).toBe("I'm stuck at stage 4 (Find the repeated work). Next hint rung, please.")
+  expect(sent[0]).toBe("I'm stuck at stage 2 (Find an approach). Next hint rung, please.")
   expect(sent[1]).toContain('notebook/problems/two-sum/2026-11-05.py')
   expect(sent[1]).toContain('without fixing it')
   await ui.unmount()

@@ -359,7 +359,7 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "start", "--problem", "two-sum")
         path = self.root / "sessions/current.json"
         before = path.read_bytes()
-        for args in [("stage", "7"), ("hint",), ("note", "--stage", "1", "--text", "old"),
+        for args in [("stage", "3"), ("hint",), ("note", "--stage", "1", "--text", "old"),
                      ("break",), ("block",), ("end", "--discard")]:
             result = self.run_cli("solve", *args, "--expected-session", original, ok=False)
             self.assertNotEqual(result.returncode, 0)
@@ -522,28 +522,93 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
         self.run_cli("solve", "note", "--stage", "1", "--text", "first draft", now="10:01")
         self.run_cli("solve", "note", "--stage", "1", "--text=- return i != j with nums[i] + nums[j] == target", now="10:02")
-        self.run_cli("solve", "note", "--stage", "6", "--text", "seen maps value -> index\nfor every j < i", now="10:03")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "seen maps value -> index\nfor every j < i", now="10:03")
         shown = json.loads(self.run_cli("solve", "show", "--json", now="10:04").stdout)
         self.assertEqual(shown["notes"], {"1": "- return i != j with nums[i] + nums[j] == target",
-                                          "6": "seen maps value -> index\nfor every j < i"})
+                                          "2": "seen maps value -> index\nfor every j < i"})
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
         self.run_cli("log", "attempt", "--problem", "two-sum", "--pattern", "arrays-hashing", "--outcome", "solved",
                      "--note", "complement lookup")  # a lesson line, appended under ## Lessons
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
-        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs, O(n^2)", now="10:21")
+        self.run_cli("solve", "note", "--stage", "3", "--text", "all pairs, O(n^2)", now="10:21")
         self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
         text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
         self.assertIn("## Stage notes\n\n### 2026-11-01 (problems/two-sum/2026-11-01.py)\n\n"
-                      "- **1. Unknown, data, condition:** - return i != j", text)
-        self.assertIn("- **6. Plan card:** seen maps value -> index\n  for every j < i\n\n"
+                      "- **1. Understand:** - return i != j", text)
+        self.assertIn("- **2. Find an approach:** seen maps value -> index\n  for every j < i\n\n"
                       "### 2026-11-01 (problems/two-sum/2026-11-01-2.py)\n\n"
-                      "- **2. Brute force on the grid:** all pairs, O(n^2)\n\n## Lessons\n", text)
+                      "- **3. Build it:** all pairs, O(n^2)\n\n## Lessons\n", text)
         self.assertNotIn("first draft", text)
         self.assertEqual(text.count("## Stage notes"), 1)
         lessons = text.index("## Lessons\n")
-        self.assertLess(text.index("**1."), text.index("**6."))
-        self.assertLess(text.index("**6."), lessons)
+        self.assertLess(text.index("**1."), text.index("**2."))
+        self.assertLess(text.index("**2."), lessons)
         self.assertGreater(text.index("complement lookup"), lessons)
+
+    def test_legacy_eight_stage_solve_resumes_in_the_four_stage_protocol(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        path = self.root / "sessions/current.json"
+        old = self.live()
+        del old["protocol"]
+        old.update(stage=4, notes={"1": "pairs summing to target", "2": "every (i, j)", "3": "n(n-1)/2 checks",
+                                   "7": "subgoals", "8": "Why it works, in one sentence: map"})
+        path.write_text(json.dumps(old))
+        before = path.read_bytes()
+        shown = json.loads(self.run_cli("solve", "show", "--json", now="10:01").stdout)
+        self.assertEqual((shown["stage"], shown["stage_name"], shown["protocol"]), (2, "Find an approach", 2))
+        self.assertEqual(shown["notes"], {
+            "1": "pairs summing to target",
+            "2": "Brute force on the grid:\nevery (i, j)\n\nCount:\nn(n-1)/2 checks",
+            "3": "subgoals", "4": "Why it works, in one sentence: map"})
+        self.assertEqual(path.read_bytes(), before)  # show only reads
+        self.run_cli("solve", "touch", now="10:02")
+        self.assertEqual((self.live()["protocol"], self.live()["stage"]), (2, 2))
+        self.assertEqual(self.live()["session_id"], old["session_id"])
+        for legacy, stage in [(1, 1), (6, 2), (7, 3), (8, 4)]:
+            path.write_text(json.dumps({**old, "stage": legacy}))
+            self.assertEqual(json.loads(self.run_cli("solve", "show", "--json").stdout)["stage"], stage)
+
+    def test_solve_has_four_stages(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        self.assertEqual(self.live()["protocol"], 2)
+        self.assertIn("stage 1/4 Understand", self.run_cli("solve", "show", now="10:01").stdout)
+        self.run_cli("solve", "stage", "4", now="10:02")
+        self.assertNotEqual(self.run_cli("solve", "stage", "5", ok=False).returncode, 0)
+        self.assertNotEqual(self.run_cli("solve", "note", "--stage", "5", "--text", "x", ok=False).returncode, 0)
+
+    def test_solve_end_records_its_session_and_a_repeat_returns_the_same_receipt(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        session = self.live()["session_id"]
+        self.run_cli("solve", "note", "--stage", "2", "--text", "seen set", now="10:05")
+        end = ("solve", "end", "--outcome", "solved", "--json", "--expected-session", session)
+        first = json.loads(self.run_cli(*end, now="10:10").stdout)
+        self.assertEqual((first["problem"], first["outcome"], first["id"]), ("two-sum", "solved", "a0001"))
+        self.assertIn("next_due", first)
+        self.assertIn("status", first)
+        [row] = self.attempts()
+        self.assertEqual(row["session"], session)
+        again = json.loads(self.run_cli(*end, now="10:11").stdout)  # a lost response, a double click
+        self.assertEqual(again, first)
+        self.assertEqual(len(self.attempts()), 1)
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")  # a newer solve is never ended by it
+        self.assertEqual(json.loads(self.run_cli(*end, now="10:21").stdout), first)
+        self.assertIsNotNone(self.live())
+        stale = self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", "f" * 32, ok=False)
+        self.assertIn("the solve changed", stale.stderr)
+
+    def test_solve_end_retry_finishes_an_end_that_stopped_after_logging(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        live_path = self.root / "sessions/current.json"
+        self.run_cli("solve", "note", "--stage", "1", "--text", "pairs", now="10:01")
+        saved = live_path.read_bytes()
+        session = self.live()["session_id"]
+        self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", session, now="10:10")
+        live_path.write_bytes(saved)  # as if it stopped before removing the live solve
+        self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", session, now="10:11")
+        self.assertIsNone(self.live())
+        self.assertEqual(len(self.attempts()), 1)
+        notes = (self.root / "problems/two-sum/notes.md").read_text()
+        self.assertEqual(notes.count("- **1. Understand:** pairs"), 1)
 
     def test_solve_blank_note_clears_the_stage_and_writes_nothing(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
@@ -557,7 +622,7 @@ class CoachTest(unittest.TestCase):
 
     def test_stage_notes_split_only_at_the_lessons_heading(self):
         self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        self.run_cli("solve", "note", "--stage", "6", "--text", "line a\n## Lessons\nline b", now="10:01")
+        self.run_cli("solve", "note", "--stage", "2", "--text", "line a\n## Lessons\nline b", now="10:01")
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
         self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs", now="10:21")

@@ -9,6 +9,7 @@ export type Live = {
   url: string
   file: string
   stage: number
+  protocol?: number
   rung: number
   block_minutes: number
   blocks: Block[]

@@ -1,0 +1,35 @@
+flowchart TB
+  U["You: practise, ask, review"]
+  C["Main coach chat<br/>Claude Code or Codex"]
+  A["Study app + LeetCode panel<br/>Screens you work in"]
+  R["Teaching guide<br/>Stages, hints, learning rules"]
+  S["Local app server<br/>Connects screens to files and Claude"]
+  H["Claude helper<br/>Panel replies or explainer pages"]
+  K["coach.py<br/>Records sessions and calculates progress"]
+  P["Course plan<br/>Topics, problems, templates"]
+  N[("Your notebook<br/>Work, attempts, cards, live solve")]
+  J["Progress reports<br/>Journey, review dates, next practice"]
+
+  U --> C
+  U --> A
+  R -. "guides teaching" .-> C
+  R -. "selected guidance" .-> H
+  A <-->|"save, read, request help"| S
+  S <-->|"question / reply or page"| H
+  C <-->|"read state / record outcome"| K
+  S <-->|"session controls / progress"| K
+  P --> K
+  K <-->|"read / write"| N
+  S <-->|"code and problem statements"| N
+  H -->|"explainer files only"| N
+  K -->|"rebuilds from saved records"| J
+  J -->|"guides the next session"| C
+
+  classDef person fill:#fff4df,stroke:#a66b12,color:#402b0b
+  classDef screen fill:#eaf2ff,stroke:#416caa,color:#182f51
+  classDef logic fill:#e9f5ef,stroke:#387759,color:#173d2a
+  classDef data fill:#f4edfb,stroke:#7c5c9f,color:#39294c
+  class U person
+  class C,A,H screen
+  class S,K logic
+  class R,P,N,J data

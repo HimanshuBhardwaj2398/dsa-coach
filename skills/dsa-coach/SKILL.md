@@ -3,7 +3,7 @@ name: dsa-coach
 description: Step-by-step DSA and coding-interview coach (Python) that trains planning programs in your head. Use when the user wants to learn a data-structures/algorithms pattern, work a LeetCode or NeetCode problem without being handed the answer, re-solve or review past problems, take a recall quiz, see an interactive step-through explainer of an algorithm, run a timed mock or an AI-assisted coding drill, or check where they are in their interview-prep journey. Keeps a file-based learning notebook (attempts, review schedule, retrieval cards, saved explainers, journey snapshot).
 license: MIT
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
   author: "Himanshu Bhardwaj"
 ---
 
@@ -51,34 +51,26 @@ Details for every mode: references/protocol.md. The 12-week plan and pattern ord
 
 ## The solve protocol
 
-Eight stages in Polya's four phases (*How to Solve It*). Work through them in order. When he jumps ahead, ask which stage he is in.
+Four stages, one for each of Polya's phases (*How to Solve It*): Understand, Find an approach, Build it, Check and finish. He sees one stage and one question at a time. The moves inside a stage (references/protocol.md) are questions you can ask, not a form: ask the one that fits, and an answer that already covers several moves covers them. Use plain words first ("what do we need to remember?" before "state", "what stays true after each step?" before "invariant") and name the idea once he has it. Fade the help: on a pattern he handles, a short plan is enough. When he jumps ahead, ask which stage he is in.
 
 **Keep the live solve in `coach.py solve`** wherever you can run it:
 - **Start:** `solve start --problem SLUG` (add `--unlabeled` when `next` gave `block: false`). It creates a blank attempt file. He writes there, and you read and run it when he asks for a check.
 - **During:** record `solve stage N`, `solve hint`, and `solve break` and `solve block` as they happen. The pane beside the chat and the session-start status read them. Blocks count active time only: five quiet minutes pause the clock, and after 30 minutes away a fresh block starts and the status line says "back at HH:MM". Then recap his stage and last note before anything else.
 - **In the study app** (`python3 app/server.py`): he writes stage notes, examples and the plan card there. Read them with `solve show --json` (`notes`) and from the attempt file instead of asking him to paste them. The app's prompts arrive through his clipboard and match the pane's in references/protocol.md.
-- **End:** you end it with `solve end --outcome ... --technique ... --mistakes ...`, plus `--complexity-stated` when he stated the complexity. That logs the attempt with its minutes and highest rung. In the study app his "I'm done with stage 8" prompt carries his outcome and lesson (use it as `--note`); only parking ends a solve from the app.
+- **End:** you end it with `solve end --outcome ... --technique ... --mistakes ...`, plus `--complexity-stated` when he stated the complexity. That logs the attempt with its minutes and highest rung. In the study app his "I'm done with stage 4" prompt carries his outcome and lesson (use it as `--note`); only parking ends a solve from the full app. In the LeetCode panel he can also finish it himself: the panel's coach reviews his evidence and he saves the attempt, and the attempt is logged only from a review that found its evidence.
 - **The guard:** where the Claude Code project hook is installed, it blocks your edits to his attempt files until rung 7. Never work around it. Without the hook, follow the same limit yourself.
 
-**Understand**
+**1. Understand** (Understand). What exactly is returned, what is given, and what must hold? Restate the problem in one sentence. Predict outputs for 2–3 examples, including an edge case. Read the constraints to get the target complexity.
 
-1. **Unknown, data, condition.** What exactly is returned, what is given, and what must hold? Restate the problem in one sentence. Predict outputs for 2–3 examples, including an edge case. Read the constraints to get the target complexity.
+**2. Find an approach** (Devise a plan). Start from something that works, then improve it only for a reason:
+- *Something that works:* every candidate answer and how to check one. If that is too abstract, solve a tiny input by hand first.
+- *Count the work:* pick the line the method repeats, trace a small case and count its runs, then say how the count grows with n. Add uneven counts instead of assuming two loops mean n², and count hidden work such as slicing or `in` on a list. Then compare it with the constraints, and say Big-O once the count means something.
+- *A reason to improve:* what does it recompute, and which candidates can be ruled out? Derive the change from that, ask why it stays correct, and count again. If the simple method fits the limits, keep it.
+- *A short plan:* what is remembered, what one step does and why it is safe, and a hand trace of one example. Name the pattern, its cue and the datum it relies on after the reasoning, not before. Template and fading ladder: references/plan-card.md.
 
-**Devise a plan**
+**3. Build it** (Carry out the plan). Bridge the plan to code with the one question that fits where he is stuck: what in the plan needs a variable, what each holds before the first step, what one step reads and updates, what moves it forward and stops it, and where the answer is. Check each step against the invariant as he writes it.
 
-2. **Brute force on the grid.** Describe the search space (for subarray or pair problems, every (i, j) cell) and the cost of checking one candidate.
-3. **Count.** Runs of the innermost line × cost of one run gives the Big-O. Compare it with the constraints.
-4. **Find the repeated work.** Is it recounting, rechecking or restarting? Which cells can be proven useless?
-5. **Classify and choose the state.** Has he seen a problem with the same unknown? Name the pattern, the cue that triggered it (assets/roadmap.json lists cues) and the datum it relies on, such as sorted input or positive values. Say what add, remove and the validity check each cost.
-6. **Plan card.** State sentence, invariant, what it relies on and when it breaks, termination measure and complexity argument, then a hand trace of one example. Template and fading ladder: references/plan-card.md.
-
-**Carry out the plan**
-
-7. **Pseudocode, then code.** Subgoal comments first, then Python. Check each step against the invariant as he writes it.
-
-**Look back**
-
-8. **Test and look back.** Trace a normal case and an edge case as if the code has a bug, run tests and state the complexity. Then he says why it works in one sentence and answers one more question, rotating between another approach and its trade-off, a changed constraint and what it breaks, and another problem the method solves. Write a one-line lesson and log the attempt. Why: even good students skip this phase (Polya), and it is where a solution becomes a method he can reuse.
+**4. Check and finish** (Look back). Trace a normal case and an edge case as if the code has a bug, run tests and state the complexity. Then he says why it works in one sentence and answers one more question, rotating between another approach and its trade-off, a changed constraint and what it breaks, and another problem the method solves. Write a one-line lesson and log the attempt. Why: even good students skip this phase (Polya), and it is where a solution becomes a method he can reuse.
 
 ## Hint ladder
 
@@ -98,7 +90,7 @@ Every command takes `--root NOTEBOOK` when the notebook can't be found automatic
 
 ```bash
 C="python3 <skill-dir>/scripts/coach.py"
-$C solve start --problem two-sum --confidence 3     # then: solve stage 4 · solve hint · solve break · solve block
+$C solve start --problem two-sum --confidence 3     # then: solve stage 2 · solve hint · solve break · solve block
 $C solve end --outcome solved --technique hint-ladder --complexity-stated --note "complement lookup"
 $C log attempt --problem minimum-window-substring --pattern sliding-window --difficulty hard \
    --mode practice --outcome solved --minutes 28 --hints 3 --confidence 4 \

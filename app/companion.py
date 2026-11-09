@@ -76,6 +76,11 @@ def argv(binary, system):
 
 
 def response(output):
+    return parse_reply(result_text(output)[:20000])
+
+
+def result_text(output):
+    """The final reply text from `claude -p --output-format stream-json`. ValueError if there is none."""
     for line in reversed(output.splitlines()):
         try:
             event = json.loads(line)
@@ -87,7 +92,7 @@ def response(output):
             raise ValueError(str(event.get("result") or event.get("errors") or "Claude could not answer")[:1000])
         result = event.get("result")
         if isinstance(result, str) and result.strip():
-            return parse_reply(result[:20000])
+            return result
     raise ValueError("Claude returned no coaching reply. Check CLI sign-in and try again.")
 
 

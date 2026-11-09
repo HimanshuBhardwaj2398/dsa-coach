@@ -168,6 +168,12 @@ details.more summary:hover { color: var(--fg); }
 #panel .finish { border-top: 1px solid var(--line); margin-top: 18px; padding-bottom: 16px; }
 #panel .finish h3 { font-size: 14px; margin: 14px 0 0; }
 #panel .finish > button { margin-top: 4px; }
+#panel .finish .review:empty { display: none; }
+#panel .finish .review { border: 1px solid var(--line); border-radius: 8px; margin-top: 14px; padding: 4px 14px 14px; }
+#panel .finish .review ul { margin: 8px 0; padding-left: 20px; }
+#panel .finish .review dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 10px 0; }
+#panel .finish .review dt { color: var(--muted); }
+#panel .finish .review dd { margin: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 4px 4px; vertical-align: middle; }
 th { color: var(--muted); font-weight: 500; font-size: 12px; }

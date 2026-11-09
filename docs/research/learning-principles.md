@@ -62,7 +62,7 @@ Sources: Oakley and Sejnowski's Coursera course and Oakley's *A Mind for Numbers
 George Polya, 1945. Part I sets out four phases and how a teacher should help. Part III is a short dictionary of heuristics.
 
 **Four phases:** understand the problem, devise a plan, carry out the plan, look back.
-- *In the skill:* the solve protocol's eight stages now sit under these four phases, which are easier to hold in mind than eight separate stages.
+- *In the skill:* the solve protocol has four stages, one for each phase. Until 0.8.0 it had eight stages grouped under these phases; the finer steps (brute force, counting, finding repeated work, the plan card) are now teaching moves inside stage 2, asked one at a time.
 
 **Understand: the unknown, the data, the condition.** Draw a figure; introduce notation.
 - *In the skill:* stage 1 names all three before predicting outputs.
@@ -74,11 +74,11 @@ George Polya, 1945. Part I sets out four phases and how a teacher should help. P
 - *In the skill:* the question table in `references/protocol.md`, with DSA examples. A sorted input invites two pointers or binary search; n ≤ 20 invites backtracking.
 
 **Carry out: check each step.**
-- *In the skill:* stage 7 checks each step against the invariant.
+- *In the skill:* stage 3 checks each step against the invariant.
 
 **Look back.** Check the result another way, see it at a glance, and use the result or the method for another problem.
 - Polya notes that even fairly good students skip this phase, and miss an important and instructive part of the work.
-- *In the skill:* stage 8 asks why the solution works, in one sentence. It then asks one rotating question: another approach and its trade-off, a changed constraint, or another problem the method solves.
+- *In the skill:* stage 4 asks why the solution works, in one sentence. It then asks one rotating question: another approach and its trade-off, a changed constraint, or another problem the method solves.
 
 **How to help.**
 - "The teacher should help, but not too much and not too little, so that the student shall have a reasonable share of the work."
@@ -135,7 +135,7 @@ Peter Naur, 1985; Pol Alvarez Vecino, Answer.AI, August 2026.
 
 | Principle | Sources | Where it lives |
 |---|---|---|
-| Understanding is a theory you build: explain, justify, adapt | Naur, Polya, Oakley | Attempt before answers (rule 1); look back (stage 8); changed-constraint checks in reviews and mocks |
+| Understanding is a theory you build: explain, justify, adapt | Naur, Polya, Oakley | Attempt before answers (rule 1); look back (stage 4); changed-constraint checks in reviews and mocks |
 | Help with general questions first, and never more than needed | Polya | Hint ladder; Polya's questions in protocol.md |
 | Four phases, and always look back | Polya; Oakley on chunking | Solve protocol |
 | A chunk includes when it works and when it breaks | Oakley, Polya, Naur | Plan card (Relies on, Breaks if); card targets |

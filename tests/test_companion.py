@@ -14,7 +14,7 @@ class CompanionTest(unittest.TestCase):
                 "history": [{"role": "assistant", "text": "Try an edge case."}],
                 "screenshot": "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\nfixture").decode()}
         data["code"] = "class Solution: ..."
-        system, stream = companion.request(data, {"stage": 7}, "Stage protocol")
+        system, stream = companion.request(data, {"stage": 3}, "Stage protocol")
         event = json.loads(stream)
         content = event["message"]["content"]
         self.assertEqual(content[1]["source"]["media_type"], "image/png")

@@ -184,15 +184,20 @@ class ServerTest(unittest.TestCase):
         before = [p.read_bytes() for p in paths]
         actions = [("PUT", "/api/attempt", {"text": "old code", "force": True}),
                    ("PUT", "/api/attempt/parts", {"examples": []}),
-                   ("POST", "/api/run", {}), ("POST", "/api/solve/stage", {"n": 7}),
+                   ("POST", "/api/run", {}), ("POST", "/api/solve/stage", {"n": 3}),
                    ("POST", "/api/solve/note", {"stage": 1, "text": "old note"}),
-                   ("POST", "/api/solve/break", {}), ("POST", "/api/solve/block", {}),
-                   ("POST", "/api/solve/end", {"outcome": "solved"})]
+                   ("POST", "/api/solve/break", {}), ("POST", "/api/solve/block", {})]
         for method, path, body in actions:
             status, answer = self.call(method, path, {**body, "session_id": old["session_id"]})
             self.assertEqual(status, 409, path)
             self.assertTrue(answer["stale_session"], path)
             self.assertEqual([p.read_bytes() for p in paths], before, path)
+        # ending the old solve again only reports what was logged for it
+        status, answer = self.call("POST", "/api/solve/end", {"outcome": "solved", "session_id": old["session_id"]})
+        self.assertEqual(status, 200)
+        self.assertIn("Already logged", answer["message"])
+        self.assertIn("partial", answer["message"])
+        self.assertEqual([p.read_bytes() for p in paths], before)
         status, _ = self.call("GET", "/api/attempt?session_id=" + old["session_id"])
         self.assertEqual(status, 409)
 
@@ -647,6 +652,93 @@ class ServerTest(unittest.TestCase):
         look, _ = self.coaching_reply("[[LOOK]]\nRUNG: 0")
         self.assertTrue(look["look"])
         self.assertNotIn("recorded_rung", look)
+
+    REVIEW = {"feedback": "Right idea, and you traced the empty case.", "missing": [], "outcome": "solved",
+              "evidence": "the page shows Accepted", "complexity_stated": True, "technique": None,
+              "mistakes": ["edge"], "rung": 0}
+
+    def finish_body(self, **change):
+        live = self.call("GET", "/api/state")[1]["live"]
+        return {"session_id": live["session_id"], "problem": live["problem"], "outcome": "solved",
+                "lesson": "a set answers seen-before", "outside_help": False, "code": "class Solution: pass",
+                "page_text": "Accepted 75/75", **change}
+
+    def finish_review(self, review=None, **change):
+        """Ask for a finish review with the CLI's reply faked as `review`; returns (start status, poll result)."""
+        output = json.dumps({"type": "result", "is_error": False, "result": json.dumps(review or self.REVIEW)})
+        with unittest.mock.patch.object(self.server.coach.chat_jobs, "start") as start:
+            status, started = self.call("POST", "/api/finish/review", self.finish_body(**change))
+        if status != 200:
+            return status, started
+        args = start.call_args.args[1]
+        self.assertEqual(args[args.index("--tools") + 1], "")
+        with unittest.mock.patch.object(self.server.coach.chat_jobs, "status",
+                                        side_effect=lambda k: {"state": "done", "error": None, "output": output}):
+            first = self.call("GET", f"/api/finish/review?id={started['id']}")[1]
+            self.assertEqual(self.call("GET", f"/api/finish/review?id={started['id']}")[1], first)
+        return status, first
+
+    def test_finish_review_then_save_logs_one_attempt_and_returns_its_receipt(self):
+        self.start()
+        self.call("POST", "/api/solve/note", {"stage": 2, "text": "seen set"})
+        before = self.files()
+        status, result = self.finish_review()
+        self.assertEqual((status, result["state"], result["review"]["recordable"]), (200, "done", True))
+        self.assertEqual(self.files(), before)  # a review logs nothing
+        body = self.finish_body()
+        status, saved = self.call("POST", "/api/finish/save", body)
+        self.assertEqual(status, 200, saved)
+        receipt = saved["receipt"]
+        self.assertEqual((receipt["problem"], receipt["outcome"]), ("binary-search", "solved"))
+        self.assertIn("next_due", receipt)
+        self.assertIsNone(self.call("GET", "/api/state")[1]["live"])
+        [row] = [json.loads(line) for line in (self.root / "learner/attempts.jsonl").read_text().splitlines()]
+        self.assertEqual((row["complexity_stated"], row["mistakes"], row["assisted"]), (True, ["edge"], False))
+        self.assertIn("a set answers seen-before", row["note"])
+        self.assertIn("Accepted", row["note"])
+        self.assertIn("seen set", (self.root / "problems/binary-search/notes.md").read_text())
+        self.assertEqual(row["session"], body["session_id"])
+        status, again = self.call("POST", "/api/finish/save", body)
+        self.assertEqual((status, again["receipt"]), (200, receipt))  # a double click or a lost answer
+        self.assertEqual(len((self.root / "learner/attempts.jsonl").read_text().splitlines()), 1)
+
+    def test_save_needs_a_review_of_the_inputs_as_they_are_now(self):
+        self.start()
+        status, answer = self.call("POST", "/api/finish/save", self.finish_body())
+        self.assertEqual(status, 409)
+        self.assertIn("review", answer["error"].lower())
+        self.finish_review()
+        for change in [{"lesson": "different"}, {"code": "class Solution: return 1"}, {"outcome": "partial"},
+                       {"outside_help": True}]:
+            status, answer = self.call("POST", "/api/finish/save", self.finish_body(**change))
+            self.assertEqual(status, 409, change)
+            self.assertTrue(answer["review_stale"], change)
+        self.call("POST", "/api/solve/note", {"stage": 4, "text": "changed my look back"})
+        self.assertEqual(self.call("POST", "/api/finish/save", self.finish_body())[0], 409)
+        self.finish_review({**self.REVIEW, "missing": ["Run the empty array case and share the result"]})
+        status, answer = self.call("POST", "/api/finish/save", self.finish_body())
+        self.assertEqual(status, 409)
+        self.assertIn("empty array", answer["error"])
+        self.assertFalse((self.root / "learner/attempts.jsonl").read_text().strip())
+
+    def test_a_review_hint_is_recorded_and_outside_help_marks_the_attempt_assisted(self):
+        self.start()
+        _, result = self.finish_review({**self.REVIEW, "rung": 3}, outside_help=True)
+        self.assertEqual(result["recorded_rung"], 3)
+        self.assertEqual(self.call("GET", "/api/state")[1]["live"]["rung"], 3)
+        status, saved = self.call("POST", "/api/finish/save", self.finish_body(outside_help=True))
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(saved["receipt"]["kind"], "assisted")
+
+    def test_finish_review_checks_its_request(self):
+        self.start()
+        self.assertEqual(self.finish_review(outcome="great")[0], 400)
+        self.assertEqual(self.finish_review(outside_help=None)[0], 400)
+        self.assertEqual(self.finish_review(session_id="stale")[0], 409)
+        self.assertEqual(self.finish_review(problem="two-sum")[0], 409)
+        _, result = self.finish_review({**self.REVIEW, "outcome": "brilliant"})
+        self.assertEqual(result["state"], "error")
+        self.assertEqual(self.call("POST", "/api/finish/save", self.finish_body())[0], 409)
 
     def test_a_page_that_went_away_gets_no_500_and_the_terminal_stays_quiet(self):
         """A reload or a closed tab before the answer: writing it raises BrokenPipe or ConnectionReset."""

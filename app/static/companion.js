@@ -7,7 +7,7 @@ const captures = new Map();  // id -> resolve: captures taken on their own as pa
 const RUNG_NAMES = ["", "a general question", "a nudge for this problem", "name the pattern", "the invariant or state",
   "a skeleton with blanks", "one concrete sub-step", "the full solution"];
 const companionThreads = new Map();
-const COMPANION_STAGE_NAMES = ["Understand", "Brute force", "Count", "Repeated work", "Choose state", "Plan", "Code", "Look back"];
+const COMPANION_STAGE_NAMES = ["Understand", "Find an approach", "Build it", "Check and finish"];
 let companionTab = "chat", companionPreviewStage = null, companionStageSession = null;
 let companionLibrary = null, companionLibraryLoading = false, companionShowAllTopics = false;
 let companionPending = null;
@@ -34,7 +34,7 @@ function draftCompanionQuestion(text) {
 }
 
 function browseCompanionStage(n) {
-  if (!state?.live || !attempt || n < 1 || n > 8) return;
+  if (!state?.live || !attempt || n < 1 || n > STAGES.length) return;
   return change(async () => {
     if (panelDirty && savePanel) await savePanel();
     if (!state?.live || !attempt) return;
@@ -62,9 +62,9 @@ function renderCompanionStages() {
   if (companionPreviewStage && companionPreviewStage <= live.stage) companionPreviewStage = null;
   const selected = companionPreviewStage || view || live.stage;
   document.body.dataset.stagePreview = String(!!companionPreviewStage);
-  $("companion-stage-count").textContent = `Stage ${selected} of 8`;
+  $("companion-stage-count").textContent = `Stage ${selected} of ${STAGES.length}`;
   $("companion-stage-prev").disabled = selected === 1 || !attempt;
-  $("companion-stage-next").disabled = selected === 8 || !attempt;
+  $("companion-stage-next").disabled = selected === STAGES.length || !attempt;
   $("companion-stage-current").disabled = selected === live.stage && !companionPreviewStage;
   const cards = $("companion-stage-cards");
   if (!cards.children.length) {
@@ -189,7 +189,7 @@ function renderCompanion() {
   $("companion-mismatch").hidden = !mismatch;
   $("companion-mismatch").textContent = mismatch ? `LeetCode: ${companionProblem}. Your active solve is ${live.problem}. Return to it to continue.` : "";
   $("companion-stage-short").hidden = !live;
-  if (live) $("companion-stage-short").textContent = `Stage ${live.stage} of 8 · ${COMPANION_STAGE_NAMES[live.stage - 1]} →`;
+  if (live) $("companion-stage-short").textContent = `Stage ${live.stage} of ${STAGES.length} · ${COMPANION_STAGE_NAMES[live.stage - 1]} →`;
   $("companion-next-action").textContent = live ? `You’re on ${COMPANION_STAGE_NAMES[live.stage - 1].toLowerCase()}. Share your reasoning, or attach what you see in LeetCode.`
     : slug ? "Ask a question now, or start a guided solve to work through the stages." : "Open a LeetCode problem, then talk it through here.";
   $("companion-use").hidden = !companionProblem || !!live;
@@ -271,6 +271,99 @@ async function askCoaching(body) {
     if (result.state === "done") return result;
     if (Date.now() > deadline) throw new Error("The coach did not finish. Check the local server and try again.");
   }
+}
+
+// --- Finishing in the panel: the coach reviews the evidence, then he saves the attempt it proposes ---------------
+const MISTAKE_NAMES = {comp: "misread the problem", pattern: "picked the wrong pattern", invariant: "the invariant broke",
+  boundary: "off-by-one or loop bounds", edge: "a missed edge case", pytrap: "a Python pitfall",
+  complexity: "complexity wrong or missing", impl: "an implementation slip", process: "skipped a stage", comm: "an unclear explanation"};
+let finishReview = null;  // {session, answers, review}: the latest review, for the answers it saw
+
+function finishAnswers(finish) {
+  return {outcome: finish.outcome.value, lesson: finish.lesson.value.trim(), outside_help: finish.help.value === "yes"};
+}
+
+function pageText(page) {
+  return [$("captured-text").value, page.text].filter(Boolean).join("\n\n").slice(-24000);
+}
+
+async function pollJob(path) {
+  const deadline = Date.now() + 200000;
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await api("GET", path);
+    if (result.state === "error") throw new Error(result.error);
+    if (result.state === "done") return result;
+    if (Date.now() > deadline) throw new Error("The coach did not finish. Check the local server and try again.");
+  }
+}
+
+// Stage 4's Review attempt: his notes are saved by then. Reads LeetCode, asks for the review, shows it.
+async function reviewAttempt(finish) {
+  const live = state.live, area = finish.review;
+  finishReview = null;
+  area.replaceChildren(elem("p", "Reading the LeetCode page…"));
+  const page = await captureNow("context");
+  const answers = finishAnswers(finish);
+  area.replaceChildren(elem("p", "The coach is checking your evidence…"));
+  try {
+    const started = await api("POST", "/api/finish/review", {session_id: live.session_id, problem: live.problem,
+      ...answers, code: page.code || "", page_text: pageText(page)});
+    const result = await pollJob("/api/finish/review?id=" + encodeURIComponent(started.id));
+    if (state?.live?.session_id !== live.session_id) return;
+    finishReview = {session: live.session_id, answers: JSON.stringify(answers), review: result.review};
+    renderReview(finish, result, page.error);
+  } catch (error) {
+    area.replaceChildren(elem("p", error.message), button("Try again", () => reviewAttempt(finish), true));
+  }
+}
+
+function renderReview(finish, result, captureError) {
+  const r = result.review, area = finish.review;
+  const parts = [elem("h3", r.recordable ? "Ready to save" : "One more thing first"), elem("p", r.feedback)];
+  if (captureError) parts.push(Object.assign(elem("p", `LeetCode couldn't be read (${captureError}), so the review used only your notes and attached text.`), {className: "hint"}));
+  if (result.recorded_rung) parts.push(Object.assign(elem("p", `Hint rung ${result.recorded_rung} recorded (${RUNG_NAMES[result.recorded_rung]}).`), {className: "hint"}));
+  if (!r.recordable) {
+    const list = document.createElement("ul");
+    for (const m of r.missing) list.append(elem("li", m));
+    parts.push(list, Object.assign(elem("p", "Add it to your notes or the chat, run the case in LeetCode if needed, then review again."), {className: "hint"}));
+  } else {
+    const record = document.createElement("dl");
+    const rows = [["Outcome", r.outcome], ["Evidence", r.evidence], ["Hints", state.live.rung ? `up to rung ${state.live.rung}` : "none"],
+      ["Outside help", finish.help.value === "yes" ? "yes, so it counts as assisted" : "no"],
+      ["Complexity", r.complexity_stated ? "stated with a reason" : "not credited this time"],
+      ["To watch", r.mistakes.length ? r.mistakes.map(m => MISTAKE_NAMES[m] || m).join(", ") : "nothing noted"]];
+    for (const [k, v] of rows) record.append(elem("dt", k), elem("dd", v));
+    const save = button("Save attempt", () => saveAttempt(finish), true);
+    save.className = "primary";
+    save.gate = () => { save.disabled = !reviewIsCurrent(finish); };
+    for (const control of [finish.outcome, finish.lesson, finish.help]) control.addEventListener("input", save.gate);
+    for (const control of [finish.outcome, finish.help]) control.addEventListener("change", save.gate);
+    parts.push(record, Object.assign(elem("p", "Saving logs this attempt and schedules the next review. Change an answer and the coach reviews again."), {className: "hint"}), save);
+  }
+  area.replaceChildren(...parts);
+}
+
+function reviewIsCurrent(finish) {
+  return !!finishReview && finishReview.session === state?.live?.session_id && finishReview.answers === JSON.stringify(finishAnswers(finish));
+}
+
+async function saveAttempt(finish) {
+  const live = state.live;
+  if (!reviewIsCurrent(finish)) { finish.review.replaceChildren(elem("p", "Your answers changed since the review. Review the attempt again.")); return; }
+  const page = await captureNow("context");  // the server checks the code is the code that was reviewed
+  if (page.error) throw new Error(`Couldn't read LeetCode to check your code is unchanged: ${page.error}`);
+  const out = await api("POST", "/api/finish/save", {session_id: live.session_id, problem: live.problem,
+    ...finishAnswers(finish), code: page.code || ""});
+  finishReview = null;
+  draftData = null;  // the attempt is in the notebook now: no draft or rescue of its answers
+  panelDirty = false;
+  try { localStorage.removeItem(draftKey(state.notebook_id, live.session_id)); } catch {}
+  solveGone();
+  const r = out.receipt;
+  banner(`Attempt recorded: ${r.problem}, ${r.outcome} (${r.kind}). Next re-solve due ${r.next_due}. No new solve starts until you choose one.`,
+    [["Continue practice", async () => { setCompanionTab("stages"); await refresh(); }]], "receipt");
+  await refresh();
 }
 
 // A capture the coach needs right now. It never fails the message: on any problem it resolves with {error}.

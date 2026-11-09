@@ -2,14 +2,10 @@
 
 // Stage names and prompts follow references/protocol.md ("Stage prompts for the solve protocol").
 const STAGES = [
-  ["Unknown, data, condition", "What is the unknown, what is given, and what must hold? Restate it in one sentence. Predict the output for two or three inputs, at least one of them an edge case (empty, one element, duplicates, negatives)."],
-  ["Brute force on the grid", "What is every candidate answer? How would you check one?"],
-  ["Count", "How many times does the innermost line run? What does one run cost? Is that fast enough for these constraints?"],
-  ["Find the repeated work", "What does the brute force recompute? Which candidates can you prove are useless?"],
-  ["Classify and choose the state", "Have you seen a problem with the same unknown? Which pattern, what in the problem made you think of it, and which datum does it rely on? What do add, remove and check cost?"],
-  ["Plan card", "Fill in the plan card, including what it relies on and when it breaks, then trace one example by hand."],
-  ["Pseudocode, then code", "Write the subgoal comments first, then the code under each one. Does each step keep the invariant?"],
-  ["Test and look back", "Trace the edge case as if there's a bug, run the tests, then answer the three questions below."],
+  ["Understand", "What is asked, what is given, and what must hold? Restate it in one sentence, then predict the output for two or three inputs, at least one of them an edge case (empty, one element, duplicates, negatives)."],
+  ["Find an approach", "If speed didn't matter, how would you get the answer? Count the work it does and compare it with the constraints. If it's too slow, what does it calculate more than once? End with a short plan."],
+  ["Build it", "Turn your plan into code, one step at a time. What from your plan needs a variable, and what does it hold before the first step?"],
+  ["Check and finish", "Trace the edge case as if there's a bug, run the tests, then answer the three questions below."],
 ];
 const PLAN_FIELDS = ["State", "Invariant", "Relies on", "Breaks if", "Termination", "Complexity", "Hand trace"];
 const LOOK_BACK = ["Why it works, in one sentence",
@@ -645,12 +641,12 @@ function blockOver() {
 function askPrompt(n) {
   const live = state.live;
   if (typeof companionEnabled !== "undefined" && companionEnabled) {
-    const context = n === 7
+    const context = n === 3
       ? "Review the attached LeetCode code against my supplied plan card. If code is missing or cut off, ask me to attach the code."
       : "Review my supplied saved stage notes, plan card, examples, and any attached LeetCode context.";
     return `Check my work for stage ${n} of ${live.problem}. ${context}`;
   }
-  if (n === 7) return `Check my attempt in ${attempt.path}.`;
+  if (n === 3) return `Check my attempt in ${attempt.path}.`;
   return `I'm done with stage ${n} of ${live.problem}. Check it: my notes are in \`coach.py solve show --json\` and my attempt file is ${attempt.path}.`;
 }
 
@@ -774,7 +770,7 @@ function renderNotes() {
   list.className = "notes-list";
   STAGES.forEach(([name], i) => {
     const n = i + 1;
-    const text = n === 6 ? plan.join("\n") : (notes[String(n)] || "").trim();
+    const text = [(notes[String(n)] || "").trim(), n === 2 ? plan.join("\n") : ""].filter(Boolean).join("\n\n");
     if (!text) return;
     const b = button("", () => goTo(n));
     b.className = "note";
@@ -808,7 +804,7 @@ async function fetchStatement() {
 }
 
 function textStage(panel, note, done, n) {
-  const ta = field(panel, n === 7 ? "Notes (optional): your subgoals, or what you're unsure about" : "Your answer", note, true, "answer");
+  const ta = field(panel, n === 3 ? "Notes (optional): the steps you're writing, or what you're unsure about" : "Your answer", note, true, "answer");
   ta.rows = 6;
   return async () => ta.value.trim();
 }
@@ -867,24 +863,32 @@ function stageOne(panel, note, done) {
   };
 }
 
-function stageSix(panel) {
+// Stage 2: his reasoning in the note, and the short plan in the attempt file's docstring (the plan card).
+function stageApproach(panel, note) {
+  const ta = field(panel, "Your thinking: a method that works, how much work it does, and any improvement with its reason", note, true, "answer");
+  ta.rows = 6;
+  const plan = document.createElement("details");
+  plan.className = "plan";
+  plan.open = PLAN_FIELDS.some((f) => (attempt.plan_card[f] || "").trim());
+  plan.append(elem("summary", "Short plan: what you remember, what one step does, why it's safe"));
+  panel.append(plan);
   // a field is written only if he changed it here, so what he typed into the docstring in the editor stays.
   // drawn is the value as the box holds it: a one-line box drops the line breaks of a longer value.
   const inputs = PLAN_FIELDS.map((f) => {
-    const el = field(panel, f, attempt.plan_card[f] || "", f === "Hand trace", "plan:" + f);
+    const el = field(plan, f, attempt.plan_card[f] || "", f === "Hand trace", "plan:" + f);
     return {f, el, drawn: el.value};
   });
   return async () => {
     const changed = inputs.filter((x) => x.el.value !== x.drawn).map((x) => [x, x.el.value]);
     await saveParts(changed.length ? {plan_card: Object.fromEntries(changed.map(([x, v]) => [x.f, v]))} : {});
     for (const [x, v] of changed) x.drawn = v;
-    return null;  // the plan card lives in the attempt file's docstring, not in a stage note
+    return ta.value.trim();
   };
 }
 
 // The note holds the three answers, each after its question's head, with a blank line between them.
 const lookHead = (i) => `${LOOK_BACK[i].split(":")[0]}: `;
-function stageEight(panel, note) {
+function stageLookBack(panel, note) {
   const parts = note ? note.split("\n\n") : [];
   const boxes = LOOK_BACK.map((q, i) => {
     const part = parts[i] || "";
@@ -905,7 +909,7 @@ function renderPanel() {
   head.className = "stage-head";
   const q = elem("p", STAGES[n - 1][1]);
   q.className = "question";
-  head.append(Object.assign(elem("p", `Stage ${n} of 8`), {className: "eyebrow"}), elem("h2", STAGES[n - 1][0]), q);
+  head.append(Object.assign(elem("p", `Stage ${n} of ${STAGES.length}`), {className: "eyebrow"}), elem("h2", STAGES[n - 1][0]), q);
   panel.append(head);
 
   const note = (live.notes || {})[String(n)] || "";
@@ -933,44 +937,44 @@ function renderPanel() {
     await refresh();
   };
   savePanel = saveNote;
-  let finish;  // stage 8: the outcome and lesson boxes
+  let finish;  // stage 4: the outcome and lesson boxes
   const inCompanion = typeof companionEnabled !== "undefined" && companionEnabled;
-  const doneLabel = n === 8 ? (inCompanion ? "Review with coach" : "Done: ask the coach to log it")
+  const doneLabel = n === 4 ? (inCompanion ? "Review attempt" : "Done: ask the coach to log it")
     : inCompanion ? (n === live.stage ? "Complete and continue" : `Go to stage ${n + 1}`) : `Done with stage ${n}`;
   const done = button(doneLabel, async () => {
-    if (n === 8 && dirty && !(await save())) return;  // the finish prompt sends the coach to the file
+    if (n === 4 && dirty && !(await save())) return;  // the finish prompt sends the coach to the file
     await saveNote();
     if (!state.live || !attempt) return;  // the solve ended meanwhile
-    if (n === 8) return finishPrompt(finish.outcome.value, finish.lesson.value.trim());
+    if (n === 4) return inCompanion ? reviewAttempt(finish) : finishPrompt(finish.outcome.value, finish.lesson.value.trim());
     if (n >= state.live.stage) await api("POST", "/api/solve/stage", {n: n + 1});
     view = n + 1;
     focusNext = true;
     await refresh(true);
   }, true);
-  collect = ({1: stageOne, 6: stageSix, 8: stageEight}[n] || textStage)(panel, note, done, n);
+  collect = ({1: stageOne, 2: stageApproach, 4: stageLookBack}[n] || textStage)(panel, note, done, n);
 
-  if (n === 7 && !PLAN_FIELDS.slice(0, 6).some((f) => (attempt.plan_card[f] || "").trim())) {
+  if (n === 3 && !PLAN_FIELDS.slice(0, 6).some((f) => (attempt.plan_card[f] || "").trim())) {
     const nudge = document.createElement("p");
     nudge.className = "nudge";
-    nudge.textContent = "The plan card (stage 6) is empty. Bugs like a missed last candidate show up in the hand trace before they show up in the tests.";
+    nudge.textContent = "The short plan (stage 2) is empty. Bugs like a missed last candidate show up in the hand trace before they show up in the tests.";
     panel.append(nudge);
   }
   done.className = "primary";
   // Save first so both the panel's supplied context and the main chat's file reads see the latest work.
-  askCoach = async () => {
+  askCoach = async (prompt = askPrompt(n)) => {
     if (dirty && !(await save())) return;
     await saveNote();
-    if (state.live && attempt) await copyPrompt(askPrompt(n));
+    if (state.live && attempt) await copyPrompt(prompt);
   };
-  if (n === 8) {
-    finish = finishBlock(done);
+  if (n === 4) {
+    finish = finishBlock(done, inCompanion);
     panel.append(finish.box);
   }
   const actions = document.createElement("div");
   actions.className = "actions";
   const saveBtn = button("Save answer", saveNote, true);
   saveBtn.className = "ghost";
-  actions.append(saveBtn, ...(n === 8 ? [] : [done]));
+  actions.append(saveBtn, ...(n === 4 ? [] : [done]), button("Help me think", () => askCoach(helpPrompt(n)), true));
   if (inCompanion) actions.append(button("Discuss with coach", () => askCoach(), true));
   panel.append(actions);
   applyStageDraft(n);
@@ -980,9 +984,16 @@ function renderPanel() {
   }
 }
 
-// The coach logs the attempt: the technique, mistake codes and complexity check are its judgment, so stage 8's Done
-// hands it his outcome and lesson rather than ending the solve here.
-function finishBlock(done) {
+// One question for the stage he's in, from the moves in references/protocol.md: help with the thinking, not the answer.
+function helpPrompt(n) {
+  return `Help me think through stage ${n} (${STAGES[n - 1][0]}) of ${state.live.problem}. My saved notes are my work so far. `
+    + "Ask me one question that fits where I am; don't give away the method or the code.";
+}
+
+// The coach logs the attempt: the technique, mistake codes and complexity check are its judgment, so stage 4's Done
+// hands it his outcome and lesson rather than ending the solve here. In the LeetCode panel the coach reviews them
+// instead, and he saves the attempt it proposes (companion.js); that review also asks about outside help.
+function finishBlock(done, inCompanion = false) {
   const box = document.createElement("div");
   box.className = "finish";
   box.append(elem("h3", "Finish"));
@@ -992,19 +1003,30 @@ function finishBlock(done) {
   outcome.dataset.draftField = "finish:outcome";
   labelled(box, "Outcome", outcome);
   const lesson = field(box, "Lesson (one line)", "", false, "finish:lesson");
-  done.gate = () => { done.disabled = !outcome.value; };
+  let help = null, review = null;
+  if (inCompanion) {
+    help = document.createElement("select");  // no default either: solved with help isn't unaided
+    help.add(new Option("choose one", ""));
+    help.add(new Option("No, it's my own work", "no"));
+    help.add(new Option("Yes: outside help, AI or a solution", "yes"));
+    help.dataset.draftField = "finish:help";
+    labelled(box, "Did you use outside help or see a solution?", help);
+    review = document.createElement("div");
+    review.className = "review";
+    review.setAttribute("aria-live", "polite");
+  }
+  done.gate = () => { done.disabled = !outcome.value || (help && !help.value); };
   outcome.addEventListener("change", done.gate);
+  help?.addEventListener("change", done.gate);
   done.gate();
   box.append(done);
-  return {box, outcome, lesson};
+  if (review) box.append(review);
+  return {box, outcome, lesson, help, review};
 }
 
 async function finishPrompt(outcome, lesson) {
-  if (typeof companionEnabled !== "undefined" && companionEnabled) {
-    return companionAsk(`Review my stage 8 answers and the attached LeetCode context. My outcome is ${outcome}; lesson: ${lesson || "not stated yet"}. Ask me for any evidence still missing. I will log the attempt in my main coach chat.`);
-  }
   finishSent = attempt.file;
-  await copyPrompt(`I'm done with stage 8 of ${state.live.problem}: outcome ${outcome}, `
+  await copyPrompt(`I'm done with stage 4 of ${state.live.problem}: outcome ${outcome}, `
     + `${lesson ? `lesson "${lesson}"` : "no lesson"}. Check my answers (solve show --json) and my attempt in `
     + `${attempt.path}, then log the attempt.`,
     "Copied. Paste it into the chat: the coach checks it and logs the attempt, and this page goes back to the start screen.");
@@ -1021,7 +1043,7 @@ async function endSolve(outcome, note) {
 }
 
 // --- local recovery (drafts never count as notebook saves) ---------------------
-const DRAFT_VERSION = 1, DRAFT_PREFIX = "dsa-coach:draft:";
+const DRAFT_VERSION = 2, DRAFT_PREFIX = "dsa-coach:draft:";
 let draftData = null, recoveryPending = false, recoveryChoice = null;
 let draftTimer = null, restoreExamples = null, recoveryShown = null;
 const invalidDrafts = new Map();
@@ -1041,7 +1063,7 @@ function readDraft(key) {
         (d.code && (typeof d.code.text !== "string" || typeof d.code.revision !== "string")) ||
         (d.statement !== undefined && typeof d.statement !== "string")) throw new Error("invalid draft");
     for (const [stage, value] of Object.entries(d.stages)) {
-      if (!/^[1-8]$/.test(stage) || !value || !value.fields || typeof value.fields !== "object" ||
+      if (!/^[1-4]$/.test(stage) || !value || !value.fields || typeof value.fields !== "object" ||
           Object.values(value.fields).some((v) => typeof v !== "string") ||
           (value.examples && (!Array.isArray(value.examples) || value.examples.some((r) =>
             typeof r.args !== "string" || typeof r.expected !== "string" || typeof r.edge !== "boolean")))) throw new Error("invalid draft");
@@ -1152,7 +1174,7 @@ function restoreDraft(choice) {
     setCode(d.code.text); markDirty(true);
     attempt.revision = d.code.revision; // retain the original base so Save still detects external changes
   } else if (d.base_revision) attempt.revision = d.base_revision;
-  view = Number(d.view) >= 1 && Number(d.view) <= 8 ? Number(d.view) : state.live.stage;
+  view = Number(d.view) >= 1 && Number(d.view) <= STAGES.length ? Number(d.view) : state.live.stage;
   renderPanel(); renderBar(); renderDesc();
   $("recovery").hidden = true;
   persistDraft();
@@ -1243,9 +1265,9 @@ async function start() {
 // --- the loop ----------------------------------------------------------------
 let queued = null;       // a refresh asked for while one was running: null, or whether it wanted a redraw
 
-// Stages 1 and 6 show parts of the attempt file, so a new version of the file draws them again, unless that would
+// Stages 1 and 2 show parts of the attempt file, so a new version of the file draws them again, unless that would
 // drop what he's typed in the panel. Nothing here ever redraws a panel with unsaved text in it.
-const redrawForFile = () => !panelDirty && (view === 1 || view === 6);
+const redrawForFile = () => !panelDirty && (view === 1 || view === 2);
 const statementDraft = () => (statementBox()?.value || "").trim();
 
 async function refresh(redraw = false) {

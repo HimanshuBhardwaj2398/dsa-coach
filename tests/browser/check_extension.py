@@ -136,12 +136,12 @@ def main():
                 tap(workspace.locator("#companion-tab-stages"))
                 note = workspace.locator("#panel textarea").first
                 note.fill("Keep this unsaved reasoning")
-                tap(workspace.get_by_role("button", name="Stage 3: Count, upcoming", exact=True))
+                tap(workspace.get_by_role("button", name="Stage 3: Build it, upcoming", exact=True))
                 expect(workspace.locator("#companion-stage-preview")).to_be_visible()
                 expect(workspace.locator("#solve")).to_be_hidden()
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 1
                 tap(workspace.locator("#companion-stage-prev"))
-                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 8")
+                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 4")
                 tap(workspace.locator("#companion-stage-current"))
                 expect(note).to_have_value("Keep this unsaved reasoning")
                 tap(workspace.locator("#companion-tab-chat"))
@@ -215,11 +215,42 @@ def main():
                 tap(workspace.locator("table.examples .edge").first)
                 tap(workspace.get_by_role("button", name="Remove this example").nth(1))
                 tap(workspace.get_by_role("button", name="Complete and continue", exact=True))
-                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 8")
+                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 2 of 4")
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 2
                 tap(workspace.get_by_role("button", name="Stage 1: Understand, completed", exact=True))
                 expect(note).to_have_value("Keep this unsaved reasoning")
                 assert json.loads(coach("solve", "show", "--json").stdout)["stage"] == 2
+
+                # Finish in the panel: the coach reviews the evidence, and only a current review can be saved.
+                tap(workspace.locator("#companion-stage-current"))
+                tap(workspace.get_by_role("button", name="Complete and continue", exact=True))
+                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 3 of 4")
+                tap(workspace.get_by_role("button", name="Complete and continue", exact=True))
+                expect(workspace.locator("#companion-stage-count")).to_have_text("Stage 4 of 4")
+                review = workspace.get_by_role("button", name="Review attempt", exact=True)
+                workspace.get_by_label("Outcome").select_option("solved")
+                expect(review).to_be_disabled()  # outside help needs an explicit answer
+                workspace.get_by_label("Did you use outside help or see a solution?").select_option("no")
+                workspace.get_by_label("Lesson (one line)").fill("A map finds the complement")
+                tap(review)
+                expect(workspace.locator(".review")).to_contain_text("Run the tests in LeetCode", timeout=20000)
+                expect(workspace.get_by_role("button", name="Save attempt", exact=True)).to_have_count(0)
+                workspace.get_by_label("Lesson (one line)").fill("A map finds the complement; Accepted 63/63")
+                tap(review)
+                save = workspace.get_by_role("button", name="Save attempt", exact=True)
+                expect(save).to_be_enabled(timeout=20000)
+                panel.screenshot(path=str(out / "companion-finish-review.png"), full_page=True)
+                workspace.get_by_label("Lesson (one line)").fill("A map finds the complement; Accepted")
+                expect(save).to_be_disabled()  # changed since the review
+                workspace.get_by_label("Lesson (one line)").fill("A map finds the complement; Accepted 63/63")
+                expect(save).to_be_enabled()
+                tap(save)
+                expect(workspace.locator("#banner")).to_contain_text("Attempt recorded: two-sum, solved", timeout=20000)
+                [row] = [json.loads(line) for line in (root / "learner/attempts.jsonl").read_text().splitlines()]
+                assert (row["problem"], row["outcome"], row["complexity_stated"]) == ("two-sum", "solved", True), row
+                assert "Accepted" in row["note"], row
+                assert json.loads(coach("solve", "show", "--json").stdout) is None
+                panel.screenshot(path=str(out / "companion-finish-receipt.png"), full_page=True)
 
                 # A normal web origin cannot embed the privileged companion route.
                 hostile = context.new_page()

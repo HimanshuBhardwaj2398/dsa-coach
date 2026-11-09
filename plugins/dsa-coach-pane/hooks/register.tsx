@@ -14,15 +14,14 @@ const MIN = 60_000
 const IDLE_MIN = 5 // the same rule as coach.py: after 5 quiet minutes the clock stops at the last activity
 
 const STAGES: readonly (readonly [string, string])[] = [
-  ['Unknown, data, condition', 'Understand'],
-  ['Brute force on the grid', 'Devise a plan'],
-  ['Count', 'Devise a plan'],
-  ['Find the repeated work', 'Devise a plan'],
-  ['Classify and choose the state', 'Devise a plan'],
-  ['Plan card', 'Devise a plan'],
-  ['Pseudocode, then code', 'Carry out the plan'],
-  ['Test and look back', 'Look back'],
+  ['Understand', 'Understand'],
+  ['Find an approach', 'Devise a plan'],
+  ['Build it', 'Carry out the plan'],
+  ['Check and finish', 'Look back'],
 ]
+// A solve started before 0.8.0 had eight stages; coach.py moves it to four on its next write.
+const LEGACY_STAGE = [1, 1, 2, 2, 2, 2, 2, 3, 4]
+const stageOf = (l: { stage: number; protocol?: number }) => (l.protocol === 2 ? l.stage : LEGACY_STAGE[l.stage] ?? l.stage)
 
 // Change a tag when the fields of its value change: it declines what an earlier version stored.
 const live = atom({ plugin: 'dsa-coach-pane', key: 'live' } as const, null, { shape: 'live-1' })
@@ -162,7 +161,8 @@ export const register: Register = on => {
       )
     }
 
-    const [stage, phase] = STAGES[l.stage - 1] ?? ['?', '?']
+    const n = stageOf(l)
+    const [stage, phase] = STAGES[n - 1] ?? ['?', '?']
     const block = openBlock(l)
     const until = countedUntil(l, at)
     const total = l.blocks.reduce((sum, b) => sum + minutes(b, until, l.block_minutes), 0)
@@ -181,9 +181,9 @@ export const register: Register = on => {
         <Box flexDirection="column">
           <Text dimColor>{phase}</Text>
           <Text weight="semibold">
-            Stage {l.stage}/8 · {stage}
+            Stage {n}/{STAGES.length} · {stage}
           </Text>
-          <Text>{'●'.repeat(l.stage) + '○'.repeat(Math.max(0, 8 - l.stage))}</Text>
+          <Text>{'●'.repeat(n) + '○'.repeat(Math.max(0, STAGES.length - n))}</Text>
         </Box>
         <Box flexDirection="column">
           <Text color={isOver ? 'warning' : undefined}>{timer}</Text>
@@ -195,10 +195,10 @@ export const register: Register = on => {
             onPress={say(`Check my attempt in ${NOTEBOOK}/${l.file}: run it on edge cases and tell me what fails, without fixing it.`)}>
             Check my code
           </Button>
-          <Button key="stage" hotkey="s" onPress={say(`I'm done with stage ${l.stage} (${stage}). Check it, then move me on.`)}>
+          <Button key="stage" hotkey="s" onPress={say(`I'm done with stage ${n} (${stage}). Check it, then move me on.`)}>
             Stage done
           </Button>
-          <Button key="hint" hotkey="h" onPress={say(`I'm stuck at stage ${l.stage} (${stage}). Next hint rung, please.`)}>
+          <Button key="hint" hotkey="h" onPress={say(`I'm stuck at stage ${n} (${stage}). Next hint rung, please.`)}>
             Next hint
           </Button>
           {block ? (

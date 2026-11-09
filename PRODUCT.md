@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Himanshu, one learner preparing for coding interviews over a 90-day plan. He opens the study app (`python3 app/server.py`) on his laptop to work one problem at a time through the coach's eight-stage solve protocol, with the coach in a separate chat window. Sessions run from a single focus block to an evening. He is used to LeetCode- and NeetCode-style workspaces.
+Himanshu, one learner preparing for coding interviews over a 90-day plan. He opens the study app (`python3 app/server.py`) on his laptop to work one problem at a time through the coach's four-stage solve protocol, with the coach in a separate chat window. Sessions run from a single focus block to an evening. He is used to LeetCode- and NeetCode-style workspaces.
 
 ## Product Purpose
 

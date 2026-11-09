@@ -1,0 +1,21 @@
+sequenceDiagram
+  autonumber
+  actor You
+  participant Panel as LeetCode panel
+  participant App as Local app server
+  participant Book as Notebook via coach.py
+  participant AI as Claude reply helper
+  participant Main as Main coach chat
+
+  You->>Panel: Save reasoning and ask a question
+  Panel->>App: Saved stage notes, then question + page/code context
+  App->>Book: Save notes and read the current solve
+  Book-->>App: Stage, hint level, saved plan and examples
+  App->>AI: Question + context + teaching prompts
+  AI-->>App: Reply + reported hint level
+  App->>Book: Raise saved hint level if needed
+  App-->>Panel: Show the reply
+  You->>You: Write and run code in LeetCode
+  You->>Main: Share final result and ask to record the attempt
+  Main->>Book: End solve with outcome, assistance and lesson
+  Book-->>Main: Saved attempt and refreshed progress

@@ -3,7 +3,7 @@
 {url}
 Started {date}.{pattern_line}
 
-Plan card (stage 6):
+Plan card (stage 2):
     State:
     Invariant:
     Relies on:
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 class Solution:
     # Write the method LeetCode gives you here, e.g. def search(self, nums, target):
-    # Subgoal comments first (stage 7), then the code under each one.
+    # Build it (stage 3): one step of your plan at a time. Subgoal comments help when you're unsure.
     # The first method is the one the examples call: name helpers _like_this or put them below it.
     pass
 

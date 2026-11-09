@@ -31,6 +31,7 @@ sys.path.insert(0, str(APP))
 import attempt_file  # noqa: E402
 import claude_job  # noqa: E402
 import companion  # noqa: E402
+import completion  # noqa: E402
 import runner  # noqa: E402
 import statement  # noqa: E402
 
@@ -65,6 +66,9 @@ class Coach:
         self.jobs = claude_job.Jobs()
         self.chat_jobs = claude_job.Jobs()
         self.chat_sessions = {}  # coaching request id -> the solve it was asked in, to record the rung it gave
+        self.finish_jobs = {}  # finish review id -> (solve, the inputs it assesses)
+        self.finish_done = {}  # finish review id -> its answer, so a second poll gets the same one
+        self.reviews = {}  # solve -> {"fingerprint", "review"}: the latest review that can be saved. Memory only.
         # An empty cwd avoids loading project instructions or local notebook hooks in the read-only chat.
         self.chat_directory = tempfile.TemporaryDirectory(prefix="dsa-coach-chat-")
 
@@ -410,6 +414,106 @@ def record_rung(coach, session, rung):
         return None
 
 
+# Finishing in the panel: the coach reviews the evidence, then he saves (completion.py) -------------------------
+def finish_inputs(coach, d) -> tuple:
+    """What a finish review assesses: his saved work from the notebook, and his finish answers and LeetCode code."""
+    live = live_solve(coach)
+    if live["session_id"] != need(d, "session_id", str):
+        raise ApiError(409, "the solve changed; refresh before trying again", {"stale_session": True})
+    if d.get("problem") != live["problem"]:
+        raise ApiError(409, f"LeetCode shows a different problem from your solve ({live['problem']}).")
+    if d.get("outcome") not in completion.OUTCOMES:
+        raise ApiError(400, "choose solved, partial or failed")
+    if not isinstance(d.get("outside_help"), bool):
+        raise ApiError(400, "say whether you used outside help or saw a solution")
+    try:
+        lesson, code = companion.limited_text(d, "lesson", 500), companion.limited_text(d, "code", 24000)
+    except ValueError as exc:
+        raise ApiError(400, str(exc)) from None
+    with checked_solve(coach, d):
+        saved = read_attempt(coach.root / live["file"], live)
+    return live, {"problem": live["problem"], "stage_notes": live.get("notes") or {}, "plan_card": saved["plan_card"],
+                  "examples": saved["examples"], "rung": live["rung"], "outcome": d["outcome"],
+                  "lesson": lesson.strip(), "outside_help": d["outside_help"], "code": code}
+
+
+def post_finish_review(coach, d):
+    live, inputs = finish_inputs(coach, d)
+    try:
+        system, stream = completion.request(inputs, companion.limited_text(d, "page_text", 24000))
+    except ValueError as exc:
+        raise ApiError(400, str(exc)) from None
+    config = json.loads((coach.root / "config.json").read_text(encoding="utf-8"))
+    key = os.urandom(16).hex()
+    try:
+        coach.chat_jobs.start(key, companion.argv(config.get("claude_bin", "claude"), system),
+                              coach.chat_directory.name, 180, input_text=stream, collect=True)
+    except claude_job.Busy as exc:
+        raise ApiError(409, str(exc)) from None
+    coach.finish_jobs[key] = (live["session_id"], inputs)
+    return {"id": key, "state": "running"}
+
+
+def get_finish_review(coach, q):
+    key = need(q, "id", str)
+    if not re.fullmatch(r"[0-9a-f]{32}", key):
+        raise ApiError(400, "invalid review request")
+    if key in coach.finish_done:
+        return coach.finish_done[key]
+    status = coach.chat_jobs.status(key)
+    if status["state"] == "idle" or key not in coach.finish_jobs:
+        raise ApiError(404, "review request expired; ask again")
+    output = status.pop("output", None)
+    if status["state"] != "done":
+        return status
+    session, inputs = coach.finish_jobs.pop(key)
+    try:
+        review = completion.parse(output or "", inputs["outcome"])
+    except ValueError as exc:
+        result = {"state": "error", "error": str(exc)}
+    else:
+        recorded = record_rung(coach, session, review["rung"]) if review["rung"] else None
+        if recorded:
+            inputs = {**inputs, "rung": recorded}
+        coach.reviews[session] = {"fingerprint": completion.fingerprint(inputs), "review": review}
+        result = {"state": "done", "review": review, "recorded_rung": recorded}
+    if len(coach.finish_done) >= 24:
+        coach.finish_done.pop(next(iter(coach.finish_done)))
+    coach.finish_done[key] = result
+    return result
+
+
+def post_finish_save(coach, d):
+    """Logs the attempt the latest review proposed, if nothing it assessed has changed. A repeat returns the receipt."""
+    session = need(d, "session_id", str)
+    live = coach.json("solve", "show")
+    if not live or live["session_id"] != session:  # ended already, or replaced: coach.py tells which
+        return {"receipt": json.loads(coach.run("solve", "end", "--json", "--expected-session", session))}
+    held = coach.reviews.get(session)
+    if not held:
+        raise ApiError(409, "Ask for a review first: the coach checks the evidence before the attempt is logged.")
+    review = held["review"]
+    if not review["recordable"]:
+        raise ApiError(409, "The review still needs: " + "; ".join(review["missing"]))
+    _, inputs = finish_inputs(coach, d)
+    if completion.fingerprint(inputs) != held["fingerprint"]:
+        raise ApiError(409, "Your answers, code or hints changed since the review. Ask for a fresh review.",
+                       {"review_stale": True})
+    note = "; ".join(filter(None, [inputs["lesson"], f"evidence: {review['evidence']}"]))
+    args = ["solve", "end", "--json", f"--outcome={review['outcome']}", "--expected-session", session, f"--note={note}"]
+    if inputs["outside_help"]:
+        args.append("--assisted")
+    if review["technique"]:
+        args.append(f"--technique={review['technique']}")
+    if review["mistakes"]:
+        args.append("--mistakes=" + ",".join(review["mistakes"]))
+    if review["complexity_stated"]:
+        args.append("--complexity-stated")
+    receipt = json.loads(coach.run(*args))
+    coach.reviews.pop(session, None)
+    return {"receipt": receipt}
+
+
 def explainer_file(coach, key: str) -> Path:
     check_pattern(key)
     rel = next(p["explainer"] for p in coach.json("map")["patterns"] if p["key"] == key)
@@ -440,6 +544,9 @@ ROUTES = {
     ("GET", "/api/explainer"): get_explainer,
     ("POST", "/api/coaching"): post_coaching,
     ("GET", "/api/coaching"): get_coaching,
+    ("POST", "/api/finish/review"): post_finish_review,
+    ("GET", "/api/finish/review"): get_finish_review,
+    ("POST", "/api/finish/save"): post_finish_save,
 }
 
 

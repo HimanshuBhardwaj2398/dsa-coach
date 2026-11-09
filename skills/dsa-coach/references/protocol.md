@@ -39,18 +39,27 @@ General questions he can ask himself on any problem, grouped by the four phases 
 
 ## Stage prompts for the solve protocol
 
-| Stage | Ask | Gate before moving on |
+Four stages, one current question at a time. "Help me think" from the app or panel asks for one question for his stage: pick the move below that fits his last answer, and don't hand over this problem's data structure, invariant or code unless you record that rung.
+
+| Stage | Ask first | Gate before moving on |
 |---|---|---|
 | 1 Understand | "What is the unknown, what is given, and what must hold? Restate it in one sentence. What do these two inputs return? What about an empty or single-element input?" | Correct outputs for his own examples |
-| 2 Brute force | "What is every candidate answer? How would you check one?" | Search space named, e.g. every (i, j) pair |
-| 3 Count | "How many times does the innermost line run? What does one run cost? Is that fast enough for these constraints?" | A Big-O with its reason |
-| 4 Repeated work | "What does the brute force recompute? Which candidates can you prove are useless?" | Names recount, recheck or restart |
-| 5 Classify | "Have you seen a problem with the same unknown? Which pattern, what in the problem made you think of it, and which datum does it rely on? What do add, remove and check cost?" | Pattern plus cue plus the datum it relies on plus state |
-| 6 Plan card | "Fill in the plan card, including what it relies on and when it breaks, then trace this example by hand." | Card complete and the hand trace matches |
-| 7 Code | "Write the subgoal comments first. Does each step keep the invariant?" | Skeleton matches the card |
-| 8 Look back | "Trace the edge case as if there's a bug. What's the complexity? Why does it work, in one sentence?" Then one of: "Another way to solve it, and the trade-off?", "What if <constraint> changed?", "What other problem does this solve?" | Tests pass; complexity and the one-sentence reason stated |
+| 2 Find an approach | "If speed didn't matter, how would you get the answer?" | A method that works, its count compared with the constraints, and, when it is too slow, an improvement with its reason; a short plan traced on one example |
+| 3 Build it | "What from your plan needs a variable, and what does it hold before the first step?" | Code that follows the plan, each step checked against the invariant |
+| 4 Check and finish | "Trace the edge case as if there's a bug. What's the complexity? Why does it work, in one sentence?" Then one of: "Another way to solve it, and the trade-off?", "What if <constraint> changed?", "What other problem does this solve?" | Tests pass; complexity and the one-sentence reason stated; a one-line lesson |
 
-Predicting outputs before coding raised correct completion from 53% to 76% in a CS1 study, and explicit stages with "which stage are you in?" check-ins raised self-directed work, so keep stages 1 and 6 even when he wants to skip them.
+**Moves for stage 2**, in roughly this order, skipping any his answers already cover:
+1. *Find something that works.* "If speed didn't matter, what could you try?" Too abstract: "Solve this tiny input by hand. What did you do?" Separate listing candidates from checking one.
+2. *Count concretely.* "Pick one action your method repeats. When does it happen?" Trace a small case, count that action, then say how the count depends on n. When iterations do different amounts of work, add the amounts; two loops don't automatically mean n². Count hidden work (slicing, copying, `in` on a list). Memory is a separate count. Run any trace you present as evidence.
+3. *Connect the count to the limit.* "As the input grows, which part grows fastest? Does that fit these constraints?" Big-O comes after the count means something. A traced case supports the argument; it doesn't prove the bound.
+4. *Find a reason to improve.* "What did you calculate more than once?" or "Which candidates can you safely stop checking?" The change comes from that observation or a property of the input. Ask why it stays correct, then count again. If the simple method fits, don't push an optimization.
+5. *Keep a short plan.* What is remembered, what one step does, why it is safe, and a hand trace of one example (the plan card, references/plan-card.md). The pattern's name, its cue and the datum it relies on can follow the reasoning.
+
+**Moves for stage 3**, one at a time, for where he is stuck: "What information from your plan needs a variable?" · "What should those variables mean before the first step?" · "Take one action from your plan. What must the program read or update?" · "What makes the next iteration or call move forward, and when does it stop?" · "Where is the answer at that point?" Let him write one meaningful part and trace it. Subgoal comments help when they bridge a gap; they aren't required.
+
+A general explanation of counting or of turning a plan into code, on a separate toy example followed by his prediction, is not a hint for this problem. Anything that reveals this problem's method counts at the rung it gives away.
+
+Predicting outputs before coding raised correct completion from 53% to 76% in a CS1 study, and explicit stages with "which stage are you in?" check-ins raised self-directed work, so keep the examples in stage 1 and the short plan in stage 2 even when he wants to skip them.
 
 ## Modes in detail
 
@@ -65,7 +74,7 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `cards` | Quiz mode, one card at a time |
 | `new` with `first: true` | Link the problem, then the first-step probe |
 | `new` with `block: true` | Link the problem and name its pattern, then stage 1 of the solve protocol |
-| `new` with `block: false` | Link the problem without naming the pattern, then stage 1; he classifies it at stage 5 |
+| `new` with `block: false` | Link the problem without naming the pattern, then stage 1; he classifies it in stage 2 |
 | `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
 | `none` | Offer a mock or an unlabeled mixed set |
 
@@ -74,7 +83,7 @@ For a problem, run `coach.py solve start --problem SLUG` before the first prompt
 `block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it (`solve end` for a problem) and offer the next one in a line.
 
 **Prompts from the coach pane.** The pane in Claude Code, and the study app's **Ask the coach** button, send these as his own words:
-- "I'm done with stage N": check that stage's output before `solve stage N+1`. After stage 8, check the look-back answers and end the solve with the outcome and lesson he gives (SKILL.md, End).
+- "I'm done with stage N": check that stage's output before `solve stage N+1`. After stage 4, check the look-back answers and end the solve with the outcome and lesson he gives (SKILL.md, End).
 - "I'm stuck at stage N": the next rung (`solve hint`).
 - "Check my attempt in ...": run it on edge cases, report what fails and don't fix it.
 - "My focus block is over": the stuck-block options in SKILL.md.

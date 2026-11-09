@@ -11,6 +11,14 @@ if "--allowedTools" in sys.argv:  # an explainer job, which writes files, rather
 assert sys.argv[sys.argv.index("--tools") + 1] == ""
 event = json.loads(sys.stdin.readline())
 context = json.loads(event["message"]["content"][0]["text"])
+if sys.argv[sys.argv.index("--system-prompt") + 1].startswith("You review a finished practice attempt"):
+    assert context["code"] == "class Solution:\n    def twoSum(self, nums, target): ..."
+    ready = "Accepted" in context["lesson"]  # the check states its evidence in the lesson the second time
+    review = {"feedback": "Your map lookup is right.", "evidence": "he reports Accepted on LeetCode",
+              "missing": [] if ready else ["Run the tests in LeetCode and say what they report"],
+              "outcome": "solved", "complexity_stated": True, "technique": None, "mistakes": [], "rung": 0}
+    print(json.dumps({"type": "result", "is_error": False, "result": json.dumps(review)}))
+    sys.exit()
 assert context["problem"] == "two-sum"
 assert context["code"] == "class Solution:\n    def twoSum(self, nums, target): ..."  # read from the editor
 images = [c for c in event["message"]["content"] if c["type"] == "image"]

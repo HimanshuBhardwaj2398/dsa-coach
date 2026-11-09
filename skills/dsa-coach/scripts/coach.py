@@ -20,7 +20,7 @@ from session_lock import session_lock, session_identity
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.7.0"
+SKILL_VERSION = "0.8.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -56,16 +56,16 @@ LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purp
 LISTS = ("blind75", "nc150", "roadmap")  # problems.json: the two lists, or a canonical problem outside both
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
-STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase)
-    ("Unknown, data, condition", "Understand"),
-    ("Brute force on the grid", "Devise a plan"),
-    ("Count", "Devise a plan"),
-    ("Find the repeated work", "Devise a plan"),
-    ("Classify and choose the state", "Devise a plan"),
-    ("Plan card", "Devise a plan"),
-    ("Pseudocode, then code", "Carry out the plan"),
-    ("Test and look back", "Look back"),
+STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase). app.js, companion.js and the pane repeat the names.
+    ("Understand", "Understand"),
+    ("Find an approach", "Devise a plan"),
+    ("Build it", "Carry out the plan"),
+    ("Check and finish", "Look back"),
 ]
+PROTOCOL = 2  # live solves from before 0.8.0 used eight stages; load_live moves them to these four
+LEGACY_STAGES = ["Unknown, data, condition", "Brute force on the grid", "Count", "Find the repeated work",
+                 "Classify and choose the state", "Plan card", "Pseudocode, then code", "Test and look back"]
+LEGACY_TO_STAGE = {1: 1, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 4}
 RUNGS = ["none", "a general question", "a nudge for this problem", "the pattern name", "the invariant or state",
          "a skeleton with blanks", "one concrete sub-step", "the full worked solution"]
 FOCUS_MINUTES = {"easy": 15, "medium": 25, "hard": 25}  # one genuine attempt = one focused block
@@ -903,6 +903,8 @@ def add_attempt(root: Path, a: dict, source: str = "cli") -> dict:
         "skill_version": a.get("skill_version", SKILL_VERSION),
         "source": source,
     }
+    if a.get("session"):  # the live solve it ended
+        row["session"] = a["session"]
     append_jsonl(root / "learner" / "attempts.jsonl", row)
     ensure_problem_notes(root, row["problem"], row["pattern"], row["difficulty"], on)
     if row["note"]:
@@ -926,16 +928,30 @@ def cmd_log_attempt(args) -> None:
     })
 
 
-def log_and_report(root: Path, a: dict) -> None:
+def log_and_report(root: Path, a: dict, as_json: bool = False) -> None:
     errs = validate_attempt(a, pattern_keys())
     if errs:
         die("; ".join(errs))
     row = add_attempt(root, a)
-    info = analyze_problems(load_state(root))[row["problem"]]
     write_snapshot(root)
+    report_attempt(root, row, as_json)
+
+
+def report_attempt(root: Path, row: dict, as_json: bool = False, already: bool = False) -> None:
+    """What logging an attempt led to: the receipt the study app shows, or one line for the chat."""
+    info = analyze_problems(load_state(root))[row["problem"]]
     kind = "unaided" if is_unaided(row) else "assisted" if row["assisted"] else "not unaided"
-    print(f"Logged {row['id']}: {row['problem']} ({row['pattern']}), {row['outcome']}, {kind}. "
-          f"Problem status: {info['status']}. Next re-solve due {info['next_due']}.")
+    if as_json:
+        print(json.dumps({"id": row["id"], "problem": row["problem"], "outcome": row["outcome"], "kind": kind,
+                          "status": info["status"], "next_due": info["next_due"]}))
+        return
+    print(f"{'Already logged' if already else 'Logged'} {row['id']}: {row['problem']} ({row['pattern']}), "
+          f"{row['outcome']}, {kind}. Problem status: {info['status']}. Next re-solve due {info['next_due']}.")
+
+
+def logged_from(root: Path, session: str) -> dict | None:
+    """The attempt a solve already logged, so ending it twice logs it once."""
+    return next((a for a in read_jsonl(root / "learner" / "attempts.jsonl") if a.get("session") == session), None)
 
 
 def add_question(root: Path, q: dict, source: str = "cli") -> dict:
@@ -1229,6 +1245,23 @@ def load_live(root: Path, required: bool = True) -> dict | None:
     live = read_json(root / LIVE, None)
     if live is None and required:
         die("no live solve. Start one with `coach.py solve start --problem SLUG`.")
+    return migrate_live(live) if live else live
+
+
+def migrate_live(live: dict) -> dict:
+    """An eight-stage solve in the four stages. Notes from old stages 2-6 share stage 2, each under its old name;
+    the rest move as they are. The next command that writes the solve saves the result."""
+    if live.get("protocol") == PROTOCOL:
+        return live
+    old = live.get("notes") or {}
+    notes = {}
+    for n in sorted(old, key=int):
+        stage = LEGACY_TO_STAGE[int(n)]
+        text = f"{LEGACY_STAGES[int(n) - 1]}:\n{old[n]}" if stage == 2 else old[n]
+        notes[str(stage)] = f"{notes[str(stage)]}\n\n{text}" if str(stage) in notes else text
+    live = dict(live, protocol=PROTOCOL, stage=LEGACY_TO_STAGE[live["stage"]])
+    if notes:
+        live["notes"] = notes
     return live
 
 
@@ -1299,7 +1332,7 @@ def describe_live(v: dict) -> str:
     timer = f"block {b['number']}: {b['elapsed']} of {b['length']} min" if b["open"] else f"on a break after block {b['number']}"
     label = f" ({v['pattern_name']})" if v["labeled"] else ""
     back = f" · back at {v['resumed'][11:16]}, fresh block" if v.get("resumed") else ""
-    return (f"{v['problem']}{label} · stage {v['stage']}/8 {v['stage_name']} · hint rung {v['rung']}/7 · "
+    return (f"{v['problem']}{label} · stage {v['stage']}/{len(STAGES)} {v['stage_name']} · hint rung {v['rung']}/7 · "
             f"{timer} · {v['minutes']} min in all{back}")
 
 
@@ -1330,7 +1363,7 @@ def solve_start(root: Path, args) -> None:
     live = {
         "problem": slug, "pattern": pattern, "pattern_name": pattern_name, "labeled": not args.unlabeled,
         "difficulty": difficulty, "mode": args.mode, "confidence": args.confidence, "url": url,
-        "session_id": os.urandom(16).hex(),
+        "session_id": os.urandom(16).hex(), "protocol": PROTOCOL,
         "file": f"problems/{slug}/{name}", "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
         "blocks": [{"start": started, "end": None, "paused": 0}], "started": started, "last_active": started,
         "skill_version": SKILL_VERSION,
@@ -1346,17 +1379,24 @@ def solve_end(root: Path, live: dict, args) -> None:
         return
     if not args.outcome:
         die("give --outcome (solved, partial or failed), or --discard")
-    v = live_view(live)
-    log_and_report(root, {
-        "problem": live["problem"], "pattern": live["pattern"], "difficulty": live["difficulty"], "mode": live["mode"],
-        "outcome": args.outcome, "minutes": v["minutes"] if args.minutes is None else args.minutes,
-        "hints": live["rung"], "assisted": args.assisted,
-        "confidence": live.get("confidence") if args.confidence is None else args.confidence,
-        "technique": args.technique, "mistakes": split_codes(args.mistakes),
-        "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
-    })
-    if live.get("notes"):
-        add_stage_notes(root / "problems" / live["problem"] / "notes.md", f"{today().isoformat()} ({live['file']})", live["notes"])
+    session = session_identity(live)
+    row = logged_from(root, session)  # an end that stopped after logging: finish it, don't log again
+    if row:
+        report_attempt(root, row, args.json, already=True)
+    else:
+        v = live_view(live)
+        log_and_report(root, {
+            "problem": live["problem"], "pattern": live["pattern"], "difficulty": live["difficulty"], "mode": live["mode"],
+            "outcome": args.outcome, "minutes": v["minutes"] if args.minutes is None else args.minutes,
+            "hints": live["rung"], "assisted": args.assisted,
+            "confidence": live.get("confidence") if args.confidence is None else args.confidence,
+            "technique": args.technique, "mistakes": split_codes(args.mistakes),
+            "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
+            "session": session,
+        }, args.json)
+    notes = root / "problems" / live["problem"] / "notes.md"
+    if live.get("notes") and not re.search(rf"^### .* \({re.escape(live['file'])}\)$", notes.read_text(encoding="utf-8"), re.M):
+        add_stage_notes(notes, f"{today().isoformat()} ({live['file']})", live["notes"])
     (root / LIVE).unlink()
 
 
@@ -1393,6 +1433,9 @@ def solve_command(root, args) -> None:
     expected = getattr(args, "expected_session", None)
     live = load_live(root, required=not (expected is not None or action == "show" or (action == "end" and args.discard)))
     if expected is not None and (live is None or session_identity(live) != expected):
+        row = logged_from(root, expected) if action == "end" and not args.discard else None
+        if row:  # ended already: a repeat gets the same receipt and never touches a newer solve
+            return report_attempt(root, row, args.json, already=True)
         die("the solve changed; refresh before trying again")
     if action == "touch" and live is None:
         return
@@ -1932,11 +1975,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--confidence", type=int, choices=range(1, 6), help="confidence before starting, 1-5")
     s.add_argument("--unlabeled", action="store_true", help="mixed practice: keep the pattern out of the file and the status")
     s = solve.add_parser("stage", help="move to a solve-protocol stage")
-    s.add_argument("n", type=int, choices=range(1, 9))
+    s.add_argument("n", type=int, choices=range(1, len(STAGES) + 1))
     s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
     s.add_argument("--rung", type=int, choices=range(1, 8))
     s = solve.add_parser("note", help="save the learner's note for a stage (replaces that stage's note)")
-    s.add_argument("--stage", type=int, required=True, choices=range(1, 9))
+    s.add_argument("--stage", type=int, required=True, choices=range(1, len(STAGES) + 1))
     s.add_argument("--text", required=True)
     solve.add_parser("break", help="end the current focus block")
     solve.add_parser("block", help="start a new focus block")
@@ -1954,6 +1997,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mistakes", help=f"comma-separated codes: {', '.join(MISTAKES)}")
     s.add_argument("--complexity-stated", action="store_true")
     s.add_argument("--note")
+    s.add_argument("--json", action="store_true", help="print the receipt: id, outcome, kind, status, next_due")
     for name, sp in solve.choices.items():
         if name not in ("start", "show"):
             sp.add_argument("--expected-session", help="reject an action for a different live solve")

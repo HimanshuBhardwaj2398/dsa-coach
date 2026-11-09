@@ -44,14 +44,14 @@ test('Ask coach in the companion requests review of supplied context, without fi
   h.run(`let companionEnabled = true;
     const companionAsk = async text => messages.push(text);
     state.live.problem = 'contains-duplicate';`);
-  for (let stage = 1; stage <= 8; stage++) {
+  for (let stage = 1; stage <= 4; stage++) {
     await h.run(`copyPrompt(askPrompt(${stage}))`);
     const prompt = h.messages.at(-1);
     assert.doesNotMatch(prompt, /coach\.py|\/a\.py|attempt file/i);
     assert.match(prompt, new RegExp(`stage ${stage}\\b`, 'i'));
     assert.match(prompt, /contains-duplicate/);
     assert.match(prompt, /supplied|attached/i);
-    if (stage === 7) assert.match(prompt, /attach.*code/i);
+    if (stage === 3) assert.match(prompt, /attach.*code/i);
   }
 });
 
@@ -60,7 +60,7 @@ test('Ask coach in the full study app still copies local workspace instructions'
   await h.run('copyPrompt(askPrompt(4))');
   assert.match(h.messages[0], /coach\.py solve show --json/);
   assert.match(h.messages[0], /\/a\.py/);
-  assert.match(h.run('askPrompt(7)'), /Check my attempt in \/a\.py/);
+  assert.match(h.run('askPrompt(3)'), /Check my attempt in \/a\.py/);
 });
 
 for (const mode of ['code', 'examples', 'both']) test(`Run saves ${mode} before execution without advancing stage`, async () => {
@@ -225,12 +225,12 @@ test('storage errors and unreadable versions leave editing functional',()=>{
 
 test('discarding an earlier session preserves nonvisible drafts of the current solve',()=>{
   const h=harness();
-  h.run(`beginDraft(); draftData.stages[6]={fields:{'plan:Invariant':'kept invariant'}}; persistDraft();`);
+  h.run(`beginDraft(); draftData.stages[2]={fields:{'plan:Invariant':'kept invariant'}}; persistDraft();`);
   h.c.old={key:'dsa-coach:draft:book:OLD',data:{session_id:'OLD'}};
   h.storage.set(h.c.old.key,'old');
   h.run('discardDraft(old)');
-  assert.equal(h.run(`draftData.stages[6].fields['plan:Invariant']`),'kept invariant');
-  assert.equal(JSON.parse(h.storage.get('dsa-coach:draft:book:A')).stages['6'].fields['plan:Invariant'],'kept invariant');
+  assert.equal(h.run(`draftData.stages[2].fields['plan:Invariant']`),'kept invariant');
+  assert.equal(JSON.parse(h.storage.get('dsa-coach:draft:book:A')).stages['2'].fields['plan:Invariant'],'kept invariant');
 });
 
 test('acknowledged saves update the base of notes-only recovery',()=>{
@@ -272,9 +272,31 @@ test('activity touches the server at most once a minute, and only from a visible
 
 test('coming back after a long absence says where he was, once per fresh block', () => {
   const h = harness();
-  h.run(`state.live = {session_id: 'A', stage: 4, notes: {'2': 'all pairs', '4': 'seen set\\nmore'}, resumed: 'T1', block: {number: 4}};`);
+  h.run(`state.live = {session_id: 'A', stage: 2, notes: {'1': 'all pairs', '2': 'seen set\\nmore'}, resumed: 'T1', block: {number: 4}};`);
   h.run(`if (once('welcome:A', 'T1')) welcomeBack(state.live); if (once('welcome:A', 'T1')) welcomeBack(state.live);`);
   assert.equal(h.messages.length, 1);
-  assert.match(h.messages[0], /stage 4 · Find the repeated work\. Last note: "seen set"\. Block 4 started fresh/);
+  assert.match(h.messages[0], /stage 2 · Find an approach\. Last note: "seen set"\. Block 4 started fresh/);
   assert.equal(h.run(`once('welcome:A', 'T2')`), true);
+});
+
+test('Help me think asks for one question for the current stage, without the method', () => {
+  const h = harness();
+  h.run(`state.live.problem = 'contains-duplicate';`);
+  for (let stage = 1; stage <= 4; stage++) {
+    const prompt = h.run(`helpPrompt(${stage})`);
+    assert.match(prompt, new RegExp(`stage ${stage} \\(${h.run(`STAGES[${stage - 1}][0]`)}\\)`));
+    assert.match(prompt, /contains-duplicate/);
+    assert.match(prompt, /one question/i);
+    assert.match(prompt, /don.t give away/i);
+  }
+});
+
+test('an eight-stage draft from before 0.8.0 is kept for copying, never restored into four stages', () => {
+  const h = harness();
+  const old = JSON.stringify({version: 1, notebook_id: 'book', session_id: 'A', stages: {'6': {fields: {'plan:State': 'seen'}}}});
+  h.storage.set('dsa-coach:draft:book:A', old);
+  assert.equal(h.run(`readDraft('dsa-coach:draft:book:A')`), null);
+  assert.equal(h.storage.get('dsa-coach:draft:book:A'), old);
+  h.run('beginDraft()');
+  assert.equal(h.run('recoveryChoice.raw'), old);
 });

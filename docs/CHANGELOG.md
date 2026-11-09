@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0 · 2026-11-09 · Four stages, and finishing in the panel
+
+Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/superpowers/specs/2026-11-09-panel-completion-design.md` (approved with trims).
+
+- **Four stages:** Understand, Find an approach, Build it, Check and finish, one for each of Polya's phases. The old stages 2–6 (brute force, count, repeated work, classify, plan card) are now teaching moves inside Find an approach. The coach asks the one that fits and doesn't make him fill in each one. `references/protocol.md` spells out the moves: find something that works, count the work concretely (uneven loops are added, hidden work counted), connect the count to the limit, improve only for a reason, and keep a short plan. Build it bridges the plan to code with one question at a time. Why (`learning-principles.md`): the four phases were already the frame, and eight visible stops were a burden that didn't add practice.
+- **Old solves move over:** a live solve from before 0.8.0 maps stage 1→1, 2–6→2, 7→3, 8→4 (`protocol: 2` marks new ones). Notes from old stages 2–6 are joined into stage 2, each under its old name. Archived notes and logged attempts are unchanged. The pane maps an unmigrated solve the same way. Browser drafts saved before 0.8.0 can't be restored into the new stages; the recovery banner keeps them for copying.
+- **Help me think:** every stage in the study app and the panel has a button that asks the coach for one question for that stage, without giving away the method.
+- **Finish in the panel:** in stage 4 the panel asks for the outcome, a lesson and whether he used outside help. **Review attempt** sends these with his saved notes and the LeetCode code to a tool-less coach (`app/completion.py`). The coach either lists missing evidence or proposes the record: outcome (never better than his own), evidence, complexity credit and mistakes. **Save attempt** logs it through `coach.py solve end`, but only if nothing the review assessed has changed (a fingerprint of answers, notes, plan, examples, rung and code). Solved needs test evidence. The review lives in server memory, and a restart means reviewing again.
+- **Ending twice logs once:** attempts from `solve end` carry `session`. Ending a solve that already logged an attempt (a double click, a lost response, a retry after an interrupted end) returns that attempt's receipt (`solve end --json`) and finishes any leftover cleanup. It never logs again and never touches a newer solve.
+- **Not included (trimmed from the design):** multi-window conflict handling and Learn resource metadata.
+
 ## 0.7.0 · 2026-11-08 · Solve flow (extension 0.2.0)
 
 Focus blocks count active time, coming back is a fresh start, and the panel's coach sees the page and records its hints.
