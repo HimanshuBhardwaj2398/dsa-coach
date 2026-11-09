@@ -8,8 +8,8 @@
   "confidence": 4,
   "url": "https://leetcode.com/problems/contains-duplicate/",
   "file": "problems/contains-duplicate/2026-11-07.py",
-  "stage": 2,
-  "rung": 0,
+  "stage": 4,
+  "rung": 1,
   "block_minutes": 15,
   "blocks": [
     {
@@ -57,9 +57,11 @@
   "skill_version": "0.5.0",
   "notes": {
     "1": "The problem is searching the element in remaining list, and scanning is o(n) so we will use hash set here",
-    "2": "Brute force on the grid:\nIf element occurs more than once we have a True case, we will check an element against every other element of the list\n\nCount:\nOutermost line will run n times and inner will run n-i times where i is the position of element against which we are checking ...\n\nSo, other number of iterations will be : n(n-i) from i 1 to n where n is lenght of list"
+    "2": "Brute force on the grid:\nIf element occurs more than once we have a True case, we will check an element against every other element of the list\n\nCount:\nOutermost line will run n times and inner will run n-i times where i is the position of element against which we are checking ...\n\nSo, other number of iterations will be : (n-i) from i 1 to n where n is lengtt of list",
+    "3": "class Solution:\n    def containsDuplicate(self, nums: list[int]) -> bool:\n        unique_nums=set(nums)\n        return  not len(nums)==len(unique_nums)",
+    "4": "Why it works, in one sentence: \n\nTime and space complexity, and why: \n\nOne more question: "
   },
   "resumed": "2026-11-09T22:04:09+05:30",
-  "last_active": "2026-11-09T22:04:09+05:30",
+  "last_active": "2026-11-09T22:18:38+05:30",
   "protocol": 2
 }

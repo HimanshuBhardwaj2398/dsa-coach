@@ -22,5 +22,17 @@
     "updated": "2026-11-05",
     "note": "v3: one counting method (runs x cost; the line with the biggest runs x cost decides) used in every chapter; count sheets for 4 problems with formulas checked on 24,582 inputs; asteroid bound tightened to 2n; Decode String's quadratic copying measured; question 10; template rule numbers fixed",
     "source": "cli"
+  },
+  {
+    "id": "x0003",
+    "concept": "arrays-hashing",
+    "title": "Arrays & Hashing, explained",
+    "url": null,
+    "file": "concepts/arrays-hashing/arrays-hashing-explainer.html",
+    "version": 1,
+    "created": "2026-11-09",
+    "updated": "2026-11-09",
+    "note": null,
+    "source": "cli"
   }
 ]

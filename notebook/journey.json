@@ -1,6 +1,6 @@
 {
   "generated": "2026-11-09",
-  "skill_version": "0.7.0",
+  "skill_version": "0.8.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -18,7 +18,7 @@
     "phase": "Foundations",
     "weekly_hours": 11
   },
-  "focus": "binary-search",
+  "focus": "arrays-hashing",
   "patterns": [
     {
       "key": "arrays-hashing",
@@ -31,7 +31,7 @@
       "retained": 0,
       "ready": 0,
       "status": "practicing",
-      "last_activity": "2026-11-05",
+      "last_activity": "2026-11-09",
       "last_attempt": "2026-11-05",
       "next_problem": null
     },
@@ -754,7 +754,7 @@
     "cards_held": 0,
     "cards_draft": 7,
     "cards_retired": 0,
-    "explainers": 2
+    "explainers": 3
   },
   "weak_spots": [
     {
@@ -828,6 +828,18 @@
       "created": "2026-11-04",
       "updated": "2026-11-05",
       "note": "v3: one counting method (runs x cost; the line with the biggest runs x cost decides) used in every chapter; count sheets for 4 problems with formulas checked on 24,582 inputs; asteroid bound tightened to 2n; Decode String's quadratic copying measured; question 10; template rule numbers fixed",
+      "source": "cli"
+    },
+    {
+      "id": "x0003",
+      "concept": "arrays-hashing",
+      "title": "Arrays & Hashing, explained",
+      "url": null,
+      "file": "concepts/arrays-hashing/arrays-hashing-explainer.html",
+      "version": 1,
+      "created": "2026-11-09",
+      "updated": "2026-11-09",
+      "note": null,
       "source": "cli"
     }
   ],
