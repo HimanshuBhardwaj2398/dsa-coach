@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arrays &amp; Hashing, explained</title>
+<style>
+/* Same series look as "Sliding Window, Derived" and "Stack, Derived".
+   Colour = role, the same in every view: blue = already in the map (left of j), orange = current j / x,
+   green = the lookup hit, red = the lookup missed, grey = repeated work brute force does. */
+:root {
+  --paper: #F1F4EE; --grid: rgba(52, 92, 70, 0.07); --panel: #FBFCF9; --panel-2: #E6EBE2; --rule: #D1DACD;
+  --ink: #16201A; --ink-2: #47554C; --ink-3: #66736A;
+  --map: #2453C4; --map-soft: #DCE5F8; --cur: #B3440F; --cur-soft: #F7E0D2;
+  --ok: #16774E; --ok-soft: #CBE8D7; --no: #B0281F; --no-soft: #F2DBD8; --seen: #C9D0C4;
+  --code: #F6F8F3; --tk-kw: #7B3BB0; --tk-str: #19744A; --tk-com: #6A776C; --tk-num: #A8470E; --tk-bi: #1F53B5;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F1411; --grid: rgba(150, 200, 165, 0.05); --panel: #161C18; --panel-2: #222B25; --rule: #2F3933;
+    --ink: #E2E9E4; --ink-2: #A9B5AD; --ink-3: #849189;
+    --map: #8AAAFF; --map-soft: #1D2A4A; --cur: #FF9B5E; --cur-soft: #46250F;
+    --ok: #5FD39B; --ok-soft: #173A29; --no: #FF8C82; --no-soft: #3E1C19; --seen: #3B463F;
+    --code: #121813; --tk-kw: #C8A3F3; --tk-str: #7FD4A7; --tk-com: #84918A; --tk-num: #FFB27C; --tk-bi: #92B3FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F1411; --grid: rgba(150, 200, 165, 0.05); --panel: #161C18; --panel-2: #222B25; --rule: #2F3933;
+  --ink: #E2E9E4; --ink-2: #A9B5AD; --ink-3: #849189;
+  --map: #8AAAFF; --map-soft: #1D2A4A; --cur: #FF9B5E; --cur-soft: #46250F;
+  --ok: #5FD39B; --ok-soft: #173A29; --no: #FF8C82; --no-soft: #3E1C19; --seen: #3B463F;
+  --code: #121813; --tk-kw: #C8A3F3; --tk-str: #7FD4A7; --tk-com: #84918A; --tk-num: #FFB27C; --tk-bi: #92B3FF;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.6;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+a { color: var(--map); }
+main { max-width: 1080px; margin: 0 auto; padding: 24px 18px 80px; }
+.prose { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); margin: 0.6em 0 0.2em; }
+h2 { font-size: 1.55rem; margin: 2.4em 0 0.4em; }
+h2 .num { color: var(--ink-3); font-weight: 500; margin-right: 0.3em; }
+h3 { font-size: 1.1rem; margin: 1.4em 0 0.3em; }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--ink-3); font-size: 0.9rem; }
+button {
+  font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; min-height: 36px;
+}
+button:hover:not(:disabled) { border-color: var(--ink-3); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--map); outline-offset: 2px; }
+input, textarea, select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.88rem; color: var(--ink-2); margin: 10px 0; }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--rule); }
+.sw.map { background: var(--map-soft); border-color: var(--map); } .sw.cur { background: var(--cur-soft); border-color: var(--cur); }
+.sw.ok { background: var(--ok-soft); border-color: var(--ok); } .sw.no { background: var(--no-soft); border-color: var(--no); }
+.sw.seen { background: var(--seen); }
+
+/* plan card */
+.plan dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.plan dt { font-weight: 700; color: var(--ink-2); }
+.plan dd { margin: 0; }
+
+/* stepper */
+.lab { margin-top: 14px; }
+.lab-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 820px) { .lab-body { grid-template-columns: 1fr; } }
+.label { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px; }
+.tape { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.cell { min-width: 46px; text-align: center; border: 1.5px solid var(--rule); border-radius: 8px; padding: 4px 6px; background: var(--panel); }
+.cell .v { font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; }
+.cell .i { font-size: 0.72rem; color: var(--ink-3); }
+.cell.inmap { background: var(--map-soft); border-color: var(--map); }
+.cell.cur { background: var(--cur-soft); border-color: var(--cur); }
+.cell.ok { background: var(--ok-soft); border-color: var(--ok); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; font-family: var(--font-mono); font-size: 0.95rem; }
+.chip { border: 1px solid var(--rule); border-radius: 999px; padding: 2px 10px; background: var(--panel); }
+.chip b { color: var(--cur); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { border-bottom: 1px solid var(--rule); padding: 4px 8px; text-align: left; }
+th { color: var(--ink-3); font-weight: 600; font-size: 0.82rem; }
+td.mono, th.mono { font-family: var(--font-mono); }
+.maptable tr.new td { background: var(--map-soft); }
+.maptable tr.hit td { background: var(--ok-soft); }
+.maptable tr.miss td { background: var(--no-soft); color: var(--no); font-style: italic; }
+.masked { font-family: var(--font-mono); font-size: 1.4rem; color: var(--ink-3); text-align: center; padding: 8px; border: 1.5px dashed var(--rule); border-radius: 8px; }
+.say { min-height: 3.2em; border-left: 4px solid var(--cur); padding: 6px 12px; background: var(--panel); border-radius: 0 8px 8px 0; margin: 10px 0; }
+.gate { border: 2px solid var(--cur); background: var(--cur-soft); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+.gate p { margin: 0 0 8px; font-weight: 700; }
+.gate .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gate input { min-width: 220px; flex: 1; }
+.fb { margin-top: 8px; font-size: 0.95rem; }
+.fb.good { color: var(--ok); } .fb.bad { color: var(--no); }
+.log { font-size: 0.9rem; margin: 6px 0 0; padding-left: 18px; }
+.log li { margin: 3px 0; }
+.code { background: var(--code); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 0; font-family: var(--font-mono); font-size: 0.86rem; overflow-x: auto; }
+.code .ln { display: grid; grid-template-columns: 2.4em 3.2em 1fr; white-space: pre; padding: 0 10px 0 0; }
+.code .ln .n { color: var(--ink-3); text-align: right; padding-right: 8px; }
+.code .ln .c { color: var(--ink-3); text-align: right; padding-right: 10px; }
+.code .ln .c.hot { color: var(--cur); font-weight: 700; }
+.code .ln.now { background: var(--cur-soft); box-shadow: inset 3px 0 0 var(--cur); }
+.tk-kw { color: var(--tk-kw); } .tk-str { color: var(--tk-str); } .tk-com { color: var(--tk-com); font-style: italic; }
+.tk-num { color: var(--tk-num); } .tk-bi { color: var(--tk-bi); }
+.history { max-height: 260px; overflow: auto; }
+.history tr.now td { background: var(--cur-soft); }
+.yes { color: var(--ok); font-weight: 700; } .nope { color: var(--no); font-weight: 700; }
+
+/* (i, j) grid */
+.grids { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 640px) { .grids { grid-template-columns: 1fr; } }
+.ij { display: grid; gap: 3px; font-family: var(--font-mono); font-size: 0.8rem; }
+.ij div { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+.ij .hd { color: var(--ink-3); }
+.ij .off { background: transparent; }
+.ij .todo { background: var(--panel); border: 1px solid var(--rule); }
+.ij .seen { background: var(--seen); }
+.ij .band { background: var(--map-soft); border: 1px solid var(--map); }
+.ij .bandmiss { background: var(--no-soft); border: 1px solid var(--no); }
+.ij .hit { background: var(--ok); color: var(--panel); font-weight: 700; }
+.tally { font-family: var(--font-mono); font-size: 1.05rem; margin: 8px 0; }
+.tally b { font-size: 1.3rem; }
+
+/* family table and spoiler */
+details.spoiler { border: 1px dashed var(--cur); border-radius: 8px; padding: 6px 12px; margin-top: 10px; }
+details.spoiler summary { cursor: pointer; color: var(--cur); font-weight: 700; }
+
+/* check */
+.q { margin: 14px 0; }
+.q .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.q input { width: 12em; }
+.score { font-weight: 700; font-size: 1.1rem; }
+body.checking .lab, body.checking .visual { display: none !important; }
+.hidden { display: none !important; }
+textarea { width: 100%; min-height: 4.5em; }
+@media (prefers-reduced-motion: no-preference) {
+  .cell, .ij div, .code .ln { transition: background-color 0.18s ease, border-color 0.18s ease; }
+}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <span>DSA Coach · Arrays &amp; Hashing · v1</span>
+  <button id="theme" type="button" aria-label="Switch light or dark theme">Theme</button>
+</div>
+
+<h1>Arrays &amp; Hashing, explained</h1>
+<p class="prose">Brute force checks pairs one at a time. A hash map lets one lookup answer a whole question at once: <em>has the partner I need appeared yet?</em> This page builds that idea on the same (i, j) grid as the sliding-window and stack pages, counts it, and then makes you run it yourself.</p>
+<p class="prose" style="color:var(--ink-3);font-size:0.92rem">Every state, count and answer on this page comes from running <code>reference.py</code> under Python's tracer. Each step checks the invariant, and the answers match brute force on 3,005 inputs (empty, single, duplicates, negatives, no answer).</p>
+
+<!-- 1 · pre-training / plan card -->
+<h2><span class="num">1</span>Names first: the plan card</h2>
+<div class="card plan">
+  <dl>
+    <dt>Problem</dt><dd>Two Sum: return indices <code>[i, j]</code>, i &lt; j, with <code>nums[i] + nums[j] == target</code>.</dd>
+    <dt>Pointer</dt><dd><code>j</code>: the column being examined. <code>x = nums[j]</code>.</dd>
+    <dt>Need</dt><dd><code>need = target − x</code>: the only value that can partner x.</dd>
+    <dt>State</dt><dd><code>seen</code>: a dict from value to index.</dd>
+    <dt>Invariant</dt><dd>While column j is examined, <code>seen</code> holds exactly the values of <code>nums[:j]</code>, the ones to the left of j.</dd>
+    <dt>Relies on</dt><dd>Values are hashable; a dict lookup costs O(1) on average.</dd>
+    <dt>Breaks if</dt><dd>You store x before checking (x pairs with itself), or you need every pair (the dict keeps one index per value).</dd>
+    <dt>Terminates</dt><dd>j goes up by 1 each pass: at most n passes.</dd>
+    <dt>Complexity</dt><dd>The busiest line runs at most n times at O(1) each: O(n) time and O(n) space.</dd>
+  </dl>
+</div>
+<div class="legend">
+  <span><span class="sw map"></span>in the map (left of j)</span>
+  <span><span class="sw cur"></span>current j / x</span>
+  <span><span class="sw ok"></span>lookup hit</span>
+  <span><span class="sw no"></span>lookup miss</span>
+  <span><span class="sw seen"></span>brute-force repeated work</span>
+</div>
+
+<!-- 2 · grid comparison -->
+<h2><span class="num">2</span>Brute force and hashing on the same (i, j) grid</h2>
+<p class="prose">Every pair is a cell (i, j) with i &lt; j. Brute force visits the cells in column j one by one. Hashing asks one question per column, "is <code>target − nums[j]</code> among the values above?", and that single lookup settles the whole column. Step through the columns side by side for <code>nums = <span id="gridNums"></span></code>, <code>target = <span id="gridT"></span></code>.</p>
+<div class="lab card" id="gridLab">
+  <div class="lab-head controls">
+    <button id="gReset" type="button">Reset</button>
+    <button id="gNext" class="primary" type="button">Next column →</button>
+  </div>
+  <div id="gGate"></div>
+  <div class="grids">
+    <div><p class="label">Brute force: one compare per cell</p><div class="ij" id="gBrute"></div><div class="tally">compares so far: <b id="gBT">0</b></div></div>
+    <div><p class="label">Hashing: one lookup per column</p><div class="ij" id="gHash"></div><div class="tally">lookups so far: <b id="gHT">0</b></div></div>
+  </div>
+  <div class="say" id="gSay" aria-live="polite">Press "Next column" to examine column 0.</div>
+</div>
+
+<!-- 3 · counting -->
+<h2><span class="num">3</span>Count the line runs, read off the Big-O</h2>
+<div class="prose">
+<p>The method is the same as on the other pages: runs of each line × cost of one run. The line with the largest product decides the Big-O, because the number of lines doesn't grow with n. The worst case is an input with no answer, so every column runs. Here that's <code>nums = list(range(n))</code> with <code>target = −1</code>, and the counts below were measured with the tracer.</p>
+</div>
+<div class="card visual">
+  <table id="dbl"><thead><tr><th>n</th><th class="mono">brute line 5 runs</th><th class="mono">hashing line 5 runs</th></tr></thead><tbody></tbody></table>
+  <div id="dblGate"></div>
+</div>
+<div class="prose">
+<ul>
+  <li><b>Brute force.</b> Line 5, the compare, runs n(n−1)/2 times at O(1) each, so <b>O(n²)</b>.</li>
+  <li><b>Hashing.</b> Line 5, <code>need in seen</code>, runs at most n times at O(1) on average (hash the key and look in one bucket), so <b>O(n)</b> time. The map holds at most n entries, so <b>O(n)</b> space. Average-case costs are in <a href="https://docs.python.org/3/builtins/time-complexity.html">Python's time-complexity table</a>.</li>
+  <li><b>Group Anagrams.</b> Line 4, <code>"".join(sorted(s))</code>, runs n times, and sorting k letters costs O(k log k), so <b>O(n · k log k)</b>. The busiest line is now the key computation, not the lookup.</li>
+</ul>
+</div>
+
+<!-- 4 · stepper -->
+<h2><span class="num">4</span>Step through it yourself</h2>
+<p class="prose">Step is the main control, and the arrow keys step too. At the decision points the stepper stops and asks for your prediction first. Once the map gets long it hides, and you fill it in from the invariant. Try the edge case and the no-answer case after the main run.</p>
+<div class="lab card" id="lab">
+  <div class="lab-head">
+    <label for="preset" class="label" style="margin:0">Input</label>
+    <select id="preset"></select>
+    <div class="controls">
+      <button id="bReset" type="button">Reset</button>
+      <button id="bBack" type="button">← Back</button>
+      <button id="bStep" class="primary" type="button">Step →</button>
+      <button id="bPlay" type="button">Play</button>
+      <button id="bEnd" type="button">End</button>
+    </div>
+    <span id="pos" class="label" style="margin:0 0 0 auto"></span>
+  </div>
+  <div class="lab-body">
+    <div>
+      <p class="label" id="tapeLabel">nums</p>
+      <div class="tape" id="tape"></div>
+      <div class="chips" id="chips"></div>
+      <div class="say" id="say" aria-live="polite"></div>
+      <div id="gate"></div>
+      <p class="label" id="mapLabel">seen</p>
+      <div id="map"></div>
+      <p class="label" style="margin-top:12px">Your predictions</p>
+      <ol class="log" id="plog"><li style="list-style:none;color:var(--ink-3)">None yet.</li></ol>
+    </div>
+    <div>
+      <p class="label">Python · line · runs so far</p>
+      <div class="code" id="code"></div>
+      <p class="label" style="margin-top:12px">Trace table</p>
+      <div class="history"><table id="hist"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5 · what breaks -->
+<h2><span class="num">5</span>Three ways it breaks</h2>
+<div class="prose">
+<ol>
+  <li><b>Store before you check.</b> If <code>seen[x] = j</code> moves above the lookup, x can find itself. The edge-case preset shows why the order matters. You'll predict the wrong output in the check below.</li>
+  <li><b>An unhashable key.</b> A list can't be a dict key (<code>TypeError: unhashable type: 'list'</code>). Turn it into a string or a tuple: <code>"".join(sorted(s))</code>, or a tuple of 26 letter counts, which avoids the sort and makes Group Anagrams O(n · k).</li>
+  <li><b>One slot per key.</b> A dict keeps one value per key, so a later duplicate overwrites the earlier index. Two Sum survives because it checks before it overwrites. When you need every index or a count, store a list or a count.</li>
+</ol>
+</div>
+
+<!-- 6 · the family -->
+<h2><span class="num">6</span>The family: read the cue, pick what to store</h2>
+<p class="prose">Every problem here comes down to one decision: what goes in the map, keyed by what. The cue in the problem statement tells you.</p>
+<div class="card">
+<table>
+  <thead><tr><th>Cue in the problem</th><th>Map stores</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>complement lookup (<code>target − x</code>)</td><td><code>value → index</code></td><td>two-sum</td></tr>
+    <tr><td>group by a key</td><td><code>key → list of items</code></td><td>group-anagrams</td></tr>
+    <tr><td>count frequencies</td><td><code>value → count</code> (<code>Counter</code>)</td><td>valid-anagram, top-k-frequent-elements</td></tr>
+  </tbody>
+</table>
+<details class="spoiler">
+  <summary>"Seen before / duplicates": open only after your contains-duplicate solve is finished</summary>
+  <p>You have a live contains-duplicate solve at stage 4. This row names its state, so it stays closed until you've solved or parked it.</p>
+  <table><tbody>
+    <tr><td>seen before / duplicates</td><td>a <code>set</code> of values: membership only, no index needed</td><td>contains-duplicate</td></tr>
+    <tr><td>"is x − 1 present?" across the whole input</td><td>a <code>set</code> of all values, built first</td><td>longest-consecutive-sequence</td></tr>
+  </tbody></table>
+</details>
+</div>
+
+<!-- 7 · check with visuals hidden -->
+<h2><span class="num">7</span>Check, with the visuals hidden</h2>
+<p class="prose">This hides every visual on the page. Work on paper. Each question gives you two tries, then shows the answer, which counts as missed.</p>
+<button id="startCheck" class="primary" type="button">Hide the visuals and start</button>
+<div id="check" class="hidden">
+  <div id="qs"></div>
+  <p class="score" id="score" aria-live="polite"></p>
+  <div id="core" class="hidden card">
+    <h3 style="margin-top:0">The core idea, in your own words</h3>
+    <p>One or two sentences. Say it to the coach afterwards; it goes into the concept notes as the Core idea.</p>
+    <label for="coreText" class="hidden">Core idea</label>
+    <textarea id="coreText" placeholder="A hash map lets me…"></textarea>
+    <p style="font-size:0.9rem;color:var(--ink-3)">Saved in this browser only. The coach will also add a <code>trace</code> card so this check comes back in a few days.</p>
+    <button id="showVisuals" type="button">Show the visuals again</button>
+  </div>
+</div>
+</main>
+
+<script>
+const T = __TRACE__;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const norm = (s) => String(s).toLowerCase().replace(/[\s\[\]()'"]/g, "");
+const pairSet = (s) => norm(s).split(",").filter(Boolean).sort().join(",");
+
+/* theme */
+$("theme").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+};
+
+/* Python highlighting */
+function hl(line) {
+  return esc(line).replace(/(#.*$)|("[^"]*")|\b(def|for|in|if|not|return)\b|\b(enumerate|sorted|list|len|range)\b|\b(\d+)\b/g,
+    (m, com, str, kw, bi, num) => com ? `<span class="tk-com">${com}</span>` : str ? `<span class="tk-str">${str}</span>` :
+      kw ? `<span class="tk-kw">${kw}</span>` : bi ? `<span class="tk-bi">${bi}</span>` : `<span class="tk-num">${num}</span>`);
+}
+
+/* ---------- 2 · grid ---------- */
+const G = T.grid;
+let gCol = -1, gAnswered = false;
+$("gridNums").textContent = "[" + G.nums.join(", ") + "]";
+$("gridT").textContent = G.target;
+const GATE_COL = G.cols.length - 1;
+
+function drawGrid(el, mode) {
+  const n = G.nums.length;
+  let h = `<div class="hd"></div>`;
+  el.style.gridTemplateColumns = `repeat(${n + 1}, minmax(0, 1fr))`;
+  for (let j = 0; j < n; j++) h += `<div class="hd">j${j}</div>`;
+  for (let i = 0; i < n; i++) {
+    h += `<div class="hd">i${i}</div>`;
+    for (let j = 0; j < n; j++) {
+      let cls = "off", txt = "";
+      if (i < j) {
+        cls = "todo";
+        const col = j <= gCol ? G.cols[j] : null;
+        if (col) {
+          if (mode === "brute") cls = col.hit === i ? "hit" : col.checked.includes(i) ? "seen" : "todo";
+          else cls = col.hit === i ? "hit" : col.hit === null ? "bandmiss" : "band";
+          if (col.hit === i) txt = "✓";
+        }
+      }
+      h += `<div class="${cls}" aria-hidden="true">${txt}</div>`;
+    }
+  }
+  el.innerHTML = h;
+}
+function renderGrid() {
+  drawGrid($("gBrute"), "brute");
+  drawGrid($("gHash"), "hash");
+  const col = gCol >= 0 ? G.cols[gCol] : null;
+  $("gBT").textContent = col ? col.brute_total : 0;
+  $("gHT").textContent = col ? col.hash_total : 0;
+  $("gNext").disabled = gCol >= G.cols.length - 1;
+  if (!col) { $("gSay").textContent = 'Press "Next column" to examine column 0.'; return; }
+  const x = G.nums[col.j], need = G.target - x;
+  $("gSay").textContent = col.hit !== null
+    ? `Column ${col.j}: brute force compared ${col.checked.length} cells before (${col.hit}, ${col.j}) hit. Hashing asked once, "is ${need} above?", and got index ${col.hit}. Totals: ${col.brute_total} compares against ${col.hash_total} lookups.`
+    : `Column ${col.j}: brute force compared ${col.checked.length} cell(s) and found nothing. Hashing asked once, "is ${need} above?", got no, and the whole column is ruled out.`;
+}
+$("gNext").onclick = () => {
+  if (gCol + 1 === GATE_COL && !gAnswered) return gridGate();
+  gCol++; renderGrid();
+};
+$("gReset").onclick = () => { gCol = -1; $("gGate").innerHTML = ""; gAnswered = false; renderGrid(); };
+function gridGate() {
+  const col = G.cols[GATE_COL];
+  const right = col.checked.length;
+  const choices = [...new Set([1, right, right + 1, Math.max(2, right - 2)])].sort((a, b) => a - b);
+  askChoice($("gGate"), `Column ${col.j} (x = ${G.nums[col.j]}): how many cells does brute force compare before it finds the pair?`,
+    choices.map(String), String(right), "Brute force walks i = 0, 1, … until the hit; hashing still makes one lookup.",
+    () => { gAnswered = true; gCol++; renderGrid(); });
+}
+
+/* shared one-question gate: buttons, answer, feedback that stays */
+function askChoice(box, q, choices, answer, why, done) {
+  box.innerHTML = `<div class="gate"><p>Predict: ${esc(q)}</p><div class="row">${choices.map((c) =>
+    `<button type="button" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div class="fb"></div></div>`;
+  box.querySelectorAll("button").forEach((b) => b.onclick = () => {
+    const pick = b.dataset.c, ok = pick === answer;
+    box.querySelectorAll("button").forEach((x) => x.disabled = true);
+    const fb = box.querySelector(".fb");
+    fb.className = "fb " + (ok ? "good" : "bad");
+    fb.textContent = (ok ? "✓ Right: " : `✗ You said ${pick}, it's ${answer}. `) + (why || "");
+    done(pick, ok);
+  });
+  box.querySelector("button").focus();
+}
+
+/* ---------- 3 · doubling ---------- */
+function renderDbl(showLast) {
+  const rows = T.doubling.slice(0, showLast ? 4 : 3);
+  $("dbl").querySelector("tbody").innerHTML = rows.map((r, k) => {
+    const prev = k ? T.doubling[k - 1] : null;
+    const ratio = (a, b) => prev ? ` <span style="color:var(--ink-3)">(×${(a / b).toFixed(2)})</span>` : "";
+    return `<tr><td>${r.n}</td><td class="mono">${r.brute_compare}${ratio(r.brute_compare, prev && prev.brute_compare)}</td><td class="mono">${r.hash_lookup}${ratio(r.hash_lookup, prev && prev.hash_lookup)}</td></tr>`;
+  }).join("") + `<tr><td><i>formula</i></td><td class="mono">n(n−1)/2</td><td class="mono">n</td></tr>`;
+}
+renderDbl(false);
+askChoice($("dblGate"), "n doubles from 32 to 64. About how many times more often does the brute-force compare line run?",
+  ["×2", "×4", "×8"], "×4", "Doubling n roughly quadruples n(n−1)/2, the signature of O(n²). The hashing column only doubles: O(n).",
+  () => renderDbl(true));
+
+/* ---------- 4 · stepper ---------- */
+let P = null, idx = -1, gate = null, timer = null;
+const answers = {};               // "preset:step" -> {pick, ok, q, a}
+const PRESETS = T.presets;
+$("preset").innerHTML = PRESETS.map((p, k) => `<option value="${k}">${esc(p.label)}</option>`).join("");
+$("preset").onchange = (e) => load(+e.target.value);
+
+function load(k) { stop(); P = PRESETS[k]; idx = -1; gate = null; render(); }
+const isGroup = () => P.code === "group";
+const key = (k) => P.id + ":" + k;
+
+function step() {
+  if (gate) return false;
+  const t = idx + 1;
+  if (t >= P.steps.length) return false;
+  const s = P.steps[t];
+  if ((s.predict || s.fade) && !answers[key(t)]) { openGate(t); return false; }
+  idx = t; render(); return true;
+}
+function back() { if (gate) { gate = null; render(); return; } if (idx >= 0) { idx--; render(); } }
+function toEnd() { stop(); while (step()) {} }
+function stop() { if (timer) { clearInterval(timer); timer = null; $("bPlay").textContent = "Play"; } }
+function play() {
+  if (timer) return stop();
+  $("bPlay").textContent = "Pause";
+  timer = setInterval(() => { if (!step()) stop(); }, 900);
+}
+$("bStep").onclick = () => { stop(); step(); };
+$("bBack").onclick = () => { stop(); back(); };
+$("bReset").onclick = () => load(PRESETS.indexOf(P));
+$("bEnd").onclick = toEnd;
+$("bPlay").onclick = play;
+document.addEventListener("keydown", (e) => {
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.body.classList.contains("checking")) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); stop(); step(); }
+  if (e.key === "ArrowLeft") { e.preventDefault(); stop(); back(); }
+});
+
+function openGate(t) {
+  gate = { t, fade: !!P.steps[t].fade, tries: 0 };
+  render();
+  const s = P.steps[t], box = $("gate");
+  const finish = (pick, ok, q, a) => { answers[key(t)] = { pick, ok, q, a }; gate = null; idx = t; render(true); };
+  if (s.predict) {
+    const pr = s.predict;
+    askChoice(box, pr.q, pr.choices, pr.a, pr.why || "", (pick, ok) => {
+      setTimeout(() => finish(pick, ok, pr.q, pr.a), 50);
+    });
+    return;
+  }
+  const f = s.fade;
+  box.innerHTML = `<div class="gate"><p>${esc(f.q)}</p><div class="row"><input id="fadeIn" aria-label="map as value:index pairs" autocomplete="off"><button id="fadeGo" type="button" class="primary">Check</button></div><div class="fb" id="fadeFb"></div></div>`;
+  const go = () => {
+    const v = $("fadeIn").value;
+    if (pairSet(v) === pairSet(f.a)) return finish(v, true, f.q, f.a);
+    gate.tries++;
+    if (gate.tries >= 2) return finish(v || "(blank)", false, f.q, f.a);
+    $("fadeFb").className = "fb bad";
+    $("fadeFb").textContent = "Not yet. Use the invariant: which slice of the tape is in the map at this j?";
+  };
+  $("fadeGo").onclick = go;
+  $("fadeIn").onkeydown = (e) => { if (e.key === "Enter") go(); };
+  $("fadeIn").focus();
+}
+
+function render(justAnswered) {
+  const s = idx >= 0 ? P.steps[idx] : null;
+  const shown = gate ? (idx >= 0 ? P.steps[idx] : null) : s;
+  $("pos").textContent = `step ${idx + 1} / ${P.steps.length}`;
+  $("bBack").disabled = idx < 0 && !gate;
+  $("bStep").disabled = !!gate || idx >= P.steps.length - 1;
+  $("bEnd").disabled = $("bStep").disabled;
+
+  // tape
+  $("tapeLabel").textContent = isGroup() ? "strs" : `nums · target = ${P.target}`;
+  const mapIdx = new Set(!shown || isGroup() ? [] : shown.map.map(([, v]) => v));
+  // On the found/return steps of a hit, need is in the map: colour the pair green.
+  const hit = s && !gate && !isGroup() && (s.op === "found" || s.op === "return") ? s.map.find(([k]) => k === s.need) : null;
+  const found = hit ? [hit[1], s.j] : [];
+  const curPos = shown ? (isGroup() ? P.tape.indexOf(shown.s) : shown.j) : -1;
+  const ended = shown && (shown.op === "end" || shown.op === "result");
+  $("tape").innerHTML = P.tape.map((v, i) => {
+    let cls = "cell";
+    if (found.includes(i)) cls += " ok";
+    else if (!ended && i === curPos && shown.op !== "init") cls += " cur";
+    else if (isGroup() ? ended || i < curPos : mapIdx.has(i) && !(gate && gate.fade)) cls += " inmap";
+    return `<div class="${cls}"><div class="v">${esc(v === "" ? "''" : v)}</div><div class="i">${i}</div></div>`;
+  }).join("");
+
+  // chips
+  if (!shown) $("chips").innerHTML = "";
+  else if (isGroup()) $("chips").innerHTML = `<span class="chip">s = <b>${shown.s == null ? "—" : '"' + esc(shown.s) + '"'}</b></span><span class="chip">key = <b>${shown.key == null ? "—" : '"' + esc(shown.key) + '"'}</b></span>`;
+  else {
+    const showNeed = shown.need !== null && !["init", "advance", "end"].includes(shown.op);
+    $("chips").innerHTML = `<span class="chip">j = <b>${shown.j ?? "—"}</b></span><span class="chip">x = <b>${shown.x ?? "—"}</b></span><span class="chip">need = <b>${showNeed ? shown.need : "—"}</b></span>`;
+  }
+
+  // narration
+  $("say").textContent = gate ? "Your call first." : s ? s.say : "Press Step (or →) to start.";
+  if (!gate && !justAnswered) $("gate").innerHTML = "";
+
+  // map
+  $("mapLabel").textContent = isGroup() ? "groups · sorted letters → words" : "seen · value → index";
+  if (gate && gate.fade) $("map").innerHTML = `<div class="masked">? &nbsp;→&nbsp; ?</div>`;
+  else if (!shown || !shown.map.length) $("map").innerHTML = `<div class="masked" style="font-size:1rem">{ } empty</div>` + missRow(shown);
+  else {
+    const rows = shown.map.map(([k, v]) => {
+      let cls = "";
+      if (!gate && s.changed !== undefined && k === s.changed) cls = "new";
+      if (!gate && (s.op === "found" || (s.op === "lookup" && s.hit)) && k === (isGroup() ? s.key : s.need)) cls = "hit";
+      const shownV = isGroup() ? "[" + v.map((w) => '"' + esc(w) + '"').join(", ") + "]" : v;
+      return `<tr class="${cls}"><td class="mono">${isGroup() ? '"' + esc(k) + '"' : k}</td><td class="mono">${shownV}</td></tr>`;
+    }).join("");
+    $("map").innerHTML = `<table class="maptable"><thead><tr><th>${isGroup() ? "key" : "value"}</th><th>${isGroup() ? "words" : "index"}</th></tr></thead><tbody>${rows}</tbody></table>` + missRow(shown);
+  }
+
+  renderCode(); renderHist(); renderLog();
+}
+function missRow(shown) {
+  if (gate || !shown || shown.op !== "lookup" || shown.hit) return "";
+  const k = isGroup() ? '"' + esc(shown.key) + '"' : shown.need;
+  return `<table class="maptable"><tbody><tr class="miss"><td class="mono">${k}</td><td>not in the map</td></tr></tbody></table>`;
+}
+function renderCode() {
+  const lines = T.code[P.code], counts = {};
+  for (let k = 0; k <= idx; k++) if (P.steps[k].op !== "return") counts[P.steps[k].line] = (counts[P.steps[k].line] || 0) + 1;
+  const now = idx >= 0 && !gate ? P.steps[idx].line : -1;
+  const maxC = Math.max(0, ...Object.values(counts));
+  $("code").innerHTML = lines.map((ln, i) => {
+    const n = i + 1, c = counts[n] || "";
+    return `<div class="ln${n === now ? " now" : ""}"><span class="n">${n}</span><span class="c${c && c === maxC ? " hot" : ""}">${c ? c + "×" : ""}</span><span>${hl(ln)}</span></div>`;
+  }).join("");
+}
+function renderHist() {
+  const rows = [];
+  for (let k = 0; k <= idx; k++) {
+    const st = P.steps[k], r = rows[rows.length - 1];
+    if (isGroup()) {
+      if (st.op === "advance") rows.push({ s: st.s, k });
+      else if (r && st.op === "key") { r.key = st.key; r.k = k; }
+      else if (r && st.op === "lookup") { r.isNew = !st.hit; r.k = k; }
+      else if (r && st.op === "append") { r.size = st.map.find(([q]) => q === st.key)[1].length; r.k = k; }
+    } else {
+      if (st.op === "advance") rows.push({ j: st.j, x: st.x, k });
+      else if (r && st.op === "need") { r.need = st.need; r.k = k; }
+      else if (r && st.op === "lookup") { r.hit = st.hit; r.k = k; }
+      else if (r && st.op === "insert") { r.stored = `${st.x} → ${st.j}`; r.k = k; }
+      else if (r && st.op === "found") { r.stored = "return"; r.k = k; }
+    }
+  }
+  const curRow = rows.length - 1;
+  const yn = (v, yes, no) => v === undefined ? "" : v ? `<span class="yes">${yes}</span>` : `<span class="nope">${no}</span>`;
+  const masked = gate && gate.fade;
+  $("hist").innerHTML = isGroup()
+    ? `<thead><tr><th>s</th><th>key</th><th>new group?</th><th>group size</th></tr></thead><tbody>` +
+      rows.map((r, i) => `<tr class="${i === curRow ? "now" : ""}"><td class="mono">"${esc(r.s)}"</td><td class="mono">${r.key ? '"' + esc(r.key) + '"' : ""}</td><td>${yn(r.isNew, "new", "joins")}</td><td>${r.size ?? ""}</td></tr>`).join("") + "</tbody>"
+    : `<thead><tr><th>j</th><th>x</th><th>need</th><th>need in map?</th><th>stored</th></tr></thead><tbody>` +
+      rows.map((r, i) => `<tr class="${i === curRow ? "now" : ""}"><td>${r.j}</td><td>${r.x}</td><td>${r.need ?? ""}</td><td>${yn(r.hit, "yes", "no")}</td><td class="mono">${masked ? "?" : r.stored ?? ""}</td></tr>`).join("") + "</tbody>";
+}
+function renderLog() {
+  const items = Object.entries(answers).filter(([k]) => k.startsWith(P.id + ":"));
+  $("plog").innerHTML = items.length ? items.map(([, a]) =>
+    `<li>${esc(a.q)}<br><span class="${a.ok ? "yes" : "nope"}">${a.ok ? "✓" : "✗"} you: ${esc(a.pick)}</span> · actual: ${esc(a.a)}</li>`).join("")
+    : `<li style="list-style:none;color:var(--ink-3)">None yet for this input.</li>`;
+}
+
+/* ---------- 7 · check ---------- */
+const C = T.checks;
+const QS = [
+  { q: `Without the stepper: what does two_sum([${C.fresh.nums.join(", ")}], ${C.fresh.target}) return?`, a: [JSON.stringify(C.fresh.ret)], cmp: norm, show: JSON.stringify(C.fresh.ret).replace(",", ", ") },
+  { q: `Same call: what is in seen at the moment it returns? Type value:index pairs, like 5:0, 8:1.`, a: [C.fresh.map], cmp: pairSet, show: C.fresh.map },
+  { q: "State the invariant. While column j is examined, seen holds exactly the values of …", choices: ["nums[:j]", "nums[:j+1]", "all of nums", "nums[j+1:]"], a: ["nums[:j]"] },
+  { q: `nums = list(range(100)), target = −1 (no answer). How many times does the brute-force compare line run?`, a: [String(C.n100.brute)], cmp: norm, show: String(C.n100.brute) },
+  { q: `Same input, hashing version: how many times does line 5 (need in seen) run?`, a: [String(C.n100.hash)], cmp: norm, show: String(C.n100.hash) },
+  { q: `Move seen[x] = j above the lookup. What does two_sum(${C.insert_first.call}) return now? (Type None if nothing.)`, a: [JSON.stringify(C.insert_first.ret)], cmp: norm, show: JSON.stringify(C.insert_first.ret).replace(",", ", ") },
+  { q: `How many groups does group_anagrams(${JSON.stringify(C.groups.strs).replace(/,/g, ", ")}) return?`, a: [String(C.groups.count)], cmp: norm, show: String(C.groups.count) },
+];
+const qState = QS.map(() => ({ tries: 0, done: false, ok: false }));
+
+$("startCheck").onclick = () => {
+  stop();
+  document.body.classList.add("checking");
+  $("startCheck").classList.add("hidden");
+  $("check").classList.remove("hidden");
+  $("qs").innerHTML = QS.map((q, i) => `<div class="q card" id="q${i}"><div><b>${i + 1}.</b> ${esc(q.q)}</div><div class="row">${
+    q.choices ? q.choices.map((c) => `<button type="button" data-c="${esc(c)}">${esc(c)}</button>`).join("")
+              : `<input aria-label="answer ${i + 1}" autocomplete="off"><button type="button" class="primary">Check</button>`
+  }</div><div class="fb"></div></div>`).join("");
+  QS.forEach((q, i) => {
+    const box = $("q" + i);
+    if (q.choices) box.querySelectorAll("button").forEach((b) => b.onclick = () => grade(i, b.dataset.c));
+    else {
+      const inp = box.querySelector("input");
+      box.querySelector("button").onclick = () => grade(i, inp.value);
+      inp.onkeydown = (e) => { if (e.key === "Enter") grade(i, inp.value); };
+    }
+  });
+  updateScore();
+  $("check").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+};
+function grade(i, val) {
+  const q = QS[i], st = qState[i], box = $("q" + i), fb = box.querySelector(".fb");
+  if (st.done) return;
+  const cmp = q.cmp || ((x) => x);
+  const ok = q.a.some((a) => cmp(a) === cmp(val));
+  st.tries++;
+  if (ok || st.tries >= 2) {
+    st.done = true; st.ok = ok;
+    box.querySelectorAll("button, input").forEach((x) => x.disabled = true);
+    fb.className = "fb " + (ok ? "good" : "bad");
+    fb.textContent = ok ? "✓ Right." : `✗ The answer is ${q.show || q.a[0]}.`;
+  } else {
+    fb.className = "fb bad";
+    fb.textContent = "Not yet. One more try: trace it on paper.";
+  }
+  updateScore();
+}
+function updateScore() {
+  const done = qState.filter((s) => s.done).length, right = qState.filter((s) => s.ok).length;
+  $("score").textContent = `${right} of ${QS.length} right · ${QS.length - done} left`;
+  if (done === QS.length) {
+    $("core").classList.remove("hidden");
+    $("score").textContent = right === QS.length ? `All ${QS.length} right.` :
+      `${right} of ${QS.length} right. Re-run the stepper on the ones you missed, then try the check again tomorrow.`;
+  }
+}
+$("coreText").value = localStorage.getItem("ah-core") || "";
+$("coreText").oninput = (e) => localStorage.setItem("ah-core", e.target.value);
+$("showVisuals").onclick = () => document.body.classList.remove("checking");
+
+renderGrid();
+load(0);
+</script>
+</body>
+</html>

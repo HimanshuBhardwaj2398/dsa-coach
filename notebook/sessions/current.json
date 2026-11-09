@@ -8,7 +8,7 @@
   "confidence": 4,
   "url": "https://leetcode.com/problems/contains-duplicate/",
   "file": "problems/contains-duplicate/2026-11-07.py",
-  "stage": 4,
+  "stage": 2,
   "rung": 0,
   "block_minutes": 15,
   "blocks": [
@@ -29,6 +29,26 @@
     },
     {
       "start": "2026-11-08T12:29:16+05:30",
+      "end": "2026-11-08T12:30:43+05:30",
+      "paused": 0
+    },
+    {
+      "start": "2026-11-09T19:18:05+05:30",
+      "end": "2026-11-09T19:18:22+05:30",
+      "paused": 0
+    },
+    {
+      "start": "2026-11-09T19:50:05+05:30",
+      "end": "2026-11-09T19:52:03+05:30",
+      "paused": 0
+    },
+    {
+      "start": "2026-11-09T20:46:45+05:30",
+      "end": "2026-11-09T20:46:45+05:30",
+      "paused": 0
+    },
+    {
+      "start": "2026-11-09T22:04:09+05:30",
       "end": null,
       "paused": 0
     }
@@ -37,9 +57,9 @@
   "skill_version": "0.5.0",
   "notes": {
     "1": "The problem is searching the element in remaining list, and scanning is o(n) so we will use hash set here",
-    "2": "If element occurs more than once we have a True case, we will check an element against every other element of the list",
-    "3": "Outermost line will run n times and inner will run n-i times where i is the position of element against which we are checking ...\n\nSo, other number of iterations will be : n(n-i) from i 1 to n where n is lenght of list"
+    "2": "Brute force on the grid:\nIf element occurs more than once we have a True case, we will check an element against every other element of the list\n\nCount:\nOutermost line will run n times and inner will run n-i times where i is the position of element against which we are checking ...\n\nSo, other number of iterations will be : n(n-i) from i 1 to n where n is lenght of list"
   },
-  "resumed": "2026-11-08T12:29:16+05:30",
-  "last_active": "2026-11-08T12:29:16+05:30"
+  "resumed": "2026-11-09T22:04:09+05:30",
+  "last_active": "2026-11-09T22:04:09+05:30",
+  "protocol": 2
 }
