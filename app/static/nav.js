@@ -1,17 +1,16 @@
 "use strict";
-// The Map and Learn views. Loaded after app.js; uses its $, elem, button, api, fail, state and editor.
+// The views: Today (the live solve, what's due, what's next), the Map, and a pattern's Learn page.
+// Loaded after app.js; uses its $, elem, plural, button, link, fail and getMap. Everything shown comes from /api/map.
 
 const STATUS_LABEL = {"not started": "Not started", exploring: "Exploring", learning: "Learning",
   practicing: "Practising", retained: "Retained", ready: "Ready"};
-const FOUNDATIONS = ["Python for interviews", "Complexity", "How to approach a problem"];  // written for testers
-const POLL_MS = 3000;
 let mapData = null;
-let pollTimer = null;
+let loads = 0;  // each load's number: a slow answer to an older load is dropped, not drawn over a newer one
 
 // --- pure helpers -------------------------------------------------------------
-function route(hash) {  // "#/map" (the default), "#/learn/<key>" or "#/solve"
-  const [, view = "map", key = ""] = String(hash || "").split("/");
-  return ["map", "learn", "solve"].includes(view) ? {view, key} : {view: "map", key: ""};
+function route(hash) {  // "#/today" (the default), "#/map" or "#/learn/<key>"; anything else, such as an old "#/solve", is Today
+  const [, view = "today", key = ""] = String(hash || "").split("/");
+  return ["today", "map", "learn"].includes(view) ? {view, key} : {view: "today", key: ""};
 }
 const statusLabel = (s) => STATUS_LABEL[s] || s;
 function listsText(lists) {
@@ -28,89 +27,114 @@ function byWeek(patterns) {
 }
 
 // --- small DOM helpers ----------------------------------------------------------
-const withClass = (el, className) => Object.assign(el, {className});
-function link(text, href, newTab = false) {
-  const a = Object.assign(elem("a", text), {href});
-  if (newTab) Object.assign(a, {target: "_blank", rel: "noopener"});
-  return a;
+function section(...children) {
+  const s = elem("section");
+  s.append(...children);
+  return s;
 }
 function list(items) {
-  const ul = document.createElement("ul");
+  const ul = elem("ul");
   for (const item of items) {
-    const li = document.createElement("li");
+    const li = elem("li");
     li.append(item);
     ul.append(li);
   }
   return ul;
 }
 
-// --- routing --------------------------------------------------------------------
-async function show() {
+// --- loading and routing -----------------------------------------------------------
+async function show(reload = true) {
   const {view, key} = route(location.hash);
-  document.body.dataset.view = view;
-  clearTimeout(pollTimer);
-  if (view === "solve") {
-    if (editor) editor.refresh();  // CodeMirror measures wrong while hidden
-    return;
+  document.body.dataset.view = view === "learn" ? "map" : view;
+  if (reload || !mapData) {
+    const mine = ++loads;
+    $("content").setAttribute("aria-busy", "true");
+    let data;
+    try { data = await getMap(); } catch (e) { if (mine === loads) fail(e); return; }
+    if (mine !== loads) return;
+    mapData = data;
+    $("notice").hidden = true;
+    $("content").setAttribute("aria-busy", "false");
   }
-  try {
-    mapData = await api("GET", "/api/map");
-  } catch (e) {
-    return fail(e);
+  const page = view === "map" ? renderMap() : view === "learn" ? renderLearn(key) : renderToday();
+  if (page) $("content").replaceChildren(page);
+}
+
+// --- Today ---------------------------------------------------------------------------
+function renderToday() {
+  const page = elem("article", "", "today");
+  const plan = mapData.plan;
+  page.append(elem("p", `Day ${plan.day} of ${plan.total_days} · week ${plan.week} · ${plan.phase}`, "eyebrow"));
+  const live = mapData.live;
+  if (live) {
+    const title = elem("h1", `Solving ${live.problem}`);
+    if (live.labeled) title.append(elem("span", ` · ${live.pattern_name}`, "muted"));  // naming it is hint rung 3
+    page.append(section(title, elem("p", live.line), link("Open on LeetCode", live.url, true),
+      elem("p", "Ask for checks and hints in your coach chat.", "hint")));
+  } else {
+    const next = section(elem("h1", "Next up"), elem("p", mapData.next_text));
+    if (mapData.next_url) next.append(link("Open on LeetCode", mapData.next_url, true));
+    page.append(next);
   }
-  if (view === "map") renderMap(); else renderLearn(key);
+  const due = mapData.due;
+  const counts = [due.cards.length && plural(due.cards.length, "card") + " to quiz",
+    due.drafts && plural(due.drafts, "draft card") + " to approve",
+    due.inbox.length && plural(due.inbox.length, "session delta") + " to import"].filter(Boolean);
+  const dueBox = section(elem("h2", "Due"));
+  if (due.resolves.length) {
+    dueBox.append(list(due.resolves.map((r) => {
+      const item = elem("span");
+      item.append(link(r.problem, r.url, true),
+        elem("span", r.overdue_days ? ` · ${plural(r.overdue_days, "day")} overdue` : " · due today", "muted"));
+      return item;
+    })));
+  }
+  if (counts.length) dueBox.append(elem("p", counts.join(" · ") + ". Ask the coach in chat."));
+  if (!due.resolves.length && !counts.length) dueBox.append(elem("p", "Nothing due.", "muted"));
+  page.append(dueBox);
+  return page;
 }
 
 // --- the map ----------------------------------------------------------------------
 function renderMap() {
-  const strip = withClass(document.createElement("section"), "next-strip");
-  strip.append(withClass(elem("p", "Next up"), "eyebrow"), elem("p", mapData.next_text));
-  if (mapData.next_url) strip.append(link("Open on LeetCode", mapData.next_url, true));
-  if (state?.live) strip.append(link(`Resume ${state.live.problem}`, "#/solve"));
-  const weeks = withClass(document.createElement("div"), "weeks");
-  weeks.append(week("Foundations", FOUNDATIONS.map(stub)));
-  for (const [n, patterns] of byWeek(mapData.patterns)) weeks.append(week(`Week ${n}`, patterns.map(node)));
-  $("map").replaceChildren(strip, weeks);
-}
-function week(title, nodes) {
-  const col = withClass(document.createElement("section"), "week");
-  col.append(withClass(elem("h2", title), "eyebrow"), ...nodes);
-  return col;
-}
-function stub(name) {
-  const d = withClass(document.createElement("div"), "node stub");
-  d.append(elem("b", name), withClass(elem("span", "coming later"), "meta"));
-  return d;
+  const page = elem("article", "", "map");
+  for (const [n, patterns] of byWeek(mapData.patterns)) {
+    page.append(section(elem("h2", `Week ${n}`, "eyebrow"), ...patterns.map(node)));
+  }
+  return page;
 }
 function node(p) {
-  const a = withClass(link("", `#/learn/${p.key}`), `node s-${p.status.replace(" ", "-")}`);
-  a.append(elem("b", p.name), withClass(elem("span", statusLabel(p.status)), "status"),
-    withClass(elem("span", p.format ? "practised with the coach in chat" : listsText(p.lists)), "meta"));
-  if (p.due) a.append(withClass(elem("span", `${p.due} due`), "due"));
+  const a = link("", `#/learn/${p.key}`);
+  a.className = `node s-${p.status.replace(" ", "-")}`;
+  a.append(elem("b", p.name), elem("span", statusLabel(p.status), "status"),
+    elem("span", p.format ? "practised with the coach in chat" : listsText(p.lists), "meta"));
+  if (p.due) a.append(elem("span", `${p.due} due`, "due"));
   return a;
 }
 
 // --- a pattern's Learn page ---------------------------------------------------------
 function renderLearn(key) {
   const p = mapData.patterns.find((x) => x.key === key);
-  if (!p) { location.hash = "#/map"; return; }
-  const page = withClass(document.createElement("article"), "learn");
-  page.append(link("← Map", "#/map"), withClass(elem("p", `Week ${p.week} · ${statusLabel(p.status)}`), "eyebrow"),
-    elem("h1", p.name), elem("h2", "Cues"), list(p.cues), elem("h2", "Invariant"), elem("p", p.invariant),
-    elem("h2", "Template"), elem("pre", p.template), explainerBlock(p));
+  if (!p) { location.hash = "#/map"; return null; }
+  const page = elem("article", "", "learn");
+  page.append(link("← Map", "#/map"), elem("p", `Week ${p.week} · ${statusLabel(p.status)}`, "eyebrow"), elem("h1", p.name));
+  if (!p.format) page.append(explainerBlock(p));
+  page.append(elem("h2", "Cues"), list(p.cues), elem("h2", "Invariant"), elem("p", p.invariant),
+    elem("h2", "Template"), elem("pre", p.template));
   if (p.resources.length) page.append(elem("h2", "Read"), list(p.resources.map((r) => link(r.title, r.url, true))));
   if (p.problems.length) page.append(elem("h2", "Problems"), problemTable(p.problems));
-  $("learn").replaceChildren(page);
+  return page;
 }
-
 function problemTable(problems) {
-  const t = withClass(document.createElement("table"), "problems");
-  t.innerHTML = "<tr><th>Problem</th><th>Difficulty</th><th>Status</th><th>Next re-solve</th></tr>";
+  const t = elem("table", "", "problems");
+  const head = t.createTHead().insertRow();
+  for (const h of ["Problem", "Difficulty", "Status", "Next re-solve"]) head.append(elem("th", h));
+  const body = t.createTBody();
   for (const x of problems) {
-    const tr = t.insertRow();
+    const tr = body.insertRow();
     const name = tr.insertCell();
     name.append(link(x.title, x.url, true));
-    if (x.lists.includes("blind75")) name.append(withClass(elem("span", "Blind 75"), "tag"));
+    if (x.lists.includes("blind75")) name.append(elem("span", "Blind 75", "tag"));
     tr.insertCell().textContent = x.difficulty;
     tr.insertCell().textContent = statusLabel(x.status) + (x.last_outcome ? ` (last: ${x.last_outcome})` : "");
     tr.insertCell().textContent = x.due ? "due now" : x.next_due || "";
@@ -118,102 +142,50 @@ function problemTable(problems) {
   return t;
 }
 
-// --- the explainer: the coach writes it, or revises it from what he says should change ----------------------
-// The jobs this page started or saw running, by pattern ("write", "revise" or "seen"). Only these are checked when a
-// list of cards is drawn, so drawing it doesn't ask about every pattern.
-const explainerJobs = new Map();
-const explainerNotes = new Map();  // pattern -> a line to show once its job has ended
-const explainerFeedback = new Map();  // pattern -> what he last said should change, until a revision succeeds
-const statusNote = (text) => Object.assign(withClass(elem("p", text), "hint"), {role: "status"});
-
-// redraw: draws the view again with fresh map data once a job ends. compact: the actions of a card that links to
-// the explainer itself, rather than the Learn page's buttons.
-function explainerBlock(p, redraw = () => reloadLearn(p.key), compact = false) {
-  const box = withClass(document.createElement("section"), compact ? "explainer compact" : "explainer");
-  if (p.format) return box;
-  idleExplainer(p, box, redraw, compact);
-  if (!compact || explainerJobs.has(p.key)) checkExplainer(p, box, redraw, compact);  // a job may still be running
+// --- the explainer: open it, or hand the coach a prompt to write or revise it ----------------------------------
+function explainerPrompt(p, feedback) {
+  const file = `notebook/concepts/${p.key}/${p.key}-explainer.html`;
+  if (feedback === undefined) {
+    return `Use the dsa-coach skill. Write the interactive explainer for ${p.name} (${p.key}), following ` +
+      `references/explainers.md. Save it as one self-contained HTML file at ${file} and register it with ` +
+      `coach.py artifact add --concept ${p.key} --title "${p.name}, explained" --file ${file}.`;
+  }
+  return `Use the dsa-coach skill. Revise the interactive explainer for ${p.name} (${p.key}) at ${p.explainer ? "notebook/" + p.explainer : file}, ` +
+    `following references/explainers.md. My feedback: ${JSON.stringify(feedback)}. Log it with coach.py log question ` +
+    `--concept ${p.key}. Change what the feedback needs, keep what works, and save over the same file.`;
+}
+function explainerBlock(p) {
+  const box = section();
+  box.className = "explainer";
+  if (p.explainer) {
+    const open = link("Read the explainer", `/explainer/${p.key}`, true);
+    open.className = "button primary";
+    box.append(open, button("Improve it", () => improveForm(p, box), "ghost"));
+  } else {
+    box.append(elem("p", "No explainer yet. The coach writes one from real Python traces, with a prediction at each step.", "hint"),
+      button("Ask the coach to write it", () => openHandoff(explainerPrompt(p)), "primary"));
+  }
   return box;
 }
-function idleExplainer(p, box, redraw, compact, said = explainerNotes.get(p.key)) {
-  const parts = said ? [statusNote(said)] : [];
-  if (p.explainer) {
-    if (!compact) parts.push(withClass(link("Read the explainer", `/explainer/${p.key}`, true), "button primary"));
-    parts.push(withClass(button(compact ? "Improve this page" : "Improve it", () => improveForm(p, box, redraw, compact)),
-      compact ? "text-action" : "ghost"));
-  } else {
-    if (!said && !compact) parts.push(statusNote("No explainer yet. The coach writes one from real Python traces, with a prediction to make at each step."));
-    parts.push(withClass(button(compact ? "Write the interactive explainer" : "Write the explainer",
-      () => startExplainer(p, box, redraw, compact, {})), compact ? "text-action" : "primary"));
-  }
-  box.replaceChildren(...parts);
-}
-// What he says should change goes to the coach, which revises the page in place. His words come back into the box
-// until a revision succeeds, so a failed request or job doesn't lose them.
-function improveForm(p, box, redraw, compact) {
-  const form = withClass(document.createElement("form"), "improve");
-  const text = Object.assign(document.createElement("textarea"), {rows: 3, maxLength: 2000, required: true,
-    value: explainerFeedback.get(p.key) || "", placeholder: "For example: the pop step is unclear. Show it with two equal heights."});
-  text.oninput = () => explainerFeedback.set(p.key, text.value);
+function improveForm(p, box) {
+  const form = elem("form", "", "improve");
+  const text = Object.assign(elem("textarea"), {rows: 3, maxLength: 2000, required: true,
+    placeholder: "For example: the pop step is unclear. Show it with two equal heights."});
   const label = elem("label", "What should change?");
   label.append(text);
-  const revise = withClass(elem("button", "Revise it"), "primary");
-  const cancel = withClass(button("Cancel", () => {
-    idleExplainer(p, box, redraw, compact);
-    box.querySelector("button")?.focus();
-  }), "ghost");
-  cancel.type = "button";
-  const actions = withClass(document.createElement("div"), "actions");
-  actions.append(revise, cancel);
-  form.append(label, withClass(elem("p", "Attempting one problem first often shows what the page is really missing."), "hint"), actions);
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    revise.disabled = true;
-    startExplainer(p, box, redraw, compact, {feedback: text.value}).catch(fail).finally(() => { revise.disabled = false; });
-  };
+  const actions = elem("div", "", "actions");
+  actions.append(Object.assign(elem("button", "Make the prompt", "primary"), {type: "submit"}),
+    button("Cancel", () => box.replaceWith(explainerBlock(p)), "ghost"));
+  form.append(label, elem("p", "Attempting one problem first often shows what the page is really missing.", "hint"), actions);
+  form.onsubmit = (e) => { e.preventDefault(); openHandoff(explainerPrompt(p, text.value.trim())); };
   box.replaceChildren(form);
   text.focus();
 }
-async function startExplainer(p, box, redraw, compact, extra) {
-  await api("POST", "/api/explainer", {pattern: p.key, ...extra});
-  explainerJobs.set(p.key, extra.feedback === undefined ? "write" : "revise");
-  explainerNotes.delete(p.key);
-  await checkExplainer(p, box, redraw, compact);
-}
-// Only a job this page follows redraws the view when it ends: an old job's "done" would otherwise redraw for ever.
-async function checkExplainer(p, box, redraw, compact) {
-  let s;
-  try {
-    s = await api("GET", "/api/explainer?pattern=" + encodeURIComponent(p.key));
-  } catch (e) {
-    return fail(e);
-  }
-  if (!box.isConnected) return;  // he left the page, or the view was drawn again
-  const kind = explainerJobs.get(p.key);
-  if (s.state === "running") {
-    explainerJobs.set(p.key, kind || "seen");
-    box.replaceChildren(statusNote("The coach is working on it. This usually takes one to three minutes."));
-    pollTimer = setTimeout(() => checkExplainer(p, box, redraw, compact), POLL_MS);
-    return;
-  }
-  explainerJobs.delete(p.key);
-  if (s.state === "error") {
-    idleExplainer(p, box, redraw, compact, s.error);
-  } else if (s.state === "done" && kind) {
-    if (kind === "revise") {
-      explainerNotes.set(p.key, "Revised. Open it again to see the changes.");
-      explainerFeedback.delete(p.key);
-    }
-    await redraw();
-  } else if (s.state === "done" && !p.explainer) {
-    idleExplainer(p, box, redraw, compact, "The coach finished but didn't register an explainer. Try again, or ask it in the chat.");
-  }
-}
-async function reloadLearn(key) {
-  mapData = await api("GET", "/api/map");
-  const {view, key: shown} = route(location.hash);
-  if (view === "learn" && shown === key) renderLearn(key);
-}
 
-window.addEventListener("hashchange", show);
-document.addEventListener("DOMContentLoaded", show);
+window.addEventListener("hashchange", () => show(false));
+// The coach updates the notebook from the chat: coming back to this page or tab reads it again.
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && $("handoff").hidden) show(); });
+document.addEventListener("DOMContentLoaded", () => {
+  $("refresh").onclick = () => show();
+  show();
+});

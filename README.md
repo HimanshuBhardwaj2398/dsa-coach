@@ -9,10 +9,10 @@ dsa-coach/
 ├── skills/dsa-coach/      the skill: SKILL.md, references/, scripts/coach.py, assets/
 ├── notebook/              my data: JOURNEY.md, attempts, cards, concepts, problems, sessions, saved explainers
 ├── docs/                  architecture, platform setup, the research behind the design
-├── tests/                 tests for coach.py
+├── tests/                 tests for coach.py, the app, the extension (tests/frontend, tests/browser)
 ├── plugins/dsa-coach-pane the coach pane for Claude Code (the live solve beside the chat)
-├── app/                   the study app: python3 app/server.py opens its Solve tab (see skills/dsa-coach/references/platforms.md)
-├── extensions/dsa-coach/  Chrome/Edge side panel: Claude coaching beside LeetCode
+├── app/                   the learning app: python3 app/server.py serves Today, the map and Learn pages (read-only)
+├── extensions/dsa-coach/  Chrome/Edge side panel: the learning app beside LeetCode
 ├── dist/dsa-coach.zip     the skill packaged for uploading to Claude
 ├── CLAUDE.md, AGENTS.md   project instructions for Claude Code and Codex
 └── .claude/, .agents/     links that make the skill visible to Claude Code and Codex
@@ -39,15 +39,13 @@ python3 skills/dsa-coach/scripts/coach.py snapshot --print
 
 Full setup for each platform: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
+## How a solve works
+
+You read and code on LeetCode. The coach in Claude Code runs the four stages, gives hints one rung at a time and logs the attempt; it looks at your LeetCode tab with a browser tool when it can, or asks you to paste your code. Nothing in this repo reads or scrapes LeetCode.
+
 ## The coach pane (Claude Code)
 
-A pane beside the chat that shows:
-- the problem you're solving
-- the solve stage
-- a 25-minute focus-block timer
-- the hint rung you've used
-
-Its buttons send "check my code", "stage done", "next hint" and "block over" to the coach. You write your code in the attempt file that `coach.py solve start` creates, and a hook stops Claude from writing in it until hint rung 7.
+A pane beside the chat that shows the problem you're solving, the solve stage, the focus-block timer and the hint rung you've used. It only shows state; you talk to the coach in the chat.
 
 Install it once, at the Claude Code prompt in this folder:
 
@@ -56,17 +54,15 @@ Install it once, at the Claude Code prompt in this folder:
 /plugin install dsa-coach-pane@dsa-coach
 ```
 
-On another machine with access to the repo: `/plugin install dsa-coach-pane --marketplace HimanshuBhardwaj2398/dsa-coach`.
-
 - **Where it opens:** it opens by itself in VS Code and the desktop app. Anywhere else, type `/coach`.
 - **How it updates:** it's read from `plugins/dsa-coach-pane/`, so after you change it, run `/reload-plugins`.
 - **Version needed:** Claude Code 2.1.317 or later.
 
-## Everyday commands
+## The learning app and the browser panel
 
-For coaching directly beside LeetCode, install the [browser extension](extensions/dsa-coach/README.md).
-It reads selected/page text or a screenshot when asked, and replies through your local Claude CLI.
-You write and run code in LeetCode; the side panel has no code editor.
+`python3 app/server.py` opens a read-only page: **Today** (the live solve, what's due, what's next), the **Map** of all 22 patterns, and each pattern's **Learn** page with cues, invariant, template, resources, problems and its saved explainer. To show the same page beside LeetCode, install the [browser extension](extensions/dsa-coach/README.md).
+
+## Everyday commands
 
 The coach runs these for you; they're here so you can check or fix things by hand.
 
@@ -74,13 +70,14 @@ The coach runs these for you; they're here so you can check or fix things by han
 |---|---|
 | `coach.py status` | Where you are, what's due, next steps |
 | `coach.py next` | The one thing to practise now (`--pattern` to choose one, `--json` for the coach) |
-| `coach.py solve show` | The solve in progress: stage, hint rung, focus block (`start`, `stage`, `hint`, `break`, `block`, `end`) |
+| `coach.py solve show` | The solve in progress: stage, hint rung, focus block (`start`, `stage`, `hint`, `note`, `break`, `block`, `end`) |
 | `coach.py due` | Due re-solves and cards |
 | `coach.py quiz` | Due card fronts (`--json` adds answers) |
 | `coach.py card list --drafts` | Cards waiting for your approval (`card accept`, `card edit`, `card retire`) |
 | `coach.py log attempt ...` | Log an attempt (`--help` lists every field) |
 | `coach.py artifact list` | Saved explainers and published pages |
 | `coach.py export` / `coach.py import` | Web-chat round trip |
+| `coach.py map --json` | Progress by pattern, what's due and the live solve (what the learning app shows) |
 | `coach.py validate` | Check the skill and the notebook files |
 | `coach.py package` | Rebuild `dist/dsa-coach.zip` |
 
@@ -105,7 +102,7 @@ git add -A && git commit -m "Session 2026-11-02: two pointers" && git push
 ## Changing the skill
 
 1. Edit files in `skills/dsa-coach/`.
-2. Run `python3 -m unittest discover -s tests` and `coach.py validate`.
+2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`.
 3. Bump the version in two places: `metadata.version` in SKILL.md and `SKILL_VERSION` in coach.py.
 4. `coach.py package`, then re-upload `dist/dsa-coach.zip` wherever you uploaded it (Claude web, Cowork). Claude Code and Codex use the folder directly.
 

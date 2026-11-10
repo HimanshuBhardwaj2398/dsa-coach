@@ -18,20 +18,19 @@ const PANE = {
 const T0 = Date.parse('2026-11-05T10:00:00+05:30')
 const MIN = 60_000
 
-const live = (labeled: boolean, active = { last: '2026-11-05T10:15:00+05:30', paused: 0 }) =>
+const live = (labeled: boolean, paused = 0) =>
   JSON.stringify({
     problem: 'two-sum',
+    session_id: 'abc123',
     pattern: 'arrays-hashing',
     pattern_name: 'Arrays & Hashing',
     labeled,
     difficulty: 'easy',
     url: 'https://leetcode.com/problems/two-sum/',
-    file: 'problems/two-sum/2026-11-05.py',
-    stage: 4,
+    stage: 2,
     rung: 2,
     block_minutes: 15,
-    blocks: [{ start: '2026-11-05T10:00:00+05:30', end: null, paused: active.paused }],
-    last_active: active.last,
+    blocks: [{ start: '2026-11-05T10:00:00+05:30', end: null, paused }],
   })
 
 const JOURNEY = JSON.stringify({
@@ -41,7 +40,6 @@ const JOURNEY = JSON.stringify({
 
 // The engine beneath the plugin: a notebook of these files, and a record of prompts and toasts.
 function engine(on: On, files: Record<string, string>) {
-  const sent: string[] = []
   const toasts: string[] = []
   // The engine hands the hooks absolute paths, resolved against the working directory.
   const find = (path: string) => Object.keys(files).find(rel => path.endsWith(`/${rel}`))
@@ -57,13 +55,9 @@ function engine(on: On, files: Record<string, string>) {
     toasts.push(e.text)
     return { value: undefined }
   })
-  on('prompt.submit', (_, e) => {
-    sent.push(e.text)
-    return { text: e.text }
-  })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('tool.call', () => ({ result: {} }))
-  return { sent, toasts }
+  return { toasts }
 }
 
 const files = (labeled: boolean | null) => ({
@@ -80,7 +74,7 @@ test('an unlabeled solve shows its stage, timer and rung but never its pattern',
   for (const surface of ['vscode', 'terminal'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ type: 'Text', text: /Arrays|arrays-hashing/ })).toBeUndefined()
-    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 2/4 · Find an approach')  // a legacy eight-stage solve at stage 4
+    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 2/4 · Find an approach')
     expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 7 of 15 min')
     expect((await ui.find({ type: 'Text', text: /^Hints/ }))?.text).toBe('Hints used: 2/7')
     await ui.unmount()
@@ -97,17 +91,14 @@ test('a labeled solve names its pattern', async ($, on) => {
   await ui.unmount()
 })
 
-test('the buttons talk to the coach in the chat', async ($, on) => {
+test('the pane only shows state: it has no buttons', async ($, on) => {
   mock.clock(on, { now: T0 + 7 * MIN })
-  const { sent } = engine(on, files(false))
+  engine(on, files(false))
   await $.session.start({ cwd: '/ws', surface: 'vscode', isInteractive: true })
 
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  await ui.press({ key: 'hint' })
-  await ui.press({ key: 'check' })
-  expect(sent[0]).toBe("I'm stuck at stage 2 (Find an approach). Next hint rung, please.")
-  expect(sent[1]).toContain('notebook/problems/two-sum/2026-11-05.py')
-  expect(sent[1]).toContain('without fixing it')
+  expect(await ui.find({ type: 'Button' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /\.py/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -120,29 +111,26 @@ test('a block that runs out is announced once', async ($, on) => {
   expect(toasts.length).toBe(1)
   expect(toasts[0]).toContain('Focus block 1 is over')
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 16 of 15 min · block over')
+  expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 15 of 15 min · block over')
   await ui.unmount()
 })
 
-test('idle time does not count: the clock stops at the last activity, less paused minutes', async ($, on) => {
+test('a block counts at most its length, less idle time an older solve paused out', async ($, on) => {
   mock.clock(on, { now: T0 + 30 * MIN })
-  const current = live(false, { last: '2026-11-05T10:10:00+05:30', paused: 120 })
-  engine(on, { ...files(null), 'notebook/sessions/current.json': current })
+  engine(on, { ...files(null), 'notebook/sessions/current.json': live(false, 600) })
   await $.session.start({ cwd: '/ws', surface: 'vscode', isInteractive: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 8 of 15 min')
+  expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 15 of 15 min · block over')
   await ui.unmount()
 })
 
-test('with no solve in progress it shows what is due and offers practice', async ($, on) => {
+test('with no solve in progress it shows what is due and what is next', async ($, on) => {
   mock.clock(on, { now: T0 })
-  const { sent } = engine(on, files(null))
+  engine(on, files(null))
   await $.session.start({ cwd: '/ws', surface: 'vscode', isInteractive: true })
 
   const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
   expect((await ui.find({ type: 'Text', text: /^Due/ }))?.text).toBe('Due: 0 re-solve(s) · 1 card(s) · 7 draft(s)')
-  expect(await ui.find({ key: 'quiz' })).toBeDefined()
-  await ui.press({ key: 'practise' })
-  expect(sent).toEqual(["Let's practise."])
+  expect((await ui.find({ type: 'Text', text: /^Next/ }))?.text).toBe('Next: Solve two-sum unaided to move Arrays & Hashing forward.')
   await ui.unmount()
 })

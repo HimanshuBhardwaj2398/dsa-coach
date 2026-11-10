@@ -1,65 +1,46 @@
-# DSA Coach browser companion
+# DSA Coach browser panel
 
-A Chrome/Edge extension that keeps the coach beside LeetCode. Write and run your code in LeetCode, then ask the coach about your reasoning, selected text, page text or a screenshot. Replies appear inside the panel through your existing Claude CLI sign-in.
+A Chrome/Edge extension that keeps your DSA Coach progress and theory in a side panel beside LeetCode, or any other page. The panel shows the local learning app:
+
+- **Today:** the live solve (stage, hint rung, focus block), the re-solves due, and what's next
+- **Map:** all 22 patterns with their status
+- **Learn:** a pattern's cues, invariant, template, resources, problems and saved explainer
+
+The panel is read-only. You code on LeetCode, and you talk to the coach in Claude Code, which can look at your LeetCode tab itself. The extension reads no page and has no access to LeetCode or any other site: its only permissions are the side panel, its own storage, and your local server.
 
 ## Install once
 
-1. Start or restart the **updated** study app from the repo:
+1. Start the learning app from the repo and leave it running:
 
    ```bash
    python3 app/server.py --no-browser
    ```
 
 2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Choose **Load unpacked**, then select this folder, `extensions/dsa-coach`, containing `manifest.json`.
-4. Pin **DSA Coach** from the browser's Extensions menu.
-5. Open a LeetCode problem and click the DSA Coach toolbar icon.
+3. Choose **Load unpacked** and select this folder, `extensions/dsa-coach`.
+4. Pin **DSA Coach** from the browser's Extensions menu, then click it on any page.
 
-The default server is `http://127.0.0.1:8765`. If the terminal prints a different port, expand **Local connection**, paste that address and choose **Connect**. Only loopback HTTP addresses are accepted. The server needs to stay running.
+The panel connects to `http://127.0.0.1:8765`. If the terminal prints another port, open the ⚙ settings, paste that address and choose **Connect**. Only loopback HTTP addresses are accepted. Chrome 116 or later is required.
 
-Chrome controls the panel's side. If yours opens on the left, use Chrome Settings → Appearance → Side panel → **Show on right**. The extension cannot override your browser preference. See the [Side Panel API documentation](https://developer.chrome.com/docs/extensions/reference/api/sidePanel).
+Keep the `key` in `manifest.json`: it fixes the extension's ID, which is the only origin the server lets frame its `/panel` page.
 
-Chrome 116 or later is required. The same manifest targets Edge's compatible side-panel API; automated browser checks run in Chromium, not Edge.
+## Explainers
 
-## Use it
-
-- Clicking an ordinary LeetCode problem link in the study app opens LeetCode normally and also opens the coach panel. Refresh an already-open app tab after installing the extension. Modifier clicks keep their usual behavior; use the toolbar icon if necessary.
-- With no active solve, the current problem is offered in the start form. Choose your confidence and **Start solving**, or ask a question before starting. Navigating to another problem never replaces an active solve.
-- Every message carries your LeetCode code, read from the editor, and the end of the page (usually the test results). You don't need to attach them. When text isn't enough, the coach asks to see the screen and the panel takes a screenshot and asks again on its own. The first time, choose **Allow screenshots** at the top of the panel: Chrome only allows screenshots without a toolbar click under the optional all-sites permission.
-- Typing or clicking on the LeetCode problem keeps the focus block's clock running (`activity.js` sends only that there was activity, at most every 30 seconds). Five quiet minutes pause the clock.
-- Each reply ends with the hint rung it gave away. A higher rung is recorded on the solve's hint ladder, and a note under the reply says so.
-- To add more context yourself, expand **Page context** and choose **Read page text**. Selected text takes priority; otherwise it reads the page's main text, up to 24,000 characters. Virtualized editors may expose only visible lines. Paste the relevant code if it is missing.
-- Choose **Take screenshot** for the visible LeetCode tab. If Chrome asks for access, click the DSA Coach toolbar icon while on LeetCode and reopen the panel, then retry. Screenshots require a toolbar invocation under Chrome's [activeTab permission](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). You can also paste an image in the conversation area or attach a PNG/JPEG under 4 MB.
-- Review or edit the attached text, type a question, then choose **Ask coach**. Stage-specific **Ask coach** controls save your stage answer before asking. The conversation form uses already-saved stage answers; save a stage answer first if you want it included.
-- When changing problems, attachments are cleared. A different active solve is shown explicitly, and coaching is paused until you return to that problem or finish that solve.
-- In **Learn**, a card opens its interactive explainer in a new tab. **Write the interactive explainer** asks the coach for a missing one; **Improve this page** takes what should change, and the coach revises the page in place (one to three minutes, one job at a time).
-
-## What is sent and saved
-
-Clicking a capture button only attaches context for review. **Ask coach** sends the question, attached context, saved solve stage/answers/plan card/examples and recent conversation to Claude through the CLI. This uses your existing Claude account/provider, and its usual limits or charges apply. No API key is stored in the extension.
-
-Stage answers and start/stage controls use the existing notebook. Chat history and captures are temporary and are not saved in the notebook; reopening/reloading the panel starts a fresh chat. Copy any reply you want to keep. The existing study app's recovery behavior still protects stage notes.
-
-The coach is read-only: its CLI invocation has tools and MCP servers disabled. It cannot edit code, run tests, click Submit, change stages or log attempts. The server records the hint rung a reply reports, and only upward. It asks you to run checks in LeetCode. In stage 4, **Review attempt** sends your look-back answers, outcome, lesson, outside-help answer and the LeetCode code to the coach, which says what evidence is still missing or proposes the record. **Save attempt** then logs it through `coach.py`: the server saves only a review of the inputs as they are now, and saving twice logs one attempt. Restarting the server means reviewing again. You can still finish in your main coach chat instead. The full app remains available from the panel header.
-
-This is per-message browser context capture, not continuous recording or autonomous computer control. Only the active LeetCode problem tab is read or captured, and only when you send a message. Page content is treated as evidence, not instructions to the coach.
+**Read the explainer** opens the saved page in a new tab. **Ask the coach to write it** and **Improve it** give you a prompt to paste into your coach chat; the coach writes or revises the page, and **Refresh** shows it.
 
 ## Troubleshooting
 
-- **Offline:** start the server and check the printed port, then choose **Connect**.
-- **Cannot open here:** restart the updated server and reload the extension. Keep the public `key` in `manifest.json`; it gives the extension the stable ID allowed by the companion route.
-- **Claude cannot start:** run `claude` in a terminal and sign in. If needed, set `claude_bin` in `notebook/config.json` to its executable path. The CLI needs the `--input-format stream-json`, `--tools`, `--setting-sources` and `--no-session-persistence` flags; see the [Claude CLI reference](https://code.claude.com/docs/en/cli-reference).
-- **Capture permission:** use the toolbar icon on the LeetCode tab, or paste/attach an image instead. The extension does not request access to every website.
-- After changing extension files, choose **Reload** on its card in the extensions page and refresh app tabs. Save stage work before reconnecting or reloading.
+- **Offline:** start the server, check the printed port, then choose **Connect**.
+- **Drafts from the old Solve tab:** if the full page at the address you used before 0.9.0 says unsaved drafts are still in the browser, choose **Download them** to keep a copy.
+- After changing extension files, choose **Reload** on its card in the extensions page.
 
 ## Checks
 
 From the repo root:
 
 ```bash
-python3 -m unittest discover -s tests
 node --test tests/frontend/*.test.cjs
-python3 tests/browser/check_extension.py
+python3 tests/browser/check_app.py
 ```
 
-The browser check uses a temporary notebook, a loaded unpacked extension, a fake LeetCode page and a fake Claude executable. It covers an app link opening the native side panel, framing restrictions, tab context, starting a solve, text capture, image attachment, a direct reply, preservation of unsaved stage notes, offline handling, and layout at 320/390 pixels. Real Claude text and image transport have also been smoke-tested locally. Native toolbar/screenshot permission behavior still depends on the browser's user-gesture rules.
+The browser check loads the unpacked extension in Chromium against a temporary notebook. It covers the full page, the panel at 390 px, the explainer prompts, and the offline message.

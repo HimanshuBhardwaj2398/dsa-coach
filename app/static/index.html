@@ -4,172 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="dsa-coach-app" content="1">
-<title>DSA Coach · Solve</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
-      integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous">
+<title>DSA Coach</title>
 <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
-<header id="bar">
-  <a id="home" href="#/map">Map</a>
-  <span id="problem">DSA Coach</span>
-  <div id="progress" hidden>
-    <nav id="stages" aria-label="Solve stages"></nav>
-    <span id="stage-name"></span>
-  </div>
-  <span class="spacer"></span>
-  <span id="rung" hidden></span>
-  <span id="timer"></span>
-  <button id="block-btn" hidden>Start the next block</button>
-  <span id="actions" hidden>
-    <button id="ask-btn" class="ghost">Ask coach</button>
-    <button id="save-btn" class="ghost" title="Save the code (⌘S)">Save</button>
-    <button id="run-btn" class="primary" title="Save, then run the EXAMPLES">Run<span class="unsaved-dot" aria-hidden="true"></span></button>
-    <span id="dirty" class="sr-only" role="status"></span>
-  </span>
+<body data-view="today">
+<header>
+  <nav aria-label="Views">
+    <a href="#/today" data-nav="today">Today</a>
+    <a href="#/map" data-nav="map">Map</a>
+  </nav>
+  <span class="note">Learn here. Solve on LeetCode. Coach in chat.</span>
+  <button id="refresh" type="button" class="ghost">Refresh</button>
 </header>
-<div id="banner" role="status" hidden></div>
-<div id="rescue" role="alert" hidden></div>
-<div id="recovery" role="status" hidden></div>
-<nav id="companion-tabs" class="tabs" role="tablist" aria-label="Coach workspace" hidden>
-  <button id="companion-tab-chat" role="tab" aria-controls="companion-chat" data-companion-tab="chat" aria-selected="true">Chat</button>
-  <button id="companion-tab-stages" role="tab" aria-controls="companion-stages" data-companion-tab="stages" aria-selected="false" tabindex="-1">Stages</button>
-  <button id="companion-tab-learn" role="tab" aria-controls="companion-learn" data-companion-tab="learn" aria-selected="false" tabindex="-1">Learn</button>
-</nav>
-<section id="companion-context" hidden aria-label="Current problem">
-  <p id="companion-problem"></p>
-  <button id="companion-stage-short" class="ghost" hidden></button>
-  <p id="companion-mismatch" role="status" hidden></p>
-</section>
-<section id="companion-chat" hidden role="tabpanel" aria-labelledby="companion-tab-chat">
-  <div id="companion-scroll">
-    <div id="companion-welcome">
-      <p class="eyebrow">One step at a time</p>
-      <h2>What are you thinking?</h2>
-      <p id="companion-next-action">Open a LeetCode problem, then talk it through here.</p>
-      <div class="chat-suggestions">
-        <button id="companion-get-started">Help me get started</button>
-        <button id="companion-check-thinking">Check my thinking</button>
-      </div>
-      <button id="companion-use" class="text-action" hidden>Start a guided solve →</button>
-    </div>
-    <div id="companion-messages" role="log" aria-live="polite"></div>
+<div id="notice" role="status" hidden></div>
+<aside id="recovery" hidden aria-label="Earlier practice drafts"></aside>
+<main id="content" aria-busy="true"><p class="muted">Loading…</p></main>
+<section id="handoff" hidden aria-labelledby="handoff-title">
+  <h2 id="handoff-title">Ask your coach</h2>
+  <p class="hint">Paste this into your coach chat. When the coach has saved the explainer, choose Refresh.</p>
+  <label for="handoff-prompt" class="sr-only">Prompt for the coach</label>
+  <textarea id="handoff-prompt" rows="6"></textarea>
+  <div class="actions">
+    <button id="copy-prompt" type="button" class="primary">Copy prompt</button>
+    <button id="close-handoff" type="button" class="ghost">Close</button>
   </div>
-  <div id="companion-compose">
-    <details id="companion-attachment">
-      <summary>＋ Attach context <span id="companion-attachment-count"></span></summary>
-      <div class="attachment-fields">
-        <div class="capture-actions">
-          <button id="capture-text">Read page text</button>
-          <button id="capture-screen">Take screenshot</button>
-        </div>
-        <label for="captured-text">Page text or code</label>
-        <textarea id="captured-text" rows="3" maxlength="24000" placeholder="Capture selected text from LeetCode, or paste it here."></textarea>
-        <label for="captured-file">Screenshot (or paste an image)</label>
-        <input id="captured-file" type="file" accept="image/png,image/jpeg">
-        <img id="captured-image" hidden alt="Screenshot attached for the coach">
-        <button id="capture-clear" hidden>Clear context</button>
-        <p class="hint">Only sent to Claude with your message.</p>
-      </div>
-    </details>
-    <form id="companion-form">
-      <label for="companion-question" class="sr-only">Message your coach</label>
-      <textarea id="companion-question" rows="3" maxlength="6000" required placeholder="Share your thinking or ask a question…"></textarea>
-      <div class="composer-actions"><span class="hint">Ctrl / ⌘ + Enter to send</span><button id="companion-send" type="submit" class="primary">Send</button></div>
-    </form>
-    <p id="companion-chat-status" role="status"></p>
-  </div>
+  <p id="copy-status" class="hint" role="status"></p>
 </section>
-<section id="companion-stages" hidden role="tabpanel" aria-labelledby="companion-tab-stages">
-  <div id="companion-stage-overview" hidden>
-    <div class="section-heading"><h2>Your solve</h2><span id="companion-stage-count" class="muted"></span></div>
-    <p class="hint">Browse any stage. Complete the current one when you’re ready.</p>
-    <div id="companion-stage-cards" aria-label="Browse solve stages"></div>
-    <div id="companion-stage-navigation">
-      <button id="companion-stage-prev" aria-label="Previous stage">← Previous</button>
-      <button id="companion-stage-current" class="ghost">Current stage</button>
-      <button id="companion-stage-next" aria-label="Next stage">Next →</button>
-    </div>
-    <div id="companion-focus-block"></div>
-    <section id="companion-stage-preview" hidden aria-label="Stage preview"></section>
-  </div>
-  <!-- The existing start form and solve stage are moved here only in companion mode. -->
-</section>
-<section id="companion-learn" hidden role="tabpanel" aria-labelledby="companion-tab-learn">
-  <h2>A little theory, when you need it</h2>
-  <p class="hint">Open a full explanation, or bring a concept into your conversation.</p>
-  <label for="companion-theory-search" class="sr-only">Find a topic</label>
-  <input id="companion-theory-search" type="search" placeholder="Find a topic…" autocomplete="off">
-  <p id="companion-theory-status" role="status"></p>
-  <div id="companion-theory-cards"></div>
-  <button id="companion-theory-more" class="wide" hidden>Browse all topics</button>
-</section>
-
-<main id="start" hidden>
-  <div class="start-card">
-    <p id="pick-kind" class="eyebrow"></p>
-    <h1 id="next-pick"></h1>
-    <label>Problem (LeetCode slug) <input id="slug" placeholder="koko-eating-bananas" autocomplete="off" spellcheck="false"></label>
-    <div class="row">
-      <label>Difficulty
-        <select id="difficulty">
-          <option value="">as before, or medium</option><option>easy</option><option>medium</option><option>hard</option>
-        </select>
-      </label>
-      <label>Sure you'll solve it unaided?
-        <select id="confidence">
-          <option value="">choose 1–5</option><option value="1">1, not at all</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5, certain</option>
-        </select>
-      </label>
-    </div>
-    <button id="start-btn" class="primary wide" disabled>Start solving</button>
-    <details class="more">
-      <summary>More options</summary>
-      <label>Pattern (only for problems outside the roadmap) <input id="pattern" placeholder="binary-search" autocomplete="off" spellcheck="false"></label>
-      <p class="hint">Difficulty sets how long a focus block is.</p>
-      <p id="due-line" class="hint"></p>
-    </details>
-  </div>
-</main>
-
-<main id="solve" hidden>
-  <section id="left">
-    <div class="tabs" role="tablist" aria-label="Problem">
-      <button role="tab" id="tab-desc" data-tab="desc" aria-controls="desc">Description</button>
-      <button role="tab" id="tab-stage" data-tab="stage" aria-controls="panel">Stage</button>
-      <button role="tab" id="tab-notes" data-tab="notes" aria-controls="notes">Notes</button>
-    </div>
-    <div id="desc" class="pane" role="tabpanel" aria-labelledby="tab-desc" hidden></div>
-    <section id="panel" class="pane" role="tabpanel" aria-labelledby="tab-stage"></section>
-    <div id="notes" class="pane" role="tabpanel" aria-labelledby="tab-notes" hidden></div>
-  </section>
-  <section id="work">
-    <div id="editor-host"><textarea id="editor-fallback" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Attempt file"></textarea></div>
-    <section id="console">
-      <div class="tabs console-head" role="tablist" aria-label="Tests">
-        <button role="tab" id="tab-cases" data-console="cases" aria-controls="cases">Testcases</button>
-        <button role="tab" id="tab-results" data-console="results" aria-controls="results">Result</button>
-        <span class="spacer"></span>
-        <p id="draft-status" role="status"></p>
-        <button id="console-toggle" class="icon" aria-expanded="true" aria-controls="console-body" title="Collapse the console">
-          <span aria-hidden="true">▾</span><span class="sr-only">Console</span></button>
-      </div>
-      <div id="console-body">
-        <div id="cases" role="tabpanel" aria-labelledby="tab-cases"></div>
-        <div id="results" role="tabpanel" aria-labelledby="tab-results" hidden></div>
-      </div>
-    </section>
-  </section>
-</main>
-<main id="map"></main>
-<main id="learn"></main>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"
-        integrity="sha512-OeZ4Yrb/W7d2W4rAMOO0HQ9Ro/aWLtpW9BUSR2UOWnSV2hprXLkkYnnCGc9NeLUxxE4ZG7zN16UuT1Elqq8Opg==" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"
-        integrity="sha512-Vs2GKxnxnTQBRW7o2xXZ9A28njjmu5RToS42efiKNEWmikov0inZY522EtGVK5CcVo0M/FQwmXsTfl9skgRnvw==" crossorigin="anonymous"></script>
 <script src="/static/app.js"></script>
 <script src="/static/nav.js"></script>
-<script src="/static/companion.js"></script>
 </body>
 </html>

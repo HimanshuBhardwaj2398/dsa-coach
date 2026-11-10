@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <header><strong>DSA Coach</strong><div><a id="full-app" target="_blank" rel="noopener">Full app ↗</a><button id="connection-toggle" aria-label="Connection settings" aria-expanded="false" aria-controls="connection">⚙</button></div></header>
+  <header><strong>DSA Coach</strong><div><a id="full-app" target="_blank" rel="noopener">Full page ↗</a><button id="connection-toggle" aria-label="Connection settings" aria-expanded="false" aria-controls="connection">⚙</button></div></header>
   <details id="connection" hidden>
     <summary>Connection settings</summary>
     <form id="settings">
@@ -20,8 +20,7 @@
     <p>Use the address printed in the terminal.</p>
   </details>
   <p id="status" role="status">Connecting to your coach…</p>
-  <p id="screen-access" hidden>The coach asked to see LeetCode. <button id="allow-screen">Allow screenshots</button></p>
-  <iframe id="coach" title="DSA Coach study workspace" allow="clipboard-write" hidden></iframe>
+  <iframe id="coach" title="DSA Coach progress and theory" allow="clipboard-write" hidden></iframe>
   <script src="shared.js"></script>
   <script src="sidepanel.js"></script>
 </body>

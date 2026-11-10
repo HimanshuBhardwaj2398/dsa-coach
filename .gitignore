@@ -5,3 +5,4 @@ dist/
 notebook/exports/
 .superpowers/
 notebook/problems/*/problem.md
+notebook/sessions/.*.lock

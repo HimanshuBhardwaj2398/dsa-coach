@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0 · 2026-11-10 · Solve on LeetCode; the app becomes a read-only learning view (extension 0.3.0, pane 0.2.0)
+
+He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `plans/2026-11-10-app-critique.md`, `plans/002-learning-app.md`, `plans/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.
+
+- **No attempt files:** `solve start` no longer writes `problems/<slug>/<date>.py`; it prints the LeetCode link. Stage notes are filed under the solve's session id. Older attempt files stay as history.
+- **Seeing his work:** SKILL.md tells the coach to look at the LeetCode tab with a browser or computer-use tool where it has one, else to ask him to paste code and results; a screenshot shows only what is on screen, and the coach only looks, never types. The PreToolUse guard on attempt files is gone with them.
+- **One timing rule:** a focus block counts from its start to its end (or now), at most its length. Activity tracking is gone (`solve touch`, the idle pause, the welcome-back, the UserPromptSubmit hook), because chat activity said little about quiet work on LeetCode. Idle time an older solve already paused out still counts as paused. `coach.py install` removes the retired hooks. After pulling this, start a new Claude Code session: a session still running the old hooks blocks edits, because `coach.py guard` no longer exists.
+- **The learning app is read-only:** `app/server.py` serves Today (live solve, due, next), the map and Learn pages, and saved explainers, all from `coach.py map --json` (now with `due` and `live`). It answers every write with 405. Removed: the Solve tab, editor and test runner (`runner.py`, `attempt_file.py`), the LeetCode statement fetcher (`statement.py`), the panel's own coach chat and finish review (`companion.py`, `completion.py`), and the headless explainer job (`claude_job.py`). The explainer buttons now hand him a prompt to paste into the coach chat. Unsaved drafts from the old Solve tab can be downloaded from the page; they are never cleared.
+- **The extension only frames the app:** permissions are the side panel, storage and the local server. No content scripts, no LeetCode access, no screenshots, no editor reading.
+- **The pane shows state only:** problem, stage, timer, rung, due. No buttons, no attempt-file line, no eight-stage mapping.
+- **One notebook lock:** every `coach.py` command that writes takes `sessions/.notebook.lock` (from `scripts/session_lock.py`, now folded into `coach.py`), so two agents can't hand out the same ID or overwrite each other's cards. Readers don't wait.
+- **Imports are checked whole:** a delta with any bad part (a malformed list, a bad date, a review of a card that isn't active, a missing artifact file) is skipped before anything is written, and a delta whose rows were already imported is skipped too. A crash part-way through an import can still leave it half written.
+- **Problem metadata:** a new solve takes its pattern and difficulty from an earlier attempt, then the problem list (`problems.json`), then the roadmap. Two Sum is easy, with a 15-minute block.
+- **Removed migrations:** eight-stage solves, `--expected-session` and the legacy session identity. The only live solve already used the four stages and had a session id.
+
 ## 0.8.0 · 2026-11-09 · Four stages, and finishing in the panel
 
 Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/superpowers/specs/2026-11-09-panel-completion-design.md` (approved with trims).

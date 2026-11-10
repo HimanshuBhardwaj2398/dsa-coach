@@ -14,7 +14,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 COACH = HERE.parent / "skills" / "dsa-coach" / "scripts" / "coach.py"
 sys.path.insert(0, str(COACH.parent))
-from session_lock import session_lock
+from coach import notebook_lock
 
 
 class CoachTest(unittest.TestCase):
@@ -234,6 +234,26 @@ class CoachTest(unittest.TestCase):
         session = (self.root / "sessions/2026-11-02.md").read_text()
         self.assertIn("claude-web", session)
 
+    def test_import_writes_nothing_when_any_part_is_invalid(self):
+        self.run_cli("card", "add", "--concept", "two-pointers", "--front", "f", "--back", "b", "--draft")
+        example = json.loads((COACH.parent.parent / "assets" / "delta-example.json").read_text())
+        for broken in [dict(example, card_reviews=[{"id": "c0001", "grade": "pass"}]),  # a draft can't be reviewed
+                       dict(example, session={"date": "02/11/2026"}),
+                       dict(example, artifacts=[{"concept": "x", "title": "t", "file": "/no/such/page.html"}]),
+                       dict(example, attempts="not a list"), ["not", "an", "object"]]:
+            (self.root / "inbox" / "bad.json").write_text(json.dumps(broken))
+            out = self.run_cli("import").stdout
+            self.assertIn("skip bad.json: nothing imported", out)
+            self.assertFalse((self.root / "learner/attempts.jsonl").read_text().strip())
+
+    def test_importing_the_same_delta_twice_logs_it_once(self):
+        example = (COACH.parent.parent / "assets" / "delta-example.json").read_text()
+        delta = self.tmp / "web.json"
+        delta.write_text(example)
+        self.assertIn("Imported web.json", self.run_cli("import", str(delta)).stdout)
+        self.assertIn("already imported", self.run_cli("import", str(delta)).stdout)
+        self.assertEqual(len(self.attempts()), 2)
+
     def test_export_pack(self):
         self.run_cli("export")
         pack = (self.root / "exports/pack-2026-11-01.md").read_text()
@@ -338,107 +358,49 @@ class CoachTest(unittest.TestCase):
         text = (self.root / "learner" / "attempts.jsonl").read_text()
         return [json.loads(line) for line in text.splitlines() if line.strip()]
 
-    def test_legacy_session_identity_is_stable_without_rewriting(self):
-        self.run_cli("solve", "start", "--problem", "two-sum")
-        path = self.root / "sessions/current.json"
-        old = self.live()
-        del old["session_id"]
-        path.write_text(json.dumps(old))
-        before = path.read_bytes()
-        first = json.loads(self.run_cli("solve", "show", "--json").stdout)
-        second = json.loads(self.run_cli("solve", "show", "--json").stdout)
-        self.assertEqual(first["session_id"], second["session_id"])
-        self.assertEqual(path.read_bytes(), before)
-        self.run_cli("solve", "note", "--stage", "1", "--text", "legacy note", "--expected-session", first["session_id"])
-        self.assertEqual(self.live()["notes"]["1"], "legacy note")
-
-    def test_expected_identity_rejects_stale_cli_mutations_without_writing(self):
-        self.run_cli("solve", "start", "--problem", "two-sum")
-        original = self.live()["session_id"]
-        self.run_cli("solve", "end", "--discard")
-        self.run_cli("solve", "start", "--problem", "two-sum")
-        path = self.root / "sessions/current.json"
-        before = path.read_bytes()
-        for args in [("stage", "3"), ("hint",), ("note", "--stage", "1", "--text", "old"),
-                     ("break",), ("block",), ("end", "--discard")]:
-            result = self.run_cli("solve", *args, "--expected-session", original, ok=False)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("the solve changed", result.stderr)
-            self.assertEqual(path.read_bytes(), before)
-        self.run_cli("solve", "stage", "2")  # compatibility for chat callers without an identity
-        self.assertEqual(self.live()["stage"], 2)
-
-    def test_lock_timeout_cannot_mutate_and_release_allows_progress(self):
-        self.run_cli("solve", "start", "--problem", "two-sum")
-        path = self.root / "sessions/current.json"
-        before = path.read_bytes()
-        script = ("import sys\nsys.path.insert(0, sys.argv[1])\n"
-                  "from session_lock import session_lock\nfrom pathlib import Path\n"
-                  "root = Path(sys.argv[2])\nwith session_lock(root, timeout=0.05):\n"
-                  "    (root / 'sessions/current.json').write_text('broken')\n")
-        with session_lock(self.root):
-            result = subprocess.run([sys.executable, "-c", script, str(COACH.parent), str(self.root)],
-                                    capture_output=True, text=True, timeout=5)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("the solve is busy", result.stderr)
-        self.assertEqual(path.read_bytes(), before)
-        self.run_cli("solve", "stage", "3")
-        self.assertEqual(self.live()["stage"], 3)
-
-    def test_concurrent_note_and_hint_survive_the_shared_lock(self):
-        self.run_cli("solve", "start", "--problem", "two-sum")
+    def test_writers_wait_for_the_notebook_lock_and_readers_do_not(self):
         script = ("import sys; sys.path.insert(0, sys.argv[1]); import coach; "
                   "print('ready', flush=True); coach.main(sys.argv[2:])")
+        writers = [("log", "attempt", "--problem", "two-sum", "--pattern", "arrays-hashing", "--outcome", "solved"),
+                   ("card", "add", "--concept", "arrays-hashing", "--front", "f", "--back", "b"),
+                   ("card", "add", "--concept", "arrays-hashing", "--front", "g", "--back", "c")]
         children = []
-        with session_lock(self.root):
-            for args in [("note", "--stage", "1", "--text", "kept"), ("hint",)]:
-                proc = subprocess.Popen([sys.executable, "-c", script, str(COACH.parent), "--root", str(self.root),
-                                         "solve", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.env)
+        with notebook_lock(self.root):
+            self.run_cli("solve", "show")  # a reader doesn't wait
+            for args in writers:
+                proc = subprocess.Popen([sys.executable, "-c", script, str(COACH.parent), "--root", str(self.root), *args],
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.env)
                 children.append(proc)
                 self.assertEqual(proc.stdout.readline().strip(), "ready")
                 self.assertIsNone(proc.poll())
         for proc in children:
-            out, err = proc.communicate(timeout=10)
+            _, err = proc.communicate(timeout=10)
             self.assertEqual(proc.returncode, 0, err)
-        self.assertEqual(self.live()["notes"]["1"], "kept")
-        self.assertEqual(self.live()["rung"], 1)
+        self.assertEqual(len(self.attempts()), 1)
+        cards = json.loads((self.root / "learner/cards.json").read_text())
+        self.assertEqual(sorted(c["id"] for c in cards), ["c0001", "c0002"])
 
-    def test_solve_start_scaffolds_the_attempt_file(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
+    def test_a_writer_gives_up_when_the_lock_is_held_too_long(self):
+        script = ("import sys; sys.path.insert(0, sys.argv[1]); from pathlib import Path; import coach\n"
+                  "with coach.notebook_lock(Path(sys.argv[2]), timeout=0.05): pass\n")
+        with notebook_lock(self.root):
+            result = subprocess.run([sys.executable, "-c", script, str(COACH.parent), str(self.root)],
+                                    capture_output=True, text=True, timeout=5)
+        self.assertIn("the notebook is busy", result.stderr)
+
+    def test_solve_start_creates_no_file_and_uses_the_problem_list(self):
+        out = self.run_cli("solve", "start", "--problem", "two-sum", "--confidence", "3", now="10:00").stdout
+        self.assertIn("On LeetCode: https://leetcode.com/problems/two-sum/", out)
         live = self.live()
-        self.assertEqual((live["pattern"], live["stage"], live["rung"], live["block_minutes"]), ("arrays-hashing", 1, 0, 15))
-        self.assertEqual(live["file"], "problems/two-sum/2026-11-01.py")
-        text = (self.root / live["file"]).read_text()
-        self.assertIn("https://leetcode.com/problems/two-sum/", text)
-        self.assertIn("Arrays & Hashing", text)
-        self.assertIn("Invariant:", text)
-        again = self.run_cli("solve", "start", "--problem", "valid-anagram", "--pattern", "arrays-hashing", ok=False)
-        self.assertNotEqual(again.returncode, 0)
+        self.assertEqual((live["pattern"], live["difficulty"], live["block_minutes"], live["stage"], live["rung"]),
+                         ("arrays-hashing", "easy", 15, 1, 0))
+        self.assertNotIn("file", live)
+        self.assertFalse((self.root / "problems" / "two-sum").exists())
+        self.run_cli("solve", "end", "--discard")
+        self.run_cli("solve", "start", "--problem", "product-of-array-except-self")  # listed, not canonical
+        self.assertEqual((self.live()["pattern"], self.live()["difficulty"]), ("arrays-hashing", "medium"))
+        again = self.run_cli("solve", "start", "--problem", "valid-anagram", ok=False)
         self.assertIn("already live", again.stderr)
-
-    def test_solve_template_runs_its_examples(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        path = self.root / self.live()["file"]
-        text = path.read_text()
-        self.assertIn("class Solution:", text)
-        self.assertIn("    Hand trace:", text)
-        run = lambda: subprocess.run([sys.executable, str(path)], capture_output=True, text=True, timeout=10).stdout
-        self.assertEqual(run(), "Write the method inside class Solution first.\n")
-        method = ("    MOD = 10**9 + 7  # a constant before the method: the examples still call the method\n"
-                  "    def twoSum(self, nums: List[int], target: int) -> List[int]:  # LeetCode's stub, typing unimported\n"
-                  "        seen = {}\n"
-                  "        for i, x in enumerate(nums):\n"
-                  "            if target - x in seen:\n"
-                  "                return [seen[target - x], i]\n"
-                  "            seen[x] = i\n")
-        text = text.replace("    pass\n", method, 1)
-        text = text.replace("EXAMPLES = [\n]", "EXAMPLES = [\n"
-                            "    (([2, 7, 11, 15], 9), [0, 1]),\n"
-                            "    (([3, 3], 6), [0, 1]),  # edge\n"
-                            "    (([1, 2], 3), [1, 0]),\n"
-                            "]")
-        path.write_text(text)
-        self.assertEqual([line[:4] for line in run().splitlines()], ["ok  ", "ok  ", "FAIL"])
 
     def test_solve_needs_a_pattern_for_unknown_problems(self):
         proc = self.run_cli("solve", "start", "--problem", "my-own-puzzle", ok=False)
@@ -450,227 +412,137 @@ class CoachTest(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("no letters or digits", proc.stderr)
         self.assertIsNone(self.live())
-        self.assertEqual(list((self.root / "problems").glob("*.py")), [])  # not problems//<date>.py
 
     def test_solve_end_logs_one_attempt_from_blocks_and_rung(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", "--confidence", "3", now="10:00")
+        self.run_cli("solve", "start", "--problem", "two-sum", "--confidence", "3", now="10:00")
         self.run_cli("solve", "stage", "3", now="10:05")
         self.run_cli("solve", "hint", now="10:10")
         self.run_cli("solve", "hint", "--rung", "3", now="10:12")
         self.run_cli("solve", "hint", "--rung", "2", now="10:13")  # the highest rung stays
         self.assertEqual((self.live()["stage"], self.live()["rung"]), (3, 3))
-        self.run_cli("solve", "touch", now="10:16")
-        self.run_cli("solve", "break", now="10:20")
+        self.run_cli("solve", "break", now="10:20")  # 20 minutes, counted as the 15-minute block it is
         self.run_cli("solve", "block", now="10:30")
-        self.run_cli("solve", "touch", now="10:35")
-        self.run_cli("solve", "touch", now="10:39")
         self.run_cli("solve", "end", "--outcome", "solved", "--note", "complement lookup", now="10:42")
         self.assertIsNone(self.live())
         [a] = self.attempts()
         self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
-        self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (32, 3, 3, "solved"))
+        self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (27, 3, 3, "solved"))
 
     def view(self, now):
         return json.loads(self.run_cli("solve", "show", "--json", now=now).stdout)
 
-    def test_solve_timer_counts_active_time_only(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        self.assertEqual(self.view("10:04")["block"]["elapsed"], 4)  # within IDLE the clock runs
-        self.assertEqual(self.view("10:20")["block"]["elapsed"], 0)  # idle: frozen at the last activity
-        self.run_cli("solve", "touch", now="10:03")
-        self.run_cli("solve", "touch", now="10:15")  # 12 quiet minutes are paused out, same block
-        v = self.view("10:17")
-        self.assertEqual((v["block"]["number"], v["block"]["elapsed"], v["resumed"]), (1, 5, None))
-        self.assertEqual(self.run_cli("solve", "touch", "--quiet", now="10:18").stdout, "")
+    def test_an_open_block_counts_at_most_its_length(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        self.assertEqual(self.view("10:04")["block"]["elapsed"], 4)
+        v = self.view("22:00")  # left open overnight
+        self.assertEqual((v["block"]["number"], v["block"]["elapsed"], v["minutes"]), (1, 15, 15))
+        self.run_cli("solve", "block", now="22:01")
+        self.assertEqual(self.view("22:06")["minutes"], 20)
 
-    def test_solve_long_absence_starts_a_fresh_block_and_says_so(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        self.run_cli("solve", "touch", now="10:04")
-        out = self.run_cli("solve", "touch", now="11:00").stdout
-        self.assertIn("block 2: 0 of 15 min · 4 min in all · back at 11:00, fresh block", out)
+    def test_idle_time_an_older_solve_paused_out_still_counts_as_paused(self):
+        self.run_cli("solve", "start", "--problem", "valid-anagram", "--difficulty", "medium", now="10:00")
         live = self.live()
-        self.assertEqual(live["blocks"][0]["end"], "2026-11-01T10:04:00+05:30")
-        self.assertEqual(live["resumed"], live["blocks"][1]["start"])
-        self.run_cli("solve", "break", now="11:02")
-        self.assertIsNone(self.view("11:03")["resumed"])  # only while that block is open
-
-    def test_solve_break_after_an_absence_closes_at_the_last_activity(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        self.run_cli("solve", "touch", now="10:05")
-        self.run_cli("solve", "touch", now="10:09")
-        self.run_cli("solve", "break", now="12:00")
-        v = self.view("12:01")
-        self.assertEqual((v["block"]["number"], v["block"]["open"], v["minutes"]), (1, False, 9))
-        self.run_cli("solve", "end", "--outcome", "partial", now="12:05")
-        self.assertEqual(self.attempts()[0]["minutes"], 9)
-
-    def test_solve_from_before_active_time_is_capped_then_adopted(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="08:00")
-        live = self.live()
-        del live["last_active"]
-        live["blocks"] = [{"start": "2026-11-01T08:00:00+05:30", "end": "2026-11-01T09:00:00+05:30"},
-                          {"start": "2026-11-01T09:00:00+05:30", "end": None}]
-        (self.root / "sessions" / "current.json").write_text(json.dumps(live))
-        self.assertEqual(self.view("20:00")["minutes"], 30)  # wall clock said 720
-        self.run_cli("solve", "touch", now="20:00")
-        live = self.live()
-        self.assertEqual([b["end"] for b in live["blocks"]],
-                         ["2026-11-01T08:15:00+05:30", "2026-11-01T09:15:00+05:30", None])
-        self.assertEqual(self.view("20:02")["minutes"], 32)
+        live["blocks"] = [{"start": "2026-11-01T10:00:00+05:30", "end": "2026-11-01T10:30:00+05:30", "paused": 600}]
+        live["last_active"] = "2026-11-01T10:30:00+05:30"
+        (self.root / "sessions/current.json").write_text(json.dumps(live))
+        self.assertEqual(self.view("11:00")["minutes"], 20)
 
     def test_solve_note_is_kept_and_written_to_problem_notes(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        first = self.live()["session_id"]
         self.run_cli("solve", "note", "--stage", "1", "--text", "first draft", now="10:01")
         self.run_cli("solve", "note", "--stage", "1", "--text=- return i != j with nums[i] + nums[j] == target", now="10:02")
         self.run_cli("solve", "note", "--stage", "2", "--text", "seen maps value -> index\nfor every j < i", now="10:03")
-        shown = json.loads(self.run_cli("solve", "show", "--json", now="10:04").stdout)
+        shown = self.view("10:04")
         self.assertEqual(shown["notes"], {"1": "- return i != j with nums[i] + nums[j] == target",
                                           "2": "seen maps value -> index\nfor every j < i"})
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
         self.run_cli("log", "attempt", "--problem", "two-sum", "--pattern", "arrays-hashing", "--outcome", "solved",
                      "--note", "complement lookup")  # a lesson line, appended under ## Lessons
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
+        second = self.live()["session_id"]
         self.run_cli("solve", "note", "--stage", "3", "--text", "all pairs, O(n^2)", now="10:21")
         self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
         text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
-        self.assertIn("## Stage notes\n\n### 2026-11-01 (problems/two-sum/2026-11-01.py)\n\n"
-                      "- **1. Understand:** - return i != j", text)
-        self.assertIn("- **2. Find an approach:** seen maps value -> index\n  for every j < i\n\n"
-                      "### 2026-11-01 (problems/two-sum/2026-11-01-2.py)\n\n"
-                      "- **3. Build it:** all pairs, O(n^2)\n\n## Lessons\n", text)
+        self.assertIn(f"## Stage notes\n\n### 2026-11-01 ({first})\n\n- **1. Understand:** - return i != j", text)
+        self.assertIn(f"- **2. Find an approach:** seen maps value -> index\n  for every j < i\n\n"
+                      f"### 2026-11-01 ({second})\n\n- **3. Build it:** all pairs, O(n^2)\n\n## Lessons\n", text)
         self.assertNotIn("first draft", text)
         self.assertEqual(text.count("## Stage notes"), 1)
-        lessons = text.index("## Lessons\n")
-        self.assertLess(text.index("**1."), text.index("**2."))
-        self.assertLess(text.index("**2."), lessons)
-        self.assertGreater(text.index("complement lookup"), lessons)
-
-    def test_legacy_eight_stage_solve_resumes_in_the_four_stage_protocol(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
-        path = self.root / "sessions/current.json"
-        old = self.live()
-        del old["protocol"]
-        old.update(stage=4, notes={"1": "pairs summing to target", "2": "every (i, j)", "3": "n(n-1)/2 checks",
-                                   "7": "subgoals", "8": "Why it works, in one sentence: map"})
-        path.write_text(json.dumps(old))
-        before = path.read_bytes()
-        shown = json.loads(self.run_cli("solve", "show", "--json", now="10:01").stdout)
-        self.assertEqual((shown["stage"], shown["stage_name"], shown["protocol"]), (2, "Find an approach", 2))
-        self.assertEqual(shown["notes"], {
-            "1": "pairs summing to target",
-            "2": "Brute force on the grid:\nevery (i, j)\n\nCount:\nn(n-1)/2 checks",
-            "3": "subgoals", "4": "Why it works, in one sentence: map"})
-        self.assertEqual(path.read_bytes(), before)  # show only reads
-        self.run_cli("solve", "touch", now="10:02")
-        self.assertEqual((self.live()["protocol"], self.live()["stage"]), (2, 2))
-        self.assertEqual(self.live()["session_id"], old["session_id"])
-        for legacy, stage in [(1, 1), (6, 2), (7, 3), (8, 4)]:
-            path.write_text(json.dumps({**old, "stage": legacy}))
-            self.assertEqual(json.loads(self.run_cli("solve", "show", "--json").stdout)["stage"], stage)
+        self.assertGreater(text.index("complement lookup"), text.index("## Lessons\n"))
 
     def test_solve_has_four_stages(self):
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
-        self.assertEqual(self.live()["protocol"], 2)
         self.assertIn("stage 1/4 Understand", self.run_cli("solve", "show", now="10:01").stdout)
         self.run_cli("solve", "stage", "4", now="10:02")
         self.assertNotEqual(self.run_cli("solve", "stage", "5", ok=False).returncode, 0)
         self.assertNotEqual(self.run_cli("solve", "note", "--stage", "5", "--text", "x", ok=False).returncode, 0)
 
-    def test_solve_end_records_its_session_and_a_repeat_returns_the_same_receipt(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        session = self.live()["session_id"]
-        self.run_cli("solve", "note", "--stage", "2", "--text", "seen set", now="10:05")
-        end = ("solve", "end", "--outcome", "solved", "--json", "--expected-session", session)
-        first = json.loads(self.run_cli(*end, now="10:10").stdout)
-        self.assertEqual((first["problem"], first["outcome"], first["id"]), ("two-sum", "solved", "a0001"))
-        self.assertIn("next_due", first)
-        self.assertIn("status", first)
-        [row] = self.attempts()
-        self.assertEqual(row["session"], session)
-        again = json.loads(self.run_cli(*end, now="10:11").stdout)  # a lost response, a double click
-        self.assertEqual(again, first)
-        self.assertEqual(len(self.attempts()), 1)
-        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")  # a newer solve is never ended by it
-        self.assertEqual(json.loads(self.run_cli(*end, now="10:21").stdout), first)
-        self.assertIsNotNone(self.live())
-        stale = self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", "f" * 32, ok=False)
-        self.assertIn("the solve changed", stale.stderr)
-
-    def test_solve_end_retry_finishes_an_end_that_stopped_after_logging(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+    def test_solve_end_records_its_session_and_a_retry_logs_once(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
         live_path = self.root / "sessions/current.json"
         self.run_cli("solve", "note", "--stage", "1", "--text", "pairs", now="10:01")
-        saved = live_path.read_bytes()
-        session = self.live()["session_id"]
-        self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", session, now="10:10")
+        saved, session = live_path.read_bytes(), self.live()["session_id"]
+        first = json.loads(self.run_cli("solve", "end", "--outcome", "solved", "--json", now="10:10").stdout)
+        self.assertEqual((first["problem"], first["outcome"], first["id"]), ("two-sum", "solved", "a0001"))
+        self.assertEqual(self.attempts()[0]["session"], session)
         live_path.write_bytes(saved)  # as if it stopped before removing the live solve
-        self.run_cli("solve", "end", "--outcome", "solved", "--expected-session", session, now="10:11")
+        again = json.loads(self.run_cli("solve", "end", "--outcome", "solved", "--json", now="10:11").stdout)
+        self.assertEqual(again, first)
         self.assertIsNone(self.live())
         self.assertEqual(len(self.attempts()), 1)
         notes = (self.root / "problems/two-sum/notes.md").read_text()
         self.assertEqual(notes.count("- **1. Understand:** pairs"), 1)
 
     def test_solve_blank_note_clears_the_stage_and_writes_nothing(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
         self.run_cli("solve", "note", "--stage", "1", "--text", "a draft", now="10:01")
         self.run_cli("solve", "note", "--stage", "3", "--text", "n^2 pairs", now="10:01")
-        self.run_cli("solve", "note", "--stage", "1", "--text=", now="10:02")  # the page sends a blank box like this
+        self.run_cli("solve", "note", "--stage", "1", "--text=", now="10:02")
         self.assertEqual(self.live()["notes"], {"3": "n^2 pairs"})
         self.run_cli("solve", "note", "--stage", "3", "--text", " \n ", now="10:03")
         self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
         self.assertNotIn("## Stage notes", (self.root / "problems" / "two-sum" / "notes.md").read_text())
 
     def test_stage_notes_split_only_at_the_lessons_heading(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--difficulty", "easy", now="10:00")
-        self.run_cli("solve", "note", "--stage", "2", "--text", "line a\n## Lessons\nline b", now="10:01")
-        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
-        self.run_cli("solve", "start", "--problem", "two-sum", now="10:20")
-        self.run_cli("solve", "note", "--stage", "2", "--text", "all pairs", now="10:21")
-        self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
+        sessions = []
+        for note, at in [("line a\n## Lessons\nline b", "10:00"), ("all pairs", "10:20")]:
+            self.run_cli("solve", "start", "--problem", "two-sum", now=at)
+            sessions.append(self.live()["session_id"])
+            self.run_cli("solve", "note", "--stage", "2", "--text", note, now=at)
+            self.run_cli("solve", "end", "--outcome", "solved", now=at)
         text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
         self.assertEqual(text.count("\n## Lessons\n"), 1)
         lessons = text.index("\n## Lessons\n")
-        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01.py)"), lessons)
-        self.assertLess(text.index("### 2026-11-01 (problems/two-sum/2026-11-01-2.py)"), lessons)
+        for session in sessions:
+            self.assertLess(text.index(f"### 2026-11-01 ({session})"), lessons)
 
     def test_solve_unlabeled_keeps_the_pattern_out_of_view(self):
-        self.run_cli("solve", "start", "--problem", "two-sum", "--unlabeled", now="10:00")
-        self.run_cli("solve", "touch", "--quiet", now="10:05")
-        text = (self.root / self.live()["file"]).read_text()
+        self.run_cli("solve", "start", "--problem", "valid-anagram", "--difficulty", "medium", "--unlabeled", now="10:00")
         shown = self.run_cli("solve", "show", now="10:07").stdout
         status = [line for line in self.run_cli("status", "--brief", now="10:07").stdout.splitlines()
                   if line.startswith("Live solve")][0]
-        for out in (text, shown, status):
+        for out in (shown, status):
             self.assertNotIn("Arrays & Hashing", out)
             self.assertNotIn("arrays-hashing", out)
-        self.assertIn("Live solve: two-sum", status)
+        self.assertIn("Live solve: valid-anagram", status)
         self.assertIn("block 1: 7 of 25 min", status)
-        self.assertEqual(json.loads(self.run_cli("solve", "show", "--json").stdout)["pattern"], "arrays-hashing")
+        self.assertEqual(self.view("10:08")["pattern"], "arrays-hashing")
 
-    def test_solve_again_gets_a_blank_file_and_discard_logs_nothing(self):
+    def test_discard_logs_nothing(self):
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
-        self.run_cli("solve", "end", "--discard", now="10:01")
-        self.run_cli("solve", "start", "--problem", "two-sum", now="10:02")
-        self.assertEqual(self.live()["file"], "problems/two-sum/2026-11-01-2.py")
+        self.assertIn("nothing logged", self.run_cli("solve", "end", "--discard", now="10:01").stdout)
         self.assertEqual(self.attempts(), [])
-        self.assertIn("No live solve", self.run_cli("solve", "end", "--discard").stdout + self.run_cli("solve", "show").stdout)
+        self.assertIn("No live solve", self.run_cli("solve", "show").stdout)
+        self.assertNotEqual(self.run_cli("solve", "end", "--discard", ok=False).returncode, 0)
 
-    def test_guard_blocks_edits_to_the_live_problem_until_rung_7(self):
-        def guard(path, tool="Edit"):
-            event = {"tool_name": tool, "tool_input": {"file_path": str(path)}, "cwd": str(self.tmp)}
-            return self.run_cli("guard", stdin=json.dumps(event), ok=False).returncode
-
-        attempt = self.root / "problems" / "two-sum" / "2026-11-01.py"
-        self.assertEqual(guard(attempt), 0)  # no live solve
+    def test_map_json_carries_due_and_the_live_solve(self):
+        view = json.loads(self.run_cli("map", "--json").stdout)
+        self.assertIsNone(view["live"])
+        self.assertEqual(set(view["due"]), {"resolves", "cards", "drafts", "inbox"})
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
-        self.assertEqual(guard(attempt), 2)
-        self.assertEqual(guard(self.root / "problems" / "two-sum" / "solution.py", tool="Write"), 2)
-        self.assertEqual(guard("notebook/problems/two-sum/2026-11-01.py"), 2)  # relative to the hook's cwd
-        self.assertEqual(guard(self.root / "problems" / "two-sum" / "notes.md"), 0)
-        self.assertEqual(guard(self.root / "problems" / "valid-anagram" / "2026-11-01.py"), 0)
-        self.assertEqual(self.run_cli("guard", stdin="not json", ok=False).returncode, 0)
-        self.run_cli("solve", "hint", "--rung", "7")
-        self.assertEqual(guard(attempt), 0)
+        live = json.loads(self.run_cli("map", "--json", now="10:05").stdout)["live"]
+        self.assertEqual((live["problem"], live["stage_name"], live["block"]["elapsed"]), ("two-sum", "Understand", 5))
 
     def test_write_json_replaces_the_file_whole(self):
         """The page polls `solve show --json` while the chat and the app write current.json."""
@@ -729,7 +601,6 @@ class CoachTest(unittest.TestCase):
         names = zipfile.ZipFile(dest).namelist()
         self.assertIn("dsa-coach/SKILL.md", names)
         self.assertIn("dsa-coach/scripts/coach.py", names)
-        self.assertIn("dsa-coach/scripts/session_lock.py", names)
         self.assertFalse(any("__pycache__" in n for n in names))
 
     def test_install_into_a_copy_of_the_workspace(self):
@@ -743,8 +614,7 @@ class CoachTest(unittest.TestCase):
         self.assertTrue((ws / ".claude/skills/dsa-coach").is_symlink())
         settings = json.loads((ws / ".claude/settings.json").read_text())
         self.assertIn("status --brief", json.dumps(settings))
-        self.assertEqual(settings["hooks"]["PreToolUse"][0]["matcher"], "Write|Edit|MultiEdit")
-        self.assertIn(" guard", json.dumps(settings["hooks"]["PreToolUse"]))
+        self.assertEqual(list(settings["hooks"]), ["SessionStart"])
         again = subprocess.run([sys.executable, str(coach), "install"], capture_output=True, text=True, env=self.env, cwd=ws)
         self.assertIn("already linked", again.stdout)
         self.assertIn("already present", again.stdout)

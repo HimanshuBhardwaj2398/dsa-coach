@@ -17,6 +17,11 @@ flowchart LR
     CW[Cowork]
     WEB[Claude web / ChatGPT web]
   end
+  subgraph Views["read-only views"]
+    APP[app/: learning app, framed by the Chrome side panel]
+    PANE[Claude Code pane]
+  end
+  LC[LeetCode: he codes and runs tests]
   subgraph Skill["skills/dsa-coach (portable Agent Skill)"]
     SK[SKILL.md: rules, modes, solve protocol]
     REF[references/: protocol, plan card, explainers, learner model, retention, roadmap, resources, platforms]
@@ -43,6 +48,9 @@ flowchart LR
   ART --> SNAP
   WEB -- "export pack" --> SK
   WEB -- "session delta" --> INBOX --> CLI
+  CLI -- "map --json" --> APP
+  NOTES --> PANE
+  CC -. "looks with browser tools" .-> LC
 ```
 
 | Layer | Owns | Changes when |
@@ -52,6 +60,7 @@ flowchart LR
 | Data (assets/roadmap.json, templates) | The plan: patterns, tiers, weeks, cues, invariants, canonical problems | The plan changes |
 | Notebook | Everything about the learner | Every session |
 | Surfaces | Where sessions happen | Never touches the logic |
+| Views (app, Chrome panel, pane) | Showing progress, theory and the live solve | They only read; changes go through coach.py |
 
 The split is deliberate: the LLM teaches, the script keeps state. A model can misremember a date or invent a streak; the script can't.
 
@@ -82,6 +91,8 @@ The split is deliberate: the LLM teaches, the script keeps state. A model can mi
 | Credit techniques only on delayed, unaided outcomes | Immediate success and enjoyment are poor predictors of retention | The ledger fills slowly (weeks) |
 | Symlinks into `.claude/skills` and `.agents/skills` | One canonical copy; edits are live in Claude Code and Codex | Fall back to `install --copy` if a tool ignores symlinks |
 | A versioned delta format for web chats | One import path for every platform without file access | A manual save step after web sessions |
+| Solve on LeetCode; the coach observes it with its own browser tools | No editor, runner or LeetCode-specific code to maintain; one coach, in the chat | Observation depends on the agent's tools; without them he pastes code and results |
+| Learning app and panels are read-only views | One writer (`coach.py`), so the views can't drift from the notebook | Explainers are written in the chat from a prompt the page hands over |
 | JOURNEY.md generated, never hand-edited | One source of truth; no drift between log and summary | Hand edits go into the logs, not the snapshot |
 
 ## Versioning
@@ -94,10 +105,7 @@ Semantic versions live in `metadata.version` (SKILL.md) and `SKILL_VERSION` (coa
 |---|---|---|
 | 1. Core | Skill (rules, protocol, references), notebook layout, `coach.py` (logging, schedules, statuses, technique ledger, snapshot, export/import, package, install, validate), platform setup, tests | Done (v0.1.0) |
 | 2. Harness | Trace-first explainer pipeline (`recorder.py` → `validate_trace.py` → `build_page.py`) with a reusable component library (grid, tape, tree, graph, trace table, code panel with live counts, prediction prompts); quiz and retention-test pages generated from `cards.json`; a journey dashboard page built from `journey.json`; saving every page into the notebook automatically | Next |
-| 2b. Solve surface | `coach.py solve` (live state that survives compaction), the PreToolUse guard on attempt files, the coach pane plugin (`plugins/dsa-coach-pane`) | Done (v0.4.0) |
-| 2b+. Study app, Solve tab | `app/server.py` (stdlib, 127.0.0.1), `app/runner.py`, `app/attempt_file.py`, `app/static/`; `coach.py solve note`, `due --json`; LeetCode-shaped attempt template | Done (v0.5.0) |
-| 2b++. Study app, Map and Learn | `app/static/nav.js` (hash routes for the map, Learn pages and Solve), `app/claude_job.py` (the coach headless, writing explainers), `assets/problems.json` (NeetCode 150 and Blind 75 by pattern), resources per pattern in `roadmap.json`, `coach.py map` | Done (v0.6.0) |
-| 2b+++. Solve flow | Active-time focus blocks (`coach.py solve touch`, idle pause, fresh block after a long absence, welcome-back); the browser panel reads LeetCode's editor with each message, takes a screenshot when the coach asks, and records the rung each reply gives | Done (v0.7.0) |
+| 2b. Solve state and learning views | `coach.py solve` (live state that survives compaction, focus blocks counted up to their length), `coach.py map --json`; the coach pane plugin (`plugins/dsa-coach-pane`, state only); the read-only learning app (`app/`: Today, map, Learn pages, saved explainers) and the Chrome side panel that frames it (`extensions/dsa-coach`). He solves on LeetCode; the coach looks at it with a browser or computer-use tool. The in-app editor, test runner, LeetCode scraping and the panel's own coach chat were removed in 0.9.0 | Done (v0.9.0) |
 | 2c. Course layer | The map and Learn pages shipped in 0.6.0. Still to come, with testers: goal intake, a placement diagnostic and a generated `course.json` per subject (DSA's roadmap becomes the first course); checkers per subject (Python tests, rubric, numeric); system design as the second course | Next |
 | 3. Agents | Claude Code subagents (a visualizer that builds, verifies and publishes pages; a curator that updates the learner files), hooks (log each question on UserPromptSubmit; block ending a teaching turn until the logs are updated), command skills (`/review`, `/mock`, `/ai-drill`), Codex equivalents | Planned |
 | 4. Evals | `evals/` with 20–50 cases from real failures, sycophancy pressure tests, over-scaffolding tests, notebook-update checks; blind A/B of skill versions; drift alarms in the snapshot | Planned |
