@@ -134,3 +134,18 @@ test('with no solve in progress it shows what is due and what is next', async ($
   expect((await ui.find({ type: 'Text', text: /^Next/ }))?.text).toBe('Next: Solve two-sum unaided to move Arrays & Hashing forward.')
   await ui.unmount()
 })
+
+test('minutes in all round the sum of the blocks, as coach.py does, not the sum of rounded blocks', async ($, on) => {
+  // Two closed blocks of 7 min 36 s: 15.2 min in all, so 15, where flooring each block would give 14.
+  mock.clock(on, { now: T0 + 40 * MIN })
+  const solve = JSON.parse(live(false))
+  solve.blocks = [
+    { start: '2026-11-05T10:00:00+05:30', end: '2026-11-05T10:07:36+05:30', paused: 0 },
+    { start: '2026-11-05T10:20:00+05:30', end: '2026-11-05T10:27:36+05:30', paused: 0 },
+  ]
+  engine(on, { ...files(null), 'notebook/sessions/current.json': JSON.stringify(solve) })
+  await $.session.start({ cwd: '/ws', surface: 'vscode', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'vscode' })
+  expect((await ui.find({ type: 'Text', text: /^On a break/ }))?.text).toBe('On a break after block 2 · 15 min in all')
+  await ui.unmount()
+})

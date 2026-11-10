@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 · 2026-11-10 · Three fixes from the code critique (pane 0.2.1)
+
+- **`card list` is a query:** it no longer rewrites `JOURNEY.md` and `journey.json`. Reads run without the notebook lock, so a read that wrote could race a real write.
+- **One minutes rule:** the pane floored each block and summed (76 min on the contains-duplicate solve) where `coach.py` sums and rounds (78). The pane now counts as `live_view` does: the total rounds the sum, the open block shows whole minutes.
+- **`validate` checks the version:** it fails when SKILL.md `metadata.version` and `SKILL_VERSION` in coach.py differ.
+- Tests: `test_card_list_is_a_query`, `test_validate_flags_version_drift`, and a pane test for rounding the total.
+
 ## 0.9.0 · 2026-11-10 · Solve on LeetCode; the app becomes a read-only learning view (extension 0.3.0, pane 0.2.0)
 
 He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `plans/2026-11-10-app-critique.md`, `plans/002-learning-app.md`, `plans/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.

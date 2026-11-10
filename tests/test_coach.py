@@ -2,10 +2,12 @@
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import unittest.mock
 import zipfile
@@ -587,6 +589,25 @@ class CoachTest(unittest.TestCase):
         self.assertLessEqual(len(out.stdout.splitlines()), 10)
         out = self.run_cli("validate")
         self.assertIn("OK", out.stdout)
+
+    def test_card_list_is_a_query(self):
+        # Reads run without the notebook lock, so a read must not rewrite the snapshot.
+        self.run_cli("card", "add", "--concept", "two-pointers", "--type", "invariant", "--front", "Q", "--back", "A")
+        snapshot = self.root / "JOURNEY.md"
+        before = snapshot.stat().st_mtime_ns
+        time.sleep(0.01)
+        self.run_cli("card", "list")
+        self.assertEqual(snapshot.stat().st_mtime_ns, before)
+
+    def test_validate_flags_version_drift(self):
+        skill = self.tmp / "skill" / "dsa-coach"
+        shutil.copytree(COACH.parent.parent, skill, ignore=shutil.ignore_patterns("__pycache__"))
+        md = skill / "SKILL.md"
+        md.write_text(re.sub(r'version: "[^"]+"', 'version: "0.0.1"', md.read_text()))
+        proc = subprocess.run([sys.executable, str(skill / "scripts" / "coach.py"), "--root", str(self.root), "validate"],
+                              capture_output=True, text=True, env=self.env, cwd=self.tmp)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("0.0.1", proc.stdout)
 
     def test_validate_flags_bad_attempt(self):
         with (self.root / "learner/attempts.jsonl").open("a") as fh:

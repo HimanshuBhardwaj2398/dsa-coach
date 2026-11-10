@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.9.0"
+SKILL_VERSION = "0.9.1"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -1131,6 +1131,7 @@ def cmd_card(args) -> None:
             print("No cards match.")
         for c in cards:
             print(f"{c['id']} [{c['status']}{', due ' + c['due'] if c.get('due') else ''}] {c['type']} · {c['concept']}\n  Q: {c['front']}\n  A: {c['back']}")
+        return  # a query: it runs without the lock, so it must not rewrite the snapshot
     write_snapshot(root)
 
 
@@ -1753,6 +1754,9 @@ def cmd_validate(args) -> None:
     extra = set(fm) - {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
     if extra:
         issues.append(f"frontmatter keys outside the Agent Skills spec: {sorted(extra)}")
+    version = re.search(r'^\s+version:\s*"?([^"\s]+)', text.split("---", 2)[1], re.M)
+    if not version or version.group(1) != SKILL_VERSION:
+        issues.append(f"SKILL.md metadata.version {version and version.group(1)!r} must match SKILL_VERSION {SKILL_VERSION!r} in coach.py")
     n_lines = text.count("\n") + 1
     if n_lines >= 500:
         issues.append(f"SKILL.md has {n_lines} lines; keep it under 500")
