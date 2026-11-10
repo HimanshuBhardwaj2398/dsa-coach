@@ -13,7 +13,7 @@ claude
 ```
 
 - **The coach pane** (optional): at the prompt, `/plugin marketplace add ./`, then `/plugin install dsa-coach-pane@dsa-coach`. It needs Claude Code 2.1.317 or later; the VS Code extension updates itself, but the Homebrew `claude` may lag. Details in the README.
-- **The attempt-file guard** is the PreToolUse hook in `.claude/settings.json`. `coach.py install` adds it. Claude Code may ask you to review changed hooks (`/hooks`) before it runs them.
+- **The session-start status** is the SessionStart hook in `.claude/settings.json`. `coach.py install` adds it, and removes the guard and activity hooks that versions before 0.9.0 installed. Claude Code may ask you to review changed hooks (`/hooks`) before it runs them.
 - If Claude Code doesn't list the skill (`/skills`), replace the link with a copy: `coach.py install --claude --copy --force`. Re-run it after you edit the skill.
 - To use the coach from any folder, install it for your user account: `coach.py install --user`. That links the skill into `~/.claude/skills` and `~/.agents/skills` and writes `~/.config/dsa-coach/notebook.txt`, so coach.py finds this notebook from anywhere.
 

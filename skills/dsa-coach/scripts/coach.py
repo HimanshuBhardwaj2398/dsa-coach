@@ -10,17 +10,19 @@ then the current folder, then ~/.config/dsa-coach/notebook.txt, then the
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import re
 import shutil
 import sys
+import time
 import zipfile
-from session_lock import session_lock, session_identity
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-SKILL_VERSION = "0.8.0"
+SKILL_VERSION = "0.9.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -56,21 +58,15 @@ LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purp
 LISTS = ("blind75", "nc150", "roadmap")  # problems.json: the two lists, or a canonical problem outside both
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
-STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase). app.js, companion.js and the pane repeat the names.
+STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase). The pane repeats the names.
     ("Understand", "Understand"),
     ("Find an approach", "Devise a plan"),
     ("Build it", "Carry out the plan"),
     ("Check and finish", "Look back"),
 ]
-PROTOCOL = 2  # live solves from before 0.8.0 used eight stages; load_live moves them to these four
-LEGACY_STAGES = ["Unknown, data, condition", "Brute force on the grid", "Count", "Find the repeated work",
-                 "Classify and choose the state", "Plan card", "Pseudocode, then code", "Test and look back"]
-LEGACY_TO_STAGE = {1: 1, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 4}
 RUNGS = ["none", "a general question", "a nudge for this problem", "the pattern name", "the invariant or state",
          "a skeleton with blanks", "one concrete sub-step", "the full worked solution"]
 FOCUS_MINUTES = {"easy": 15, "medium": 25, "hard": 25}  # one genuine attempt = one focused block
-IDLE_MINUTES = 5  # quiet this long and the block's clock stops at the last activity
-RESUME_AFTER_MINUTES = 30  # away this long and coming back starts a fresh block
 DEFAULT_CONFIG = {
     "learner": "learner",
     "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -208,6 +204,10 @@ def catalogue_issues(catalogue: dict, roadmap: dict) -> list:
 
 def pattern_keys() -> list:
     return [p["key"] for p in load_roadmap()["patterns"]]
+
+
+def problem_url(roadmap: dict, slug: str) -> str:
+    return roadmap["problem_url"].format(slug=slug)
 
 
 def template(name: str) -> str:
@@ -825,7 +825,7 @@ def cmd_init(args) -> None:
 def ensure_problem_notes(root: Path, slug: str, pattern: str, difficulty: str, on: date) -> Path:
     path = root / "problems" / slug / "notes.md"
     if not path.exists():
-        url = load_roadmap().get("problem_url", "https://leetcode.com/problems/{slug}/").format(slug=slug)
+        url = problem_url(load_roadmap(), slug)
         text = template("problem.md").format(
             problem=slug, url=url, pattern=pattern, difficulty=difficulty, date=on.isoformat(),
             plan_card=template("plan-card.md").strip(),
@@ -842,6 +842,14 @@ def ensure_concept_notes(root: Path, slug: str, title: str | None, pattern: str 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
     return path
+
+
+def is_date(value) -> bool:
+    try:
+        date.fromisoformat(value)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 def validate_attempt(a: dict, keys: list) -> list:
@@ -871,11 +879,8 @@ def validate_attempt(a: dict, keys: list) -> list:
     bad = [m for m in a.get("mistakes") or [] if m not in MISTAKES]
     if bad:
         errs.append(f"unknown mistake codes {bad}; use {list(MISTAKES)}")
-    if a.get("date"):
-        try:
-            date.fromisoformat(a["date"])
-        except ValueError:
-            errs.append("date must be YYYY-MM-DD")
+    if a.get("date") and not is_date(a["date"]):
+        errs.append("date must be YYYY-MM-DD")
     return errs
 
 
@@ -938,7 +943,7 @@ def log_and_report(root: Path, a: dict, as_json: bool = False) -> None:
 
 
 def report_attempt(root: Path, row: dict, as_json: bool = False, already: bool = False) -> None:
-    """What logging an attempt led to: the receipt the study app shows, or one line for the chat."""
+    """What logging an attempt led to: a JSON receipt (--json), or one line for the chat."""
     info = analyze_problems(load_state(root))[row["problem"]]
     kind = "unaided" if is_unaided(row) else "assisted" if row["assisted"] else "not unaided"
     if as_json:
@@ -1028,9 +1033,19 @@ def find_card(cards: list, cid: str) -> dict:
     raise AssertionError  # unreachable
 
 
-def add_card(root: Path, c: dict, source: str = "cli") -> dict:
+def validate_card(c: dict) -> list:
+    errs = []
+    if not all(isinstance(c.get(k), str) and c[k].strip() for k in ("concept", "front", "back")):
+        errs.append("concept, front and back are required")
     if c.get("type", "other") not in CARD_TYPES:
-        die(f"card type must be one of {CARD_TYPES}")
+        errs.append(f"type must be one of {CARD_TYPES}")
+    return errs
+
+
+def add_card(root: Path, c: dict, source: str = "cli") -> dict:
+    errs = validate_card(c)
+    if errs:
+        die("card " + "; ".join(errs))
     cards = load_cards(root)
     on = parse_date(c.get("date"))
     draft = c.get("draft", True)
@@ -1191,7 +1206,7 @@ def list_progress(problems: list, name: str) -> dict:
 
 
 def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
-    """The study app's map: every pattern with its status, explainer and problems (Blind 75 first)."""
+    """The panel's map: every pattern with its status, explainer and problems (Blind 75 first)."""
     explainers = {a["concept"]: a["file"] for a in j["artifacts"] if (a.get("file") or "").endswith(".html")}
     due = {d["problem"] for d in j["due"]["resolves"]}
     status = {r["key"]: r["status"] for r in j["patterns"]}
@@ -1200,7 +1215,7 @@ def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
         problems = []
         for c in sorted(catalogue.get(p["key"], []), key=lambda c: "blind75" not in c["lists"]):
             seen = j["problems"].get(c["slug"]) or {}
-            problems.append({**c, "url": roadmap["problem_url"].format(slug=c["slug"]),
+            problems.append({**c, "url": problem_url(roadmap, c["slug"]),
                              "status": seen.get("status", "not started"), "last_outcome": seen.get("last_outcome"),
                              "next_due": seen.get("next_due"), "due": c["slug"] in due})
         patterns.append({
@@ -1213,7 +1228,7 @@ def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
         })
     nxt = pick_next(j)
     return {"plan": j["plan"], "next": nxt, "next_text": render_next(nxt),
-            "next_url": roadmap["problem_url"].format(slug=nxt["problem"]) if nxt.get("problem") else None,
+            "next_url": problem_url(roadmap, nxt["problem"]) if nxt.get("problem") else None,
             "patterns": patterns}
 
 
@@ -1228,7 +1243,11 @@ def render_map(view: dict) -> str:
 
 def cmd_map(args) -> None:
     root = find_root(args.root)
-    view = map_view(compute(load_state(root), parse_date(args.date)), load_roadmap(), load_catalogue())
+    state = load_state(root)
+    j, roadmap = compute(state, parse_date(args.date)), state["roadmap"]
+    live = load_live(root, required=False)
+    due = dict(j["due"], resolves=[dict(r, url=problem_url(roadmap, r["problem"])) for r in j["due"]["resolves"]])
+    view = dict(map_view(j, roadmap, load_catalogue()), due=due, live=live_view(live) if live else None)
     print(json.dumps(view, indent=2, ensure_ascii=False) if args.json else render_map(view))
 
 # live solve -----------------------------------------------------------------
@@ -1245,95 +1264,44 @@ def load_live(root: Path, required: bool = True) -> dict | None:
     live = read_json(root / LIVE, None)
     if live is None and required:
         die("no live solve. Start one with `coach.py solve start --problem SLUG`.")
-    return migrate_live(live) if live else live
-
-
-def migrate_live(live: dict) -> dict:
-    """An eight-stage solve in the four stages. Notes from old stages 2-6 share stage 2, each under its old name;
-    the rest move as they are. The next command that writes the solve saves the result."""
-    if live.get("protocol") == PROTOCOL:
-        return live
-    old = live.get("notes") or {}
-    notes = {}
-    for n in sorted(old, key=int):
-        stage = LEGACY_TO_STAGE[int(n)]
-        text = f"{LEGACY_STAGES[int(n) - 1]}:\n{old[n]}" if stage == 2 else old[n]
-        notes[str(stage)] = f"{notes[str(stage)]}\n\n{text}" if str(stage) in notes else text
-    live = dict(live, protocol=PROTOCOL, stage=LEGACY_TO_STAGE[live["stage"]])
-    if notes:
-        live["notes"] = notes
     return live
 
 
 def block_minutes(block: dict, at: datetime, length: int) -> float:
-    """Active minutes in a block: its span less the idle time paused out of it. A block from before 0.7.0
-    (no `paused`) counted wall-clock time, so it is capped at the block length."""
+    """Minutes in a focus block, from its start to its end (or now), less any idle time older solves paused out.
+    A block counts at most its length: one left open overnight is one block, not the hours since."""
     end = datetime.fromisoformat(block["end"]) if block.get("end") else at
-    minutes = max(0.0, (end - datetime.fromisoformat(block["start"])).total_seconds() / 60 - block.get("paused", 0) / 60)
-    return minutes if "paused" in block else min(minutes, length)
+    minutes = (end - datetime.fromisoformat(block["start"])).total_seconds() / 60 - block.get("paused", 0) / 60
+    return min(max(0.0, minutes), length)
 
 
-def last_activity(live: dict) -> datetime:
-    if live.get("last_active"):
-        return datetime.fromisoformat(live["last_active"])
-    last = live["blocks"][-1]  # a solve from before 0.7.0: assume its last block ran no longer than its length
-    if last.get("end"):
-        return datetime.fromisoformat(last["end"])
-    return datetime.fromisoformat(last["start"]) + timedelta(minutes=live["block_minutes"])
-
-
-def counted_until(live: dict, at: datetime) -> datetime:
-    """The clock runs while he is active; after IDLE_MINUTES of quiet it stops at his last activity."""
-    last = last_activity(live)
-    return at if at - last <= timedelta(minutes=IDLE_MINUTES) else last
-
-
-def touch(live: dict, at: datetime, resume: bool = True) -> None:
-    """Record activity. A short gap is paused out of the open block; a long one closes the block at the last
-    activity and, with `resume`, opens a fresh block marked `resumed` (the welcome-back)."""
-    last = last_activity(live)
-    if "last_active" not in live:  # adopt a solve from before 0.7.0: cap its blocks, then count from here on
-        for b in live["blocks"]:
-            if "paused" not in b:
-                if b.get("end"):
-                    b["end"] = min(datetime.fromisoformat(b["end"]),
-                                   datetime.fromisoformat(b["start"]) + timedelta(minutes=live["block_minutes"])).isoformat()
-                b["paused"] = 0
-    gap = (at - last).total_seconds()
+def open_block(live: dict) -> dict | None:
     blocks = live["blocks"]
-    current = blocks[-1] if blocks and not blocks[-1].get("end") else None
-    if current and gap > RESUME_AFTER_MINUTES * 60:
-        current["end"] = max(last, datetime.fromisoformat(current["start"])).isoformat()
-        if resume:
-            blocks.append({"start": at.isoformat(timespec="seconds"), "end": None, "paused": 0})
-            live["resumed"] = blocks[-1]["start"]
-    elif current and gap > IDLE_MINUTES * 60:
-        current["paused"] = current.get("paused", 0) + int(gap)
-    live["last_active"] = at.isoformat(timespec="seconds")
+    return blocks[-1] if blocks and not blocks[-1].get("end") else None
 
 
 def live_view(live: dict) -> dict:
-    """The live solve plus what follows from it: stage and rung names, active minutes so far, the current block,
-    and `resumed` while the open block is the one started by coming back."""
-    at = counted_until(live, now())
+    """The live solve plus what follows from it: stage and rung names, minutes so far, the current block, and
+    `line`, the state in words (never the pattern: the app shows it as it is)."""
+    at, current = now(), open_block(live)
     blocks, length = live["blocks"], live["block_minutes"]
-    current = blocks[-1] if blocks and not blocks[-1].get("end") else None
     stage, phase = STAGES[live["stage"] - 1]
-    resumed = live.get("resumed") if current and current["start"] == live.get("resumed") else None
-    return dict(live, session_id=session_identity(live), stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]],
-                minutes=int(sum(block_minutes(b, at, length) for b in blocks) + 0.5), resumed=resumed,
-                block={"number": len(blocks), "open": current is not None, "length": length,
-                       "elapsed": int(block_minutes(current, at, length)) if current else None})
+    minutes = int(sum(block_minutes(b, at, length) for b in blocks) + 0.5)
+    elapsed = int(block_minutes(current, at, length)) if current else None
+    timer = f"block {len(blocks)}: {elapsed} of {length} min" if current else f"on a break after block {len(blocks)}"
+    return dict(live, stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]], minutes=minutes,
+                block={"number": len(blocks), "open": current is not None, "length": length, "elapsed": elapsed},
+                line=f"stage {live['stage']}/{len(STAGES)} {stage} · hint rung {live['rung']}/7 · {timer} · {minutes} min in all")
 
 
 def describe_live(v: dict) -> str:
     """One line. The pattern appears only when the problem is labeled: naming it is hint rung 3."""
-    b = v["block"]
-    timer = f"block {b['number']}: {b['elapsed']} of {b['length']} min" if b["open"] else f"on a break after block {b['number']}"
     label = f" ({v['pattern_name']})" if v["labeled"] else ""
-    back = f" · back at {v['resumed'][11:16]}, fresh block" if v.get("resumed") else ""
-    return (f"{v['problem']}{label} · stage {v['stage']}/{len(STAGES)} {v['stage_name']} · hint rung {v['rung']}/7 · "
-            f"{timer} · {v['minutes']} min in all{back}")
+    return f"{v['problem']}{label} · {v['line']}"
+
+
+def print_live(live: dict) -> None:
+    print(f"Live solve: {describe_live(live_view(live))}\nOn LeetCode: {live['url']}")
 
 
 def solve_start(root: Path, args) -> None:
@@ -1344,42 +1312,33 @@ def solve_start(root: Path, args) -> None:
         die(f"--problem {args.problem!r} has no letters or digits to make a slug from")
     roadmap = load_roadmap()
     past = [a for a in usable_attempts(read_jsonl(root / "learner" / "attempts.jsonl")) if a["problem"] == slug]
+    listed = next(((key, p) for key, ps in load_catalogue().items() for p in ps if p["slug"] == slug), (None, {}))
     canonical = next((p["key"] for p in roadmap["patterns"] if slug in p.get("canonical", [])), None)
-    pattern = args.pattern or (past[-1]["pattern"] if past else canonical)
+    pattern = args.pattern or (past[-1]["pattern"] if past else None) or listed[0] or canonical
     if not pattern:
         die(f"which pattern is {slug}? Pass --pattern ({', '.join(pattern_keys())}).")
-    difficulty = args.difficulty or (past[-1].get("difficulty") if past else None) or "medium"
-    on = today().isoformat()
-    folder = root / "problems" / slug
-    name, n = f"{on}.py", 2
-    while (folder / name).exists():  # every attempt starts from a blank page
-        name, n = f"{on}-{n}.py", n + 1
+    difficulty = args.difficulty or (past[-1].get("difficulty") if past else None) or listed[1].get("difficulty") or "medium"
     pattern_name = next(p["name"] for p in roadmap["patterns"] if p["key"] == pattern)
-    url = roadmap.get("problem_url", "https://leetcode.com/problems/{slug}/").format(slug=slug)
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / name).write_text(template("solve.py").format(
-        problem=slug, url=url, date=on, pattern_line="" if args.unlabeled else f" Pattern: {pattern_name}."), encoding="utf-8")
-    started = stamp()
+    url = problem_url(roadmap, slug)
     live = {
         "problem": slug, "pattern": pattern, "pattern_name": pattern_name, "labeled": not args.unlabeled,
         "difficulty": difficulty, "mode": args.mode, "confidence": args.confidence, "url": url,
-        "session_id": os.urandom(16).hex(), "protocol": PROTOCOL,
-        "file": f"problems/{slug}/{name}", "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
-        "blocks": [{"start": started, "end": None, "paused": 0}], "started": started, "last_active": started,
+        "session_id": os.urandom(16).hex(), "stage": 1, "rung": 0, "block_minutes": FOCUS_MINUTES[difficulty],
+        "blocks": [{"start": stamp(), "end": None}],
         "skill_version": SKILL_VERSION,
     }
     write_json(root / LIVE, live)
-    print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
+    print_live(live)
 
 
 def solve_end(root: Path, live: dict, args) -> None:
     if args.discard:
         (root / LIVE).unlink()
-        print(f"Discarded the live solve of {live['problem']}; nothing logged. {live['file']} stays.")
+        print(f"Discarded the live solve of {live['problem']}; nothing logged.")
         return
     if not args.outcome:
         die("give --outcome (solved, partial or failed), or --discard")
-    session = session_identity(live)
+    session = live["session_id"]
     row = logged_from(root, session)  # an end that stopped after logging: finish it, don't log again
     if row:
         report_attempt(root, row, args.json, already=True)
@@ -1395,8 +1354,8 @@ def solve_end(root: Path, live: dict, args) -> None:
             "session": session,
         }, args.json)
     notes = root / "problems" / live["problem"] / "notes.md"
-    if live.get("notes") and not re.search(rf"^### .* \({re.escape(live['file'])}\)$", notes.read_text(encoding="utf-8"), re.M):
-        add_stage_notes(notes, f"{today().isoformat()} ({live['file']})", live["notes"])
+    if live.get("notes") and not re.search(rf"^### .* \({re.escape(session)}\)$", notes.read_text(encoding="utf-8"), re.M):
+        add_stage_notes(notes, f"{today().isoformat()} ({session})", live["notes"])
     (root / LIVE).unlink()
 
 
@@ -1416,42 +1375,21 @@ def add_stage_notes(path: Path, heading: str, notes: dict) -> None:
 
 
 def cmd_solve(args) -> None:
-    root = find_root(args.root)
-    if args.solve_cmd == "show":
-        return solve_command(root, args)
-    try:
-        with session_lock(root):
-            return solve_command(root, args)
-    except TimeoutError as exc:
-        die(str(exc))
-
-
-def solve_command(root, args) -> None:
-    action = args.solve_cmd
+    root, action = find_root(args.root), args.solve_cmd
     if action == "start":
         return solve_start(root, args)
-    expected = getattr(args, "expected_session", None)
-    live = load_live(root, required=not (expected is not None or action == "show" or (action == "end" and args.discard)))
-    if expected is not None and (live is None or session_identity(live) != expected):
-        row = logged_from(root, expected) if action == "end" and not args.discard else None
-        if row:  # ended already: a repeat gets the same receipt and never touches a newer solve
-            return report_attempt(root, row, args.json, already=True)
-        die("the solve changed; refresh before trying again")
-    if action == "touch" and live is None:
-        return
-    if action == "show" or live is None:
+    live = load_live(root, required=action != "show")
+    if action == "show":
         if live is None:
-            print("null" if getattr(args, "json", False) else "No live solve.")
+            print("null" if args.json else "No live solve.")
         elif args.json:
             print(json.dumps(live_view(live), indent=2, ensure_ascii=False))
         else:
-            print(f"Live solve: {describe_live(live_view(live))}\nAttempt file: {root / live['file']}")
+            print_live(live)
         return
-    touch(live, now(), resume=action not in ("break", "block", "end"))
     if action == "end":
         return solve_end(root, live, args)
-    blocks = live["blocks"]
-    open_block = blocks[-1] if blocks and not blocks[-1].get("end") else None
+    current = open_block(live)
     if action == "stage":
         live["stage"] = args.n
     elif action == "hint":
@@ -1463,38 +1401,12 @@ def solve_command(root, args) -> None:
         else:
             notes.pop(str(args.stage), None)
     elif action in ("break", "block"):
-        if open_block:
-            open_block["end"] = stamp()
+        if current:
+            current["end"] = stamp()
         if action == "block":
-            blocks.append({"start": stamp(), "end": None, "paused": 0})
+            live["blocks"].append({"start": stamp(), "end": None})
     write_json(root / LIVE, live)
-    if not (action == "touch" and args.quiet):
-        print(f"Live solve: {describe_live(live_view(live))}")
-
-
-def cmd_guard(args) -> None:
-    """PreToolUse hook. Exit 2 blocks the edit: during a live solve, the problem's .py files are the learner's
-    until hint rung 7. Anything unexpected allows the edit, so the guard never gets in the way of other work."""
-    try:
-        event = json.loads(sys.stdin.read())
-        target = (event.get("tool_input") or {}).get("file_path")
-        root = find_root(args.root)
-        live = load_live(root, required=False)
-    except (SystemExit, Exception):
-        sys.exit(0)
-    if not target or not live or live.get("rung", 0) >= 7 or not str(target).endswith(".py"):
-        sys.exit(0)
-    path = Path(target)
-    if not path.is_absolute():
-        path = Path(event.get("cwd") or Path.cwd()) / path
-    try:
-        path.resolve().relative_to((root / "problems" / live["problem"]).resolve())
-    except ValueError:
-        sys.exit(0)
-    print(f"Blocked by dsa-coach: {live['problem']} is a live solve at hint rung {live.get('rung', 0)}/7, and its "
-          "code is the learner's to write. Give the next rung in the chat instead (`coach.py solve hint`). "
-          "If the learner asked for the full solution, record rung 7 first.", file=sys.stderr)
-    sys.exit(2)
+    print(f"Live solve: {describe_live(live_view(live))}")
 
 
 # artifacts ------------------------------------------------------------------
@@ -1630,31 +1542,53 @@ def cmd_export(args) -> None:
     print(f"Wrote {out} ({len(out.read_text(encoding='utf-8')):,} characters). Attach it in the web chat.")
 
 
-def validate_delta(d: dict, keys: list, card_ids: set) -> list:
+def validate_delta(d, keys: list, cards: dict) -> list:
+    """Every problem in a delta, found before anything is written: an import writes all of it or nothing.
+    cards: id -> status of the cards already in the notebook."""
+    if not isinstance(d, dict):
+        return ["a delta is a JSON object"]
     errs = []
     if d.get("format") != DELTA_FORMAT:
         errs.append(f"format must be {DELTA_FORMAT!r}")
+    session = d.get("session") or {}
+    if not isinstance(session, dict) or ("date" in session and not is_date(session["date"])):
+        errs.append("session: date must be YYYY-MM-DD")
+    for section in ("attempts", "questions", "cards", "card_reviews", "artifacts"):
+        rows = d.get(section) or []
+        if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+            errs.append(f"{section} must be a list of objects")
+            continue
+        for i, r in enumerate(rows):
+            if "date" in r and not is_date(r["date"]):
+                errs.append(f"{section}[{i}]: date must be YYYY-MM-DD")
+    if errs:
+        return errs
     for i, a in enumerate(d.get("attempts") or []):
         errs += [f"attempts[{i}]: {e}" for e in validate_attempt(a, keys)]
     for i, q in enumerate(d.get("questions") or []):
         if not q.get("concept") or not q.get("text"):
             errs.append(f"questions[{i}]: concept and text are required")
-    new_cards = 0
     for i, c in enumerate(d.get("cards") or []):
-        if not all(c.get(k) for k in ("concept", "front", "back")):
-            errs.append(f"cards[{i}]: concept, front and back are required")
-        if c.get("type", "other") not in CARD_TYPES:
-            errs.append(f"cards[{i}]: type must be one of {CARD_TYPES}")
-        new_cards += 1
+        errs += [f"cards[{i}]: {e}" for e in validate_card(c)]
     for i, r in enumerate(d.get("card_reviews") or []):
-        if r.get("id") not in card_ids:
+        if r.get("id") not in cards:
             errs.append(f"card_reviews[{i}]: unknown card id {r.get('id')!r}")
+        elif cards[r["id"]] != "active":
+            errs.append(f"card_reviews[{i}]: {r['id']} is {cards[r['id']]}; only active cards can be reviewed")
         if r.get("grade") not in GRADES:
             errs.append(f"card_reviews[{i}]: grade must be pass or fail")
     for i, a in enumerate(d.get("artifacts") or []):
         if not a.get("concept") or not a.get("title") or not (a.get("url") or a.get("file")):
             errs.append(f"artifacts[{i}]: concept, title and url (or file) are required")
+        elif a.get("file") and not Path(a["file"]).expanduser().is_file():
+            errs.append(f"artifacts[{i}]: file not found: {a['file']}")
     return errs
+
+
+def imported_before(root: Path, source: str) -> bool:
+    rows = [*read_jsonl(root / "learner" / "attempts.jsonl"), *read_jsonl(root / "learner" / "questions.jsonl"),
+            *load_cards(root), *read_json(root / "artifacts" / "registry.json", [])]
+    return any(r.get("source") == source for r in rows)
 
 
 def cmd_import(args) -> None:
@@ -1671,16 +1605,18 @@ def cmd_import(args) -> None:
         except (OSError, json.JSONDecodeError) as exc:
             print(f"skip {path.name}: can't read it ({exc})")
             continue
-        card_ids = {c.get("id") for c in load_cards(root)}
-        errs = validate_delta(d, keys, card_ids)
+        errs = validate_delta(d, keys, {c.get("id"): c.get("status") for c in load_cards(root)})
         if errs:
-            print(f"skip {path.name}: fix these fields and import again:")
+            print(f"skip {path.name}: nothing imported; fix these fields and import again:")
             for e in errs:
                 print(f"  - {e}")
             continue
+        source = f"import:{path.name}"
+        if imported_before(root, source):
+            print(f"skip {path.name}: already imported (rows with source {source} exist)")
+            continue
         session = d.get("session") or {}
         on = session.get("date") or today().isoformat()
-        source = f"import:{path.name}"
         counts = {"attempts": 0, "questions": 0, "cards": 0, "card_reviews": 0, "artifacts": 0}
         for a in d.get("attempts") or []:
             version = a.get("skill_version") or d.get("skill_version") or SKILL_VERSION
@@ -1765,29 +1701,26 @@ def cmd_install(args) -> None:
 
 
 def install_hook() -> str:
-    """The SessionStart status hook, the PreToolUse guard for attempt files, and the activity touch."""
+    """The SessionStart status hook. Removes the guard and activity hooks that versions before 0.9.0 installed."""
     path = WORKSPACE / ".claude" / "settings.json"
     base = 'python3 "$CLAUDE_PROJECT_DIR/skills/dsa-coach/scripts/coach.py" --root "$CLAUDE_PROJECT_DIR/notebook"'
-    wanted = [
-        ("SessionStart", "startup|resume|clear|compact", f"{base} status --brief",
-         "Claude Code loads your status at the start of each session"),
-        ("PreToolUse", "Write|Edit|MultiEdit", f"{base} guard",
-         "Claude can't write in your attempt file during a live solve"),
-        ("UserPromptSubmit", "", f"{base} solve touch --quiet",
-         "talking to the coach counts as activity on the solve timer"),
-    ]
+    command = f"{base} status --brief"
     settings = read_json(path, {}) if path.exists() else {}
-    msgs = []
-    for event, matcher, command, why in wanted:
-        hooks = settings.setdefault("hooks", {}).setdefault(event, [])
-        if any(x.get("command") == command for h in hooks for x in h.get("hooks", [])):
-            msgs.append(f"{event} hook already present in {path}")
-            continue
-        hooks.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]} if matcher
-                     else {"hooks": [{"type": "command", "command": command}]})
-        msgs.append(f"{event} hook added to {path} ({why})")
+    hooks = settings.setdefault("hooks", {})
+    for event in list(hooks):  # coach.py's own hooks other than the status one are from older versions
+        groups = [dict(g, hooks=[h for h in g.get("hooks", []) if not h.get("command", "").startswith(base)
+                                 or (event == "SessionStart" and h["command"] == command)]) for g in hooks[event]]
+        hooks[event] = [g for g in groups if g["hooks"]]
+        if not hooks[event]:
+            del hooks[event]
+    starts = hooks.setdefault("SessionStart", [])
+    if any(h.get("command") == command for g in starts for h in g.get("hooks", [])):
+        msg = f"SessionStart hook already present in {path}"
+    else:
+        starts.append({"matcher": "startup|resume|clear|compact", "hooks": [{"type": "command", "command": command}]})
+        msg = f"SessionStart hook added to {path} (Claude Code loads your status at the start of each session)"
     write_json(path, settings)
-    return "\n".join(msgs)
+    return msg
 
 
 def frontmatter(text: str) -> dict:
@@ -1873,7 +1806,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", help="where you are and what's due (also refreshes the snapshot)")
     s.add_argument("--brief", action="store_true")
-    s.set_defaults(func=cmd_status)
+    s.set_defaults(func=cmd_status, writes=True)
 
     log = sub.add_parser("log", help="log an attempt, a question or a session").add_subparsers(dest="log_cmd", required=True)
     s = log.add_parser("attempt")
@@ -1891,25 +1824,25 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--complexity-stated", action="store_true")
     s.add_argument("--note")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_attempt)
+    s.set_defaults(func=cmd_log_attempt, writes=True)
     s = log.add_parser("question")
     s.add_argument("--concept", required=True)
     s.add_argument("--text", required=True)
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_question)
+    s.set_defaults(func=cmd_log_question, writes=True)
     s = log.add_parser("session")
     s.add_argument("--summary", required=True)
     s.add_argument("--minutes", type=int)
     s.add_argument("--platform")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_session)
+    s.set_defaults(func=cmd_log_session, writes=True)
 
     s = sub.add_parser("concept", help="create concept notes").add_subparsers(dest="concept_cmd", required=True).add_parser("add")
     s.add_argument("--slug", required=True)
     s.add_argument("--title")
     s.add_argument("--pattern")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_concept_add)
+    s.set_defaults(func=cmd_concept_add, writes=True)
 
     card = sub.add_parser("card", help="retrieval cards").add_subparsers(dest="card_cmd", required=True)
     s = card.add_parser("add")
@@ -1941,8 +1874,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     card.required = True
-    for sp in card.choices.values():
-        sp.set_defaults(func=cmd_card)
+    for name, sp in card.choices.items():
+        sp.set_defaults(func=cmd_card, writes=name != "list")
 
     s = sub.add_parser("quiz", help="due card fronts (answers with --json)")
     s.add_argument("--n", type=int, default=10)
@@ -1961,19 +1894,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--date")
     s.set_defaults(func=cmd_next)
 
-    s = sub.add_parser("map", help="every pattern with its status, explainer and problems (the study app's map)")
+    s = sub.add_parser("map", help="every pattern with its status, explainer and problems, plus what's due and the live solve (the panel's data)")
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
     s.set_defaults(func=cmd_map)
 
     solve = sub.add_parser("solve", help="the live solve: stage, hint rung and focus blocks").add_subparsers(dest="solve_cmd", required=True)
-    s = solve.add_parser("start", help="start a solve and create a blank attempt file")
+    s = solve.add_parser("start", help="start a solve; he writes and runs the code on LeetCode")
     s.add_argument("--problem", required=True, help="LeetCode slug or a short name")
-    s.add_argument("--pattern", choices=pattern_keys(), help="default: an earlier attempt's, or the roadmap's")
-    s.add_argument("--difficulty", choices=DIFFICULTIES, help="default: an earlier attempt's, or medium")
+    s.add_argument("--pattern", choices=pattern_keys(), help="default: an earlier attempt's, the problem list's, or the roadmap's")
+    s.add_argument("--difficulty", choices=DIFFICULTIES, help="default: an earlier attempt's, the problem list's, or medium")
     s.add_argument("--mode", default="practice", choices=MODES)
     s.add_argument("--confidence", type=int, choices=range(1, 6), help="confidence before starting, 1-5")
-    s.add_argument("--unlabeled", action="store_true", help="mixed practice: keep the pattern out of the file and the status")
+    s.add_argument("--unlabeled", action="store_true", help="mixed practice: keep the pattern out of the status")
     s = solve.add_parser("stage", help="move to a solve-protocol stage")
     s.add_argument("n", type=int, choices=range(1, len(STAGES) + 1))
     s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
@@ -1983,14 +1916,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--text", required=True)
     solve.add_parser("break", help="end the current focus block")
     solve.add_parser("block", help="start a new focus block")
-    s = solve.add_parser("touch", help="record activity: idle time pauses the block, a long absence starts a fresh one")
-    s.add_argument("--quiet", action="store_true", help="print nothing (for hooks)")
     s = solve.add_parser("show", help="the live solve")
     s.add_argument("--json", action="store_true")
     s = solve.add_parser("end", help="log the attempt from the live solve, or --discard it")
     s.add_argument("--outcome", choices=OUTCOMES)
     s.add_argument("--discard", action="store_true", help="drop the live solve without logging")
-    s.add_argument("--minutes", type=int, help="default: the minutes in focus blocks")
+    s.add_argument("--minutes", type=int, help="default: the minutes in focus blocks, each counted up to its length")
     s.add_argument("--assisted", action="store_true", help="saw a solution or used AI")
     s.add_argument("--confidence", type=int, choices=range(1, 6), help="default: the one given at start")
     s.add_argument("--technique", choices=TECHNIQUES)
@@ -1999,12 +1930,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--note")
     s.add_argument("--json", action="store_true", help="print the receipt: id, outcome, kind, status, next_due")
     for name, sp in solve.choices.items():
-        if name not in ("start", "show"):
-            sp.add_argument("--expected-session", help="reject an action for a different live solve")
-        sp.set_defaults(func=cmd_solve)
-
-    s = sub.add_parser("guard", help="PreToolUse hook: keeps Claude out of the attempt files during a live solve")
-    s.set_defaults(func=cmd_guard)
+        sp.set_defaults(func=cmd_solve, writes=name != "show")
 
     art = sub.add_parser("artifact", help="saved explainers and published pages").add_subparsers(dest="artifact_cmd", required=True)
     s = art.add_parser("add")
@@ -2015,23 +1941,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--version", type=int)
     s.add_argument("--note")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_artifact)
+    s.set_defaults(func=cmd_artifact, writes=True)
     s = art.add_parser("list")
     s.set_defaults(func=cmd_artifact)
 
     s = sub.add_parser("snapshot", help="regenerate JOURNEY.md, journey.json and learner/summary.md")
     s.add_argument("--date", help="compute as of this date")
     s.add_argument("--print", action="store_true", help="also print JOURNEY.md")
-    s.set_defaults(func=cmd_snapshot)
+    s.set_defaults(func=cmd_snapshot, writes=True)
 
     s = sub.add_parser("export", help="write a context pack for a web chat")
     s.add_argument("--platform", default="Claude or ChatGPT web")
     s.add_argument("--out")
-    s.set_defaults(func=cmd_export)
+    s.set_defaults(func=cmd_export, writes=True)
 
     s = sub.add_parser("import", help="import session deltas (default: everything in inbox/)")
     s.add_argument("files", nargs="*")
-    s.set_defaults(func=cmd_import)
+    s.set_defaults(func=cmd_import, writes=True)
 
     s = sub.add_parser("package", help="zip the skill for uploading to Claude")
     s.add_argument("--out")
@@ -2051,9 +1977,51 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+@contextmanager
+def notebook_lock(root: Path, timeout: float = 5):
+    """One writer at a time across processes (a hook, the coach, another agent). Stdlib file locking."""
+    path = root / "sessions" / ".notebook.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+            if path.stat().st_size == 0:
+                handle.write(b"\0")
+                handle.flush()
+            def lock(mode):
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), mode, 1)
+            acquire, release = (lambda: lock(msvcrt.LK_NBLCK)), (lambda: lock(msvcrt.LK_UNLCK))
+        else:
+            import fcntl
+            acquire = lambda: fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)  # noqa: E731
+            release = lambda: fcntl.flock(handle.fileno(), fcntl.LOCK_UN)  # noqa: E731
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                acquire()
+                break
+            except OSError as exc:
+                if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("the notebook is busy; try again in a moment") from None
+                time.sleep(0.025)
+        try:
+            yield
+        finally:
+            release()
+
+
 def main(argv=None) -> None:
     args = build_parser().parse_args(argv)
-    args.func(args)
+    if not getattr(args, "writes", False):  # set where a command that changes the notebook is defined
+        return args.func(args)
+    try:
+        with notebook_lock(find_root(args.root)):
+            args.func(args)
+    except TimeoutError as exc:
+        die(str(exc))
 
 
 if __name__ == "__main__":

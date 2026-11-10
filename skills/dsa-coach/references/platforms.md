@@ -10,22 +10,16 @@ Claude Code, Codex CLI or IDE extension, Cowork with the dsa-coach folder connec
 - Edit notes in `notebook/concepts/` and `notebook/problems/` directly.
 - Save explainers into `notebook/concepts/<slug>/` and register them with `artifact add`.
 - At session start, `coach.py status` also reports deltas waiting in `notebook/inbox/`. Import them with `coach.py import` before anything else, after telling him what they contain.
-- Run every solve through `coach.py solve`.
-  - Claude Code adds two things on top. A PreToolUse guard (`coach.py guard`, installed by project-level `coach.py install`, not `install --user`) keeps your edits out of his attempt files until rung 7. Copying or unzipping the skill alone does not install this hook.
-  - The optional `dsa-coach-pane` plugin (`plugins/dsa-coach-pane/` in the workspace) shows the live solve beside the chat.
-  - Elsewhere, the same state lives in `notebook/sessions/current.json`, so the next session can resume it.
+- Run every solve through `coach.py solve`. The state lives in `notebook/sessions/current.json`, so the next session can resume it. He codes on LeetCode; where you have a browser or computer-use tool, look at that tab for his code and results.
+- Claude Code: the optional `dsa-coach-pane` plugin (`plugins/dsa-coach-pane/` in the workspace) shows the live solve beside the chat.
 
-### The study app (Solve tab)
+### The learning app and the browser panel
 
-`python3 app/server.py` from the workspace opens a local page with a stage panel, an editor without autocomplete and a test runner. The server saves the attempt file and the statement (`problems/<slug>/problem.md`, fetched from LeetCode when a solve opens without one, or pasted; git ignores it) itself and asks `coach.py` for everything else (stages, notes, logging), so the chat in Claude Code or Codex sees every stage and note. Test runs aren't recorded. It listens on 127.0.0.1 only, prints the `http://127.0.0.1:<port>/` URL and opens it in the browser (`--no-browser` skips that). Pass `--port` for another port and `--root` for another notebook.
-
-The app saves pending examples before Run. If inputs change while it saves, Run asks you to try again. Browser requests carry a session identity, so actions from an ended solve cannot change a new solve. `coach.py solve stage|hint|note|break|block|end` accepts optional `--expected-session ID`; existing chat commands without it still work. All cooperating solve writers use `sessions/.solve.lock`, with a bounded wait. Keep `scripts/session_lock.py` beside `coach.py` in standalone installs.
-
-Unsaved work is kept as a draft in this browser. After a reload, choose Restore, Copy, or Discard; restoring does not overwrite notebook files, and a later Save still checks for external edits. Earlier sessions can only be copied or discarded. Code, stage answers, predicted examples and edge flags, plan cards, statement drafts, and stage-8 outcome/lesson are covered. A draft is separate from a notebook save and never grants learning credit. Browser storage is scoped to the origin: use the same browser, host and port to recover it. Clearing browser data or changing ports does not transfer drafts. If storage is unavailable, the page explains that you must save before closing.
+`python3 app/server.py` from the workspace serves a read-only page on 127.0.0.1: Today (the live solve, what's due, what's next), the pattern map, and each pattern's Learn page with its saved explainer. The Chrome extension in `extensions/dsa-coach/` shows the same page in a side panel beside LeetCode. The page reads the notebook through `coach.py map --json` and writes nothing: stages, hints and logging happen in the chat. Its explainer buttons give him a prompt to paste into the chat, where you write or revise the page.
 
 ### Standalone setup
 
-The ZIP contains the `dsa-coach/` skill folder, without learner data, the optional pane plugin or the study app (`app/` in the workspace). Extract it into the host's skills directory and run its `scripts/coach.py` from there.
+The ZIP contains the `dsa-coach/` skill folder, without learner data, the optional pane plugin, the learning app (`app/`) or the browser extension. Extract it into the host's skills directory and run its `scripts/coach.py` from there.
 
 For an existing notebook, pass `--root /absolute/path/to/notebook` before the command, or set `DSA_NOTEBOOK` to that path. For a new notebook, use the location chosen by the learner explicitly; plain `init` assumes the original repository layout:
 

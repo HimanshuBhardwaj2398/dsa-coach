@@ -1,8 +1,10 @@
 {
   "name": "dsa-coach-pane",
-  "version": "0.1.0",
-  "description": "A pane beside the chat for the dsa-coach skill: the live solve's stage, focus-block timer and hint rung, with buttons that talk to the coach",
-  "author": { "name": "Himanshu Bhardwaj" },
+  "version": "0.2.0",
+  "description": "A pane beside the chat for the dsa-coach skill: the live solve's stage, focus-block timer and hint rung",
+  "author": {
+    "name": "Himanshu Bhardwaj"
+  },
   "license": "MIT",
   "types": "./types/index.d.ts"
 }

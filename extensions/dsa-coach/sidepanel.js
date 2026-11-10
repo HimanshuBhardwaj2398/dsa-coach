@@ -1,11 +1,12 @@
 "use strict";
+// The panel frames the local learning app's /panel page. It reads no page and sends nothing anywhere else.
 const frame = document.getElementById("coach");
 const status = document.getElementById("status");
 const address = document.getElementById("server");
-let serverOrigin = null, ready = false, problem = null, generation = 0, windowId;
-let selectionGeneration = 0;
 const connection = document.getElementById("connection");
 const connectionToggle = document.getElementById("connection-toggle");
+let attempt = 0;  // a newer Connect wins over a slower older one
+
 function showConnection(open) {
   connection.hidden = !open;
   connection.open = open;
@@ -13,46 +14,27 @@ function showConnection(open) {
 }
 connectionToggle.onclick = () => showConnection(connection.hidden);
 
-function sendProblem() {
-  if (ready) frame.contentWindow.postMessage({type: "dsa-coach:problem", slug: problem}, serverOrigin);
-}
-
-async function activeProblem() {
-  const current = ++selectionGeneration;
-  const [tab] = await chrome.tabs.query({active: true, windowId});
-  if (current !== selectionGeneration) return;
-  problem = CoachExtension.problemSlug(tab?.url);
-  sendProblem();
-}
-
 async function connect(value) {
-  const current = ++generation;
-  ready = false;
+  const mine = ++attempt;
   status.hidden = false;
   status.textContent = "Connecting to your coach…";
   try {
     const origin = CoachExtension.serverOrigin(value);
-    const response = await fetch(origin + "/companion", {signal: AbortSignal.timeout(5000)});
+    const response = await fetch(origin + "/panel", {signal: AbortSignal.timeout(5000)});
     if (!response.ok || !(await response.text()).includes('name="dsa-coach-app"')) {
-      throw new Error("Restart the updated DSA Coach server, then connect again.");
+      throw new Error("That address isn't the DSA Coach app. Restart python3 app/server.py, then connect again.");
     }
-    if (current !== generation) return;
-    serverOrigin = origin;
+    if (mine !== attempt) return;
     address.value = origin;
-    document.getElementById("full-app").href = origin + "/#/solve";
-    frame.src = origin + "/companion#/solve";
+    document.getElementById("full-app").href = origin + "/";
+    frame.src = origin + "/panel";
     frame.hidden = false;
+    status.hidden = true;
     showConnection(false);
     await chrome.storage.local.set({server: origin});
-    setTimeout(() => {
-      if (current === generation && !ready) {
-        status.hidden = false;
-        status.textContent = "The coach could not open here. Restart the updated server and reload the extension, then connect again.";
-        showConnection(true);
-      }
-    }, 10000);
   } catch (error) {
-    if (current !== generation) return;
+    if (mine !== attempt) return;
+    frame.hidden = true;
     status.textContent = error.name === "TypeError" || error.name === "TimeoutError"
       ? "Coach is offline. Start the local server, then choose Connect."
       : error.message;
@@ -60,98 +42,14 @@ async function connect(value) {
   }
 }
 
-async function capture(kind) {
-  const [tab] = await chrome.tabs.query({active: true, windowId});
-  const slug = CoachExtension.problemSlug(tab?.url);
-  if (!slug) throw new Error("Open a LeetCode problem in this window first.");
-  let text = "", screenshot = null, code = "";
-  if (kind === "context") {  // with every message: the editor's code and the end of the page (the test results)
-    const [editor] = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: "MAIN", func: () => {
-      try {
-        const m = window.monaco?.editor;
-        return (m?.getEditors?.()[0]?.getModel() || m?.getModels?.()[0])?.getValue() ?? null;
-      } catch { return null; }
-    }});
-    const [page] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => ({
-      lines: [...document.querySelectorAll(".view-lines .view-line")].map(line => line.innerText).join("\n"),
-      text: (document.querySelector("main") || document.body).innerText.slice(-6000),
-    })});
-    code = (editor?.result ?? page?.result?.lines ?? "").slice(0, 24000);
-    text = page?.result?.text || "";
-  } else if (kind === "text") {
-    const [result] = await chrome.scripting.executeScript({
-      target: {tabId: tab.id},
-      func: () => (window.getSelection()?.toString() || document.querySelector("main")?.innerText || document.body.innerText).slice(0, 24000),
-    });
-    text = result?.result || "";
-    if (!text.trim()) throw new Error("No page text found. Paste your code or capture a screenshot instead.");
-  } else if (kind === "screenshot") {
-    try {
-      screenshot = await chrome.tabs.captureVisibleTab(windowId, {format: "jpeg", quality: 75});
-    } catch {
-      document.getElementById("screen-access").hidden = false;
-      throw new Error("Choose Allow screenshots at the top of the panel, then ask again. You can also paste an image here.");
-    }
-  } else throw new Error("Choose page text or screenshot.");
-  const [after] = await chrome.tabs.query({active: true, windowId});
-  if (after?.id !== tab.id || after?.url !== tab.url) throw new Error("The tab changed during capture. Try again.");
-  return {slug, text, screenshot, code};
-}
-
-window.addEventListener("message", async event => {
-  if (event.source !== frame.contentWindow || event.origin !== serverOrigin) return;
-  if (event.data?.type === "dsa-coach:ready") {
-    ready = true;
-    status.hidden = true;
-    sendProblem();
-  } else if (event.data?.type === "dsa-coach:capture" && ready) {
-    const origin = serverOrigin;
-    const response = {type: "dsa-coach:captured", id: event.data.id};
-    try { Object.assign(response, await capture(event.data.kind)); }
-    catch (error) { response.error = error.message; }
-    frame.contentWindow.postMessage(response, origin);
-  }
-});
-
-document.getElementById("settings").addEventListener("submit", async event => {
+document.getElementById("settings").addEventListener("submit", async (event) => {
   event.preventDefault();
-  // Reconnecting replaces the frame, including its temporary chat and captures.
-  if (ready) {
-    status.hidden = false;
-    status.textContent = "Save your work in the panel before reconnecting.";
-    if (!window.confirm("Reconnect the coach? Save stage edits and copy any chat you want to keep first.")) return;
-  }
-  const button = event.submitter;
-  button.disabled = true;
-  try { await connect(address.value); } finally { button.disabled = false; }
-});
-
-// Screenshots need <all_urls> (or a fresh toolbar click); the coach asks for one only when text isn't enough.
-document.getElementById("allow-screen").onclick = async () => {
-  if (await chrome.permissions.request({origins: ["<all_urls>"]})) document.getElementById("screen-access").hidden = true;
-};
-
-// Activity on the LeetCode tab in this window keeps the solve's clock running (activity.js).
-chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message?.type !== "dsa-coach:activity" || sender.tab?.windowId !== windowId || !sender.tab.active || !ready) return;
-  frame.contentWindow.postMessage({type: "dsa-coach:activity"}, serverOrigin);
-});
-
-chrome.tabs.onActivated.addListener(info => { if (info.windowId === windowId) activeProblem().catch(console.error); });
-chrome.tabs.onUpdated.addListener((_id, info, tab) => {
-  if (tab.active && tab.windowId === windowId && (info.url || info.status === "complete")) activeProblem().catch(console.error);
-});
-chrome.storage.onChanged.addListener((changes, area) => {
-  // Never replace a loaded workspace when another app tab uses a different server.
-  if (area === "local" && changes.server && !ready && changes.server.newValue !== serverOrigin) {
-    connect(changes.server.newValue);
-  }
+  event.submitter.disabled = true;
+  try { await connect(address.value); } finally { event.submitter.disabled = false; }
 });
 
 (async () => {
-  windowId = (await chrome.windows.getCurrent()).id;
   const {server = CoachExtension.defaultServer} = await chrome.storage.local.get("server");
   address.value = server;
-  await activeProblem();
   await connect(server);
-})().catch(error => { status.textContent = error.message; });
+})().catch((error) => { status.textContent = error.message; });

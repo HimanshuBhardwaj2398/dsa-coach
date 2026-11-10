@@ -39,7 +39,7 @@ General questions he can ask himself on any problem, grouped by the four phases 
 
 ## Stage prompts for the solve protocol
 
-Four stages, one current question at a time. "Help me think" from the app or panel asks for one question for his stage: pick the move below that fits his last answer, and don't hand over this problem's data structure, invariant or code unless you record that rung.
+Four stages, one current question at a time. When he asks for help thinking, ask one question for his stage: pick the move below that fits his last answer, and don't hand over this problem's data structure, invariant or code unless you record that rung.
 
 | Stage | Ask first | Gate before moving on |
 |---|---|---|
@@ -78,16 +78,16 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
 | `none` | Offer a mock or an unlabeled mixed set |
 
-For a problem, run `coach.py solve start --problem SLUG` before the first prompt, with `--unlabeled` when `block` is false. For a re-solve, run the same command; it always creates a blank file. Then point him to the attempt file it prints.
+For a problem, run `coach.py solve start --problem SLUG` before the first prompt, with `--unlabeled` when `block` is false. For a re-solve, run the same command; he solves it on LeetCode from a blank editor. Then give him the LeetCode link it prints.
 
 `block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it (`solve end` for a problem) and offer the next one in a line.
 
-**Prompts from the coach pane.** The pane in Claude Code, and the study app's **Ask the coach** button, send these as his own words:
-- "I'm done with stage N": check that stage's output before `solve stage N+1`. After stage 4, check the look-back answers and end the solve with the outcome and lesson he gives (SKILL.md, End).
-- "I'm stuck at stage N": the next rung (`solve hint`).
-- "Check my attempt in ...": run it on edge cases, report what fails and don't fix it.
-- "My focus block is over": the stuck-block options in SKILL.md.
-- "Break's over": `solve block`. The rules for every mode still apply.
+**What he says during a solve.**
+- "Done with this stage": check that stage's output, save his answer with `solve note`, then `solve stage N+1`. After stage 4, check the look-back answers and end the solve with the outcome and lesson he gives (SKILL.md, End).
+- "I'm stuck": the next rung (`solve hint`).
+- "Check my code": look at his LeetCode code and results (SKILL.md, Seeing his work), name an edge case that fails or that he should run, and leave the fix to him.
+- "My block is over": `solve break`, then the stuck-block options in SKILL.md.
+- "Break's over": `solve block`.
 
 At the end, if draft cards are waiting, ask once: "Keep all N, or go through them?" Keeping all means `card accept` for each. Drafts never hold up practice.
 
