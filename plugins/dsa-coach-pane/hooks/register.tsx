@@ -39,10 +39,10 @@ function openBlock(l: Live): Block | null {
 }
 
 // Minutes in a block, as coach.py's block_minutes counts them: start to end (or now), less any idle time an
-// older solve paused out, and at most the block's length.
+// older solve paused out, and at most the block's length. Unrounded, like coach.py: callers round.
 function minutes(b: Block, at: number, length: number): number {
   const end = b.end ? Date.parse(b.end) : at
-  return Math.min(length, Math.max(0, Math.floor((end - Date.parse(b.start) - (b.paused ?? 0) * 1000) / MIN)))
+  return Math.min(length, Math.max(0, (end - Date.parse(b.start) - (b.paused ?? 0) * 1000) / MIN))
 }
 
 function toDue(j: unknown): Due | null {
@@ -135,8 +135,9 @@ export const register: Register = on => {
 
     const [stage, phase] = STAGES[l.stage - 1] ?? ['?', '?']
     const block = openBlock(l)
-    const total = l.blocks.reduce((sum, b) => sum + minutes(b, at, l.block_minutes), 0)
-    const elapsed = block ? minutes(block, at, l.block_minutes) : 0
+    // As in coach.py's live_view: the total rounds the sum, the open block counts whole minutes.
+    const total = Math.round(l.blocks.reduce((sum, b) => sum + minutes(b, at, l.block_minutes), 0))
+    const elapsed = block ? Math.floor(minutes(block, at, l.block_minutes)) : 0
     const isOver = !!block && elapsed >= l.block_minutes
     const timer = block
       ? `Block ${l.blocks.length} · ${elapsed} of ${l.block_minutes} min${isOver ? ' · block over' : ''}`
