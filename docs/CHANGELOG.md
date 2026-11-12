@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12 · Learning app: one script
+
+- **`app/static/nav.js` is merged into `app.js`.** The two depended on each other through globals (`nav.js` used `app.js`'s helpers, and `app.js`'s error notice called `nav.js`'s `show`), held together by script order. One file of 268 lines, one `DOMContentLoaded` handler.
+- **The old Solve tab's draft recovery has a removal date:** after 2026-12-10, with `#recovery` in index.html and app.css.
+- The browser check now also clicks Copy and Close on the prompt handoff and checks the old-drafts notice.
+
 ## 0.9.4 · 2026-11-12 · A glossary
 
 - **`GLOSSARY.md`** at the repo root: one name per idea, with the names to avoid. It settles the pairs that drifted: re-solve (not resolve), live solve (not session), focus block and learning block (never bare "block"), coaching mode and attempt mode (never bare "mode"), explainer (not artifact), pattern and concept.

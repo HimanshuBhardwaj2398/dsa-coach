@@ -73,6 +73,15 @@ def main() -> None:
                 page.goto(origin + "/#/learn/binary-search")
                 page.click("text=Ask the coach to write it")
                 assert "Write the interactive explainer for Binary Search" in page.locator("#handoff-prompt").input_value()
+                page.click("#copy-prompt")  # copied, or selected for copying by hand when the clipboard is blocked
+                expect(page.locator("#copy-status")).not_to_be_empty()
+                page.click("#close-handoff")
+                expect(page.locator("#handoff")).to_be_hidden()
+
+                page.evaluate("localStorage.setItem('dsa-coach:draft:two-sum', 'def f(): pass')")  # left by the old Solve tab
+                page.reload()
+                expect(page.locator("#recovery")).to_contain_text("1 unsaved draft from the old Solve tab")
+                page.evaluate("localStorage.clear()")
 
                 panel = context.new_page()
                 panel.set_viewport_size({"width": 390, "height": 844})
