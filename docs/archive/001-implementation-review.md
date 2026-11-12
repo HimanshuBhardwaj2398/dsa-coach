@@ -1,3 +1,5 @@
+> **Archived.** Superseded by plans 002 and 003 (0.9.0). Kept for history: paths inside are as they were when it was written.
+
 # Plan 001 implementation review
 
 Date: 2026-11-07. Version: 0.5.2.

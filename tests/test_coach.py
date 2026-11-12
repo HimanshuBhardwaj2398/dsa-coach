@@ -1,4 +1,5 @@
 """Tests for skills/dsa-coach/scripts/coach.py. Run: python3 -m unittest discover -s tests -v"""
+import argparse
 import importlib.util
 import json
 import os
@@ -16,7 +17,19 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 COACH = HERE.parent / "skills" / "dsa-coach" / "scripts" / "coach.py"
 sys.path.insert(0, str(COACH.parent))
-from coach import notebook_lock
+from coach import (Attempt, CoachError, Journey, PatternRow, ProblemStatus, build_parser, find_root,
+                   notebook_lock, parse_date)
+
+READS = [("quiz",), ("due",), ("next",), ("map",), ("card", "list"), ("solve", "show"), ("artifact", "list"), ("validate",)]
+OUTSIDE = [("package",), ("install",)]  # these write, but never inside the notebook
+
+
+def unlocked(parser, path=()):
+    """The commands that run without the notebook lock: the ones whose parser sets lock=False."""
+    subs = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)]
+    if not subs:
+        return [path] if parser.get_default("lock") is False else []
+    return [cmd for name, sub in subs[0].choices.items() for cmd in unlocked(sub, path + (name,))]
 
 
 class CoachTest(unittest.TestCase):
@@ -129,6 +142,17 @@ class CoachTest(unittest.TestCase):
         self.attempt("minimum-window-substring", "2026-11-12", outcome="failed")
         p = self.journey()["problems"]["minimum-window-substring"]
         self.assertEqual(p["next_due"], "2026-11-13")  # reset to 1 day
+
+    def test_the_declared_shapes_match_the_data(self):
+        # The TypedDicts in coach.py name the keys of the dicts it passes around. This keeps them true.
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing")
+        self.run_cli("solve", "start", "--problem", "valid-anagram", now="10:00")
+        self.run_cli("solve", "end", "--outcome", "solved", now="10:10")
+        journey = self.journey()
+        self.assertEqual(set(journey), set(Journey.__annotations__))
+        self.assertEqual(set(journey["patterns"][0]), set(PatternRow.__annotations__))
+        self.assertEqual(set(journey["problems"]["two-sum"]), set(ProblemStatus.__annotations__))
+        self.assertEqual({key for attempt in self.attempts() for key in attempt}, set(Attempt.__annotations__))
 
     def test_hard_time_cap_and_hints_block_ready(self):
         self.attempt("p1", "2026-11-01")
@@ -390,6 +414,43 @@ class CoachTest(unittest.TestCase):
                                     capture_output=True, text=True, timeout=5)
         self.assertIn("the notebook is busy", result.stderr)
 
+    def test_init_waits_for_the_notebook_lock(self):
+        # init rewrites the snapshot, so it is a writer like any other.
+        cmd = [sys.executable, str(COACH), "--root", str(self.root), "init"]
+        with notebook_lock(self.root):
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.env)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                proc.wait(timeout=1)
+        _, err = proc.communicate(timeout=10)
+        self.assertEqual(proc.returncode, 0, err)
+
+    def notebook_files(self):
+        return {str(p.relative_to(self.root)): (p.read_bytes(), p.stat().st_mtime_ns)
+                for p in self.root.rglob("*") if p.is_file()}
+
+    def test_only_reads_skip_the_lock_and_they_change_nothing(self):
+        # A command takes the lock unless it is marked lock=False. Mark a new one and this test asks which kind it is.
+        self.assertEqual(sorted(unlocked(build_parser())), sorted(READS + OUTSIDE))
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing")
+        self.run_cli("card", "add", "--concept", "arrays-hashing", "--front", "f", "--back", "b")
+        self.run_cli("solve", "start", "--problem", "valid-anagram", now="10:00")
+        with notebook_lock(self.root):  # held by someone else: a read doesn't wait for it
+            before = self.notebook_files()
+            for cmd in READS:
+                self.run_cli(*cmd, now="10:05")
+            after = self.notebook_files()
+        self.assertEqual([name for name in after if after[name] != before.get(name)], [])
+
+    def test_snapshot_replaces_the_markdown_files_whole(self):
+        # Like journey.json: someone reading JOURNEY.md during a rewrite gets the old file or the new one, never half.
+        for name in ("JOURNEY.md", "learner/summary.md"):
+            path = self.root / name
+            old = path.read_text(encoding="utf-8")
+            with path.open(encoding="utf-8") as reader:  # opened before the rewrite
+                self.run_cli("snapshot", "--date", "2026-11-05" if name == "JOURNEY.md" else "2026-11-06")
+                self.assertEqual(reader.read(), old)
+            self.assertNotEqual(path.read_text(encoding="utf-8"), old)
+
     def test_solve_start_creates_no_file_and_uses_the_problem_list(self):
         out = self.run_cli("solve", "start", "--problem", "two-sum", "--confidence", "3", now="10:00").stdout
         self.assertIn("On LeetCode: https://leetcode.com/problems/two-sum/", out)
@@ -608,6 +669,41 @@ class CoachTest(unittest.TestCase):
                               capture_output=True, text=True, env=self.env, cwd=self.tmp)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("0.0.1", proc.stdout)
+
+    def test_a_torn_last_line_is_skipped_and_the_next_row_starts_clean(self):
+        # A crash while appending can leave half a line. It should cost that row, not the notebook.
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing")
+        log = self.root / "learner" / "attempts.jsonl"
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write('{"id": "a0002", "date": "2026-11')  # no closing brace, no newline
+        status = self.run_cli("status", "--brief")
+        self.assertIn("attempts.jsonl:2", status.stderr)
+        self.attempt("valid-anagram", "2026-11-01", pattern="arrays-hashing")
+        self.assertEqual([a["problem"] for a in self.attempts_skipping_bad()], ["two-sum", "valid-anagram"])
+        self.assertEqual(self.journey()["totals"]["attempts"], 2)
+        self.attempt("group-anagrams", "2026-11-01", pattern="arrays-hashing")  # after a whole line: no blank line
+        self.assertNotIn("\n\n", log.read_text())
+        bad = self.run_cli("validate", ok=False)
+        self.assertNotEqual(bad.returncode, 0)
+        self.assertIn("attempts.jsonl:2", bad.stdout)
+
+    def attempts_skipping_bad(self):
+        rows = []
+        for line in (self.root / "learner" / "attempts.jsonl").read_text().splitlines():
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+        return rows
+
+    def test_helpers_raise_and_only_main_exits(self):
+        # coach.py is imported by tests and could be by the app: a helper must not end the caller's process.
+        with self.assertRaises(CoachError):
+            parse_date("tomorrow")
+        with self.assertRaises(CoachError):
+            find_root(str(self.tmp / "nowhere"))
+        proc = self.run_cli("next", "--pattern", "nope", ok=False)
+        self.assertEqual((proc.returncode, proc.stderr.splitlines()[-1][:22]), (1, "error: unknown pattern"))
 
     def test_validate_flags_bad_attempt(self):
         with (self.root / "learner/attempts.jsonl").open("a") as fh:

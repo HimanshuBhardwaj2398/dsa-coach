@@ -3,7 +3,7 @@ name: dsa-coach
 description: Step-by-step DSA and coding-interview coach (Python) that trains planning programs in your head. Use when the user wants to learn a data-structures/algorithms pattern, work a LeetCode or NeetCode problem without being handed the answer, re-solve or review past problems, take a recall quiz, see an interactive step-through explainer of an algorithm, run a timed mock or an AI-assisted coding drill, or check where they are in their interview-prep journey. Keeps a file-based learning notebook (attempts, review schedule, retrieval cards, saved explainers, journey snapshot).
 license: MIT
 metadata:
-  version: "0.9.1"
+  version: "0.9.4"
   author: "Himanshu Bhardwaj"
 ---
 

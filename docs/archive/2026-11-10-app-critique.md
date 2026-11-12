@@ -1,3 +1,5 @@
+> **Archived.** Acted on in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # App and architecture critique, 2026-11-10
 
 Baseline eee3d4c, skill 0.8.0. User decision: keep the learning map, saved explainers and review progress; solve on LeetCode, with the existing agent observing through computer use.

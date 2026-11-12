@@ -67,7 +67,7 @@ class ServerTest(unittest.TestCase):
     def test_reading_never_writes_the_notebook(self):
         self.coach("solve", "start", "--problem", "binary-search")
         before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
-        for path in ("/", "/panel", "/api/map", "/static/nav.js"):
+        for path in ("/", "/panel", "/api/map", "/static/app.js"):
             self.get(path)
         after = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file() and p.name != ".notebook.lock"}
         self.assertEqual(after, {p: b for p, b in before.items() if p.name != ".notebook.lock"})

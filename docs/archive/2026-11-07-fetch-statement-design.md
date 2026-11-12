@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.5.1; the statement fetcher was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Study app: fetch the problem statement
 
 Date: 2026-11-07 · Status: approved, built · Target: dsa-coach 0.5.1 · Builds on `2026-11-06-study-app-solve-design.md`

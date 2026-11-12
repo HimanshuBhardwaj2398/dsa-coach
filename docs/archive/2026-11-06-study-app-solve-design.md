@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.5.0; the Solve tab was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Study app, version 1: the Solve tab
 
 Date: 2026-11-06 · Status: approved; implementation plan in `docs/plans/2026-11-06-study-app-solve.md` (where they differ, the plan's decisions win) · Target release: dsa-coach 0.5.0

@@ -1,3 +1,5 @@
+> **Archived.** Map and Learn built in 0.6.0 and kept; the panel's coach chat was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Companion, milestone A: Map and Learn Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

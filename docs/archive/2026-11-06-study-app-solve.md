@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.5.0; the Solve tab was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Study App v1 (Solve tab) Implementation Plan
 
 > As built (2026-11-06): code review changed parts of Tasks 2–7; the code and tests on the branch are the reference. See docs/CHANGELOG.md, 0.5.0.

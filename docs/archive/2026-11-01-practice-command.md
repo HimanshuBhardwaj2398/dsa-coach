@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.2.0 (`/practice`). Kept for history: paths inside are as they were when it was written.
+
 # /practice Command Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

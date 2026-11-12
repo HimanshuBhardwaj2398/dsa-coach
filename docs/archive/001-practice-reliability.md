@@ -1,3 +1,5 @@
+> **Archived.** Superseded by plans 002 and 003 (0.9.0). Kept for history: paths inside are as they were when it was written.
+
 # Plan 001: Keep practice work safe and run the examples currently shown
 
 > Follow the steps in order and run each verification gate. This is an implementation handoff, not a record of completed changes. Preserve existing learner work. Update `plans/README.md` only after verification.

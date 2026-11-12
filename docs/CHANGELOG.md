@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-11-12 · Learning app: one script
+
+- **`app/static/nav.js` is merged into `app.js`.** The two depended on each other through globals (`nav.js` used `app.js`'s helpers, and `app.js`'s error notice called `nav.js`'s `show`), held together by script order. One file of 268 lines, one `DOMContentLoaded` handler.
+- **The old Solve tab's draft recovery has a removal date:** after 2026-12-10, with `#recovery` in index.html and app.css.
+- The browser check now also clicks Copy and Close on the prompt handoff and checks the old-drafts notice.
+
+## 0.9.4 · 2026-11-12 · A glossary
+
+- **`GLOSSARY.md`** at the repo root: one name per idea, with the names to avoid. It settles the pairs that drifted: re-solve (not resolve), live solve (not session), focus block and learning block (never bare "block"), coaching mode and attempt mode (never bare "mode"), explainer (not artifact), pattern and concept.
+- **JOURNEY.md and learner/summary.md say "Solved"** for a pattern's count of problems at practicing or beyond, where they said "Unaided". The `practicing` field in journey.json keeps its name.
+
+## 0.9.3 · 2026-11-12 · Errors are raised, not exits; a torn log line costs one row
+
+- **`CoachError` replaces `die()`.** Helpers raise it, and only `main` prints `error: ...` and exits 1, so code that imports coach.py (tests, the app) keeps its process. `validate` catches `CoachError` instead of `SystemExit`. The CLI's messages and exit codes are unchanged.
+- **A line in `attempts.jsonl` or `questions.jsonl` that isn't JSON is skipped with a warning**, where before it stopped every command, the session-start `status --brief` included. `validate` lists it as an issue.
+- **`append_jsonl` ends a torn last line before writing**, so the next row isn't glued onto the fragment and lost with it.
+- Tests: `test_helpers_raise_and_only_main_exits`, `test_a_torn_last_line_is_skipped_and_the_next_row_starts_clean`.
+
+## 0.9.2 · 2026-11-11 · The lock is the default; `compute` is split into named steps
+
+No rule or schedule changed. On a copy of the notebook, `compute`, `JOURNEY.md`, `learner/summary.md` and `map` come out the same before and after, on 10 dates.
+
+- **Every command takes the notebook lock unless it is defined with `lock=False`.** Before, a command ran unlocked unless someone remembered `writes=True`; that is how `card list` (0.9.1) and `init` came to write without it. `init` now waits like any other writer. The unlocked commands are the reads (`quiz`, `due`, `next`, `map`, `card list`, `solve show`, `artifact list`, `validate`) and the two that write outside the notebook (`package`, `install`).
+- **`JOURNEY.md` and `learner/summary.md` are replaced whole**, as `journey.json` already was: `write_text` writes a temp file and renames it, and `write_json` is that plus `json.dumps`.
+- **`compute` reads as a list of steps.** Its nine jobs are functions: `plan_clock`, `last_activity`, `pattern_row`, `pick_focus`, `due_items`, `totals`, `weak_spots`, `calibration`, `next_steps`. `analyze_problems` is `problem_status` once per problem. In `journey.json`, `next_steps` is now the last key.
+- **Thresholds have names** in the constants block: `PATTERN_RETAINED_AT`, `PATTERN_READY_AT`, `WEAK_SPOT_DAYS`, `HIGH_CONFIDENCE`, `MOCKS_FROM_WEEK`, `MOCK_EVERY_DAYS`, `UNAIDED_MAX_RUNG`, `ASSISTED_MIN_RUNG`, `TOP_RUNG`. `delay_days` has one default, in `DEFAULT_CONFIG`.
+- **Names and shapes:** the journey dict is `journey` everywhere (it was `j`). `Attempt`, `ProblemStatus`, `PatternRow` and `Journey` are declared as TypedDicts, plain dicts at run time. `is_card_due` and `plan_order` replace three copies each.
+- Tests: `test_init_waits_for_the_notebook_lock`, `test_only_reads_skip_the_lock_and_they_change_nothing` (it fails when a new unlocked command isn't listed as a read), `test_snapshot_replaces_the_markdown_files_whole`, `test_the_declared_shapes_match_the_data`.
+
 ## 0.9.1 · 2026-11-10 · Three fixes from the code critique (pane 0.2.1)
 
 - **`card list` is a query:** it no longer rewrites `JOURNEY.md` and `journey.json`. Reads run without the notebook lock, so a read that wrote could race a real write.
@@ -9,7 +38,7 @@
 
 ## 0.9.0 · 2026-11-10 · Solve on LeetCode; the app becomes a read-only learning view (extension 0.3.0, pane 0.2.0)
 
-He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `plans/2026-11-10-app-critique.md`, `plans/002-learning-app.md`, `plans/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.
+He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `docs/archive/2026-11-10-app-critique.md`, `docs/archive/002-learning-app.md`, `docs/archive/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.
 
 - **No attempt files:** `solve start` no longer writes `problems/<slug>/<date>.py`; it prints the LeetCode link. Stage notes are filed under the solve's session id. Older attempt files stay as history.
 - **Seeing his work:** SKILL.md tells the coach to look at the LeetCode tab with a browser or computer-use tool where it has one, else to ask him to paste code and results; a screenshot shows only what is on screen, and the coach only looks, never types. The PreToolUse guard on attempt files is gone with them.
@@ -24,7 +53,7 @@ He always solves on LeetCode, and the coach can look at LeetCode with its own br
 
 ## 0.8.0 · 2026-11-09 · Four stages, and finishing in the panel
 
-Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/superpowers/specs/2026-11-09-panel-completion-design.md` (approved with trims).
+Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/archive/2026-11-09-panel-completion-design.md` (approved with trims).
 
 - **Four stages:** Understand, Find an approach, Build it, Check and finish, one for each of Polya's phases. The old stages 2–6 (brute force, count, repeated work, classify, plan card) are now teaching moves inside Find an approach. The coach asks the one that fits and doesn't make him fill in each one. `references/protocol.md` spells out the moves: find something that works, count the work concretely (uneven loops are added, hidden work counted), connect the count to the limit, improve only for a reason, and keep a short plan. Build it bridges the plan to code with one question at a time. Why (`learning-principles.md`): the four phases were already the frame, and eight visible stops were a burden that didn't add practice.
 - **Old solves move over:** a live solve from before 0.8.0 maps stage 1→1, 2–6→2, 7→3, 8→4 (`protocol: 2` marks new ones). Notes from old stages 2–6 are joined into stage 2, each under its old name. Archived notes and logged attempts are unchanged. The pane maps an unmigrated solve the same way. Browser drafts saved before 0.8.0 can't be restored into the new stages; the recovery banner keeps them for copying.

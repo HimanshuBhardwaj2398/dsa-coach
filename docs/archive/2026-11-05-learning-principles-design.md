@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.3.0. Kept for history: paths inside are as they were when it was written.
+
 # Learning-principles upgrade design
 
 Date: 2026-11-05. Status: approved. Target version: 0.3.0.

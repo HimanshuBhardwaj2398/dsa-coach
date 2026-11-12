@@ -6,7 +6,7 @@ const path = require('node:path');
 
 function load() {
   const c = vm.createContext({document: {addEventListener() {}}, window: {addEventListener() {}}, location: {hash: ''}});
-  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../app/static/nav.js'), 'utf8'), c);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../app/static/app.js'), 'utf8'), c);
   return (code) => vm.runInContext(code, c);
 }
 
