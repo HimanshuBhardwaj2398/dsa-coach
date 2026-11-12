@@ -21,8 +21,9 @@ import zipfile
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import TypedDict
 
-SKILL_VERSION = "0.9.1"
+SKILL_VERSION = "0.9.2"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -32,6 +33,12 @@ DELTA_FORMAT = "dsa-coach-delta/1"
 RESOLVE_LADDER = [1, 3, 7, 14, 30]
 CARD_LADDER = [1, 3, 7, 14, 30, 60]
 HELD_DAYS = 5
+PATTERN_RETAINED_AT = 2  # a pattern is retained once this many of its problems are
+PATTERN_READY_AT = 3     # and ready once this many are
+WEAK_SPOT_DAYS = 30      # weak spots count the mistakes logged in this many days
+HIGH_CONFIDENCE = 4      # a miss at this confidence or above is worth a second look
+MOCKS_FROM_WEEK = 6      # timed mocks start in this week of the plan
+MOCK_EVERY_DAYS = 14     # and are suggested again after this many days
 MODES = ["learn", "practice", "review", "mock", "ai", "machine"]
 OUTCOMES = ["solved", "partial", "failed"]
 DIFFICULTIES = ["easy", "medium", "hard"]
@@ -55,6 +62,8 @@ CARD_TYPES = ["trigger", "invariant", "trap", "complexity", "bug", "pytrap", "tr
 GRADES = ["pass", "fail"]
 TIMED_MODES = ("practice", "review", "mock")
 LONG_FORMATS = ("machine-coding", "ai-assisted", "ml-coding")  # started on purpose, never picked by `next`
+SOLVED = ("practicing", "retained", "ready")  # problem statuses: solved unaided at least once
+RETAINED = ("retained", "ready")              # and solved unaided again after the delay
 LISTS = ("blind75", "nc150", "roadmap")  # problems.json: the two lists, or a canonical problem outside both
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
@@ -66,6 +75,9 @@ STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase). The pane rep
 ]
 RUNGS = ["none", "a general question", "a nudge for this problem", "the pattern name", "the invariant or state",
          "a skeleton with blanks", "one concrete sub-step", "the full worked solution"]
+TOP_RUNG = len(RUNGS) - 1
+UNAIDED_MAX_RUNG = 1   # a solve still counts as unaided with help up to this rung
+ASSISTED_MIN_RUNG = 5  # from this rung on, the attempt is assisted
 FOCUS_MINUTES = {"easy": 15, "medium": 25, "hard": 25}  # one genuine attempt = one focused block
 DEFAULT_CONFIG = {
     "learner": "learner",
@@ -78,6 +90,90 @@ DEFAULT_CONFIG = {
     "time_caps_min": {"easy": 15, "medium": 25, "hard": 40},
     "review_cap_fraction": 0.3,
 }
+
+
+# --------------------------------------------------------------------------- shapes
+# The dicts that pass between functions. They are plain dicts when the program runs; these classes
+# only name the keys, for readers and editors. A test checks them against the real data.
+class Attempt(TypedDict, total=False):
+    """One line of learner/attempts.jsonl."""
+    id: str
+    date: str  # YYYY-MM-DD
+    problem: str  # slug
+    pattern: str
+    difficulty: str
+    mode: str
+    outcome: str
+    minutes: int | None
+    hints: int  # the highest hint-ladder rung used
+    assisted: bool
+    confidence: int | None  # before starting, 1-5
+    technique: str | None
+    mistakes: list  # codes from MISTAKES
+    complexity_stated: bool
+    note: str
+    skill_version: str
+    source: str  # "cli", or the web chat a delta came from
+    session: str  # the live solve it ended, when there was one
+
+
+class ProblemStatus(TypedDict):
+    """What the attempts on one problem add up to (problem_status)."""
+    problem: str
+    pattern: str
+    difficulty: str
+    attempts: int
+    first: str  # date of the first attempt
+    last: str
+    last_outcome: str
+    streak: int  # unaided solves in a row, ending at the latest attempt
+    next_due: str  # date of the next re-solve
+    status: str  # learning, practicing, retained or ready
+    ids: list
+
+
+class PatternRow(TypedDict):
+    """One roadmap pattern with its progress (pattern_row)."""
+    key: str
+    name: str
+    tier: int | None
+    week: int | None  # the week the plan starts it
+    target: int  # how many problems the plan asks for
+    attempted: int
+    practicing: int  # problems solved unaided at least once
+    retained: int
+    ready: int
+    status: str  # not started, exploring, learning, practicing, retained or ready
+    last_activity: str | None
+    last_attempt: str | None
+    next_problem: str | None  # the next canonical problem not yet attempted
+
+
+class Journey(TypedDict):
+    """The journey on one date (compute). Saved as journey.json; JOURNEY.md and learner/summary.md are drawn from it."""
+    generated: str  # the date it was computed for
+    skill_version: str
+    learner: str
+    goal: str
+    targets: list
+    plan: dict  # plan_clock
+    focus: str | None  # a pattern key
+    patterns: list  # of PatternRow, in roadmap order
+    behind: list  # pattern keys
+    this_week: list
+    ahead: list
+    problems: dict  # slug -> ProblemStatus
+    due: dict  # due_items
+    totals: dict
+    weak_spots: list
+    calibration: dict
+    techniques: list  # the technique ledger, most trials first
+    questions: list  # the last five
+    artifacts: list
+    sessions: list  # the last five, each a date and a one-line summary
+    last_mock: str | None
+    other_concepts: list  # concepts touched that are not roadmap patterns
+    next_steps: list
 
 
 # --------------------------------------------------------------------------- helpers
@@ -116,12 +212,11 @@ def read_json(path: Path, default):
         die(f"{path} is not valid JSON ({exc})")
 
 
-def write_json(path: Path, data) -> None:
+def write_text(path: Path, text: str) -> None:
     """Write a temp file beside `path`, then rename it over `path`, so a reader never sees half a file.
     A symlinked `path` stays a link (the real file is replaced), and an existing file keeps its mode."""
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     tmp = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
     try:
         with open(tmp, "x", encoding="utf-8") as fh:  # a new file gets the umask's mode; mkstemp would make it 0600
@@ -132,6 +227,10 @@ def write_json(path: Path, data) -> None:
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise
+
+
+def write_json(path: Path, data) -> None:
+    write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
 def read_jsonl(path: Path) -> list:
@@ -288,8 +387,9 @@ def load_state(root: Path) -> dict:
     }
 
 
-def is_unaided(a: dict) -> bool:
-    return a.get("outcome") == "solved" and not a.get("assisted") and int(a.get("hints") or 0) <= 1
+def is_unaided(attempt: Attempt) -> bool:
+    return (attempt.get("outcome") == "solved" and not attempt.get("assisted")
+            and int(attempt.get("hints") or 0) <= UNAIDED_MAX_RUNG)
 
 
 def review_cap(cfg: dict, on: date) -> int | None:
@@ -309,83 +409,85 @@ def capped(interval: int, cfg: dict, on: date) -> int:
 
 
 def by_problem(attempts: list) -> dict:
+    """Attempts grouped by problem, oldest first within each."""
     groups: dict = {}
-    for a in sorted(attempts, key=lambda x: (x.get("date", ""), x.get("id", ""))):
-        groups.setdefault(a["problem"], []).append(a)
+    for attempt in sorted(attempts, key=lambda x: (x.get("date", ""), x.get("id", ""))):
+        groups.setdefault(attempt["problem"], []).append(attempt)
     return groups
 
 
-def analyze_problems(state: dict) -> dict:
-    cfg = state["config"]
-    delay = int(cfg.get("delay_days", 3))
+def problem_status(attempts: list, cfg: dict) -> ProblemStatus:
+    """What the attempts on one problem (oldest first) add up to: its status and its next re-solve date."""
+    first, last = attempts[0], attempts[-1]
+    first_day, last_day = date.fromisoformat(first["date"]), date.fromisoformat(last["date"])
     caps = cfg.get("time_caps_min", DEFAULT_CONFIG["time_caps_min"])
-    out = {}
-    for slug, rows in by_problem(state["attempts"]).items():
-        first = date.fromisoformat(rows[0]["date"])
-        streak = 0
-        for a in rows:
-            streak = streak + 1 if is_unaided(a) else 0
-        last = rows[-1]
-        last_day = date.fromisoformat(last["date"])
-        interval = capped(RESOLVE_LADDER[min(streak, len(RESOLVE_LADDER) - 1)], cfg, last_day)
-        unaided = [a for a in rows if is_unaided(a)]
-        delayed = [a for a in unaided if (date.fromisoformat(a["date"]) - first).days >= delay]
-        retained = bool(delayed)
-        # ready: a delayed unaided solve that was also timed, within the cap, with complexity stated
-        ready = any(
-            a.get("mode") in TIMED_MODES
-            and a.get("minutes") is not None
-            and int(a["minutes"]) <= int(caps.get(a.get("difficulty", "medium"), 25))
-            and a.get("complexity_stated")
-            for a in delayed
-        )
-        status = "ready" if ready else "retained" if retained else "practicing" if unaided else "learning"
-        out[slug] = {
-            "problem": slug,
-            "pattern": last.get("pattern"),
-            "difficulty": last.get("difficulty", "medium"),
-            "attempts": len(rows),
-            "first": rows[0]["date"],
-            "last": last["date"],
-            "last_outcome": last.get("outcome"),
-            "streak": streak,
-            "next_due": (last_day + timedelta(days=interval)).isoformat(),
-            "status": status,
-            "ids": [a.get("id") for a in rows],
-        }
-    return out
+    streak = 0  # unaided solves in a row, ending at the latest attempt
+    for attempt in attempts:
+        streak = streak + 1 if is_unaided(attempt) else 0
+    interval = capped(RESOLVE_LADDER[min(streak, len(RESOLVE_LADDER) - 1)], cfg, last_day)
+    unaided = [attempt for attempt in attempts if is_unaided(attempt)]
+    delayed = [attempt for attempt in unaided
+               if (date.fromisoformat(attempt["date"]) - first_day).days >= int(cfg["delay_days"])]
+    # ready: a delayed unaided solve that was also timed, within the cap, with complexity stated
+    ready = any(
+        attempt.get("mode") in TIMED_MODES
+        and attempt.get("minutes") is not None
+        and int(attempt["minutes"]) <= int(caps.get(attempt.get("difficulty", "medium"), 25))
+        and attempt.get("complexity_stated")
+        for attempt in delayed
+    )
+    return {
+        "problem": last["problem"],
+        "pattern": last.get("pattern"),
+        "difficulty": last.get("difficulty", "medium"),
+        "attempts": len(attempts),
+        "first": first["date"],
+        "last": last["date"],
+        "last_outcome": last.get("outcome"),
+        "streak": streak,
+        "next_due": (last_day + timedelta(days=interval)).isoformat(),
+        "status": "ready" if ready else "retained" if delayed else "practicing" if unaided else "learning",
+        "ids": [attempt.get("id") for attempt in attempts],
+    }
+
+
+def analyze_problems(state: dict) -> dict:
+    """Every attempted problem's status, by slug."""
+    return {slug: problem_status(attempts, state["config"]) for slug, attempts in by_problem(state["attempts"]).items()}
 
 
 def technique_ledger(state: dict) -> dict:
-    delay = int(state["config"].get("delay_days", 3))
+    """Which teaching techniques are followed by unaided solves. A technique used on an attempt gets one trial:
+    the first later attempt on that problem at least delay_days on. The trial succeeds if that attempt is unaided."""
+    delay = int(state["config"]["delay_days"])
     ledger: dict = {}
-    for rows in by_problem(state["attempts"]).values():
+    for attempts in by_problem(state["attempts"]).values():
         credited = set()
-        for i, a in enumerate(rows):
-            if a.get("mode") == "ai":
+        for i, later in enumerate(attempts):
+            if later.get("mode") == "ai":
                 continue
-            day = date.fromisoformat(a["date"])
-            for e in rows[:i]:
-                tech = e.get("technique")
-                if not tech or tech == "none" or e.get("id") in credited:
+            day = date.fromisoformat(later["date"])
+            for earlier in attempts[:i]:
+                technique = earlier.get("technique")
+                if not technique or technique == "none" or earlier.get("id") in credited:
                     continue
-                if (day - date.fromisoformat(e["date"])).days < delay:
+                if (day - date.fromisoformat(earlier["date"])).days < delay:
                     continue
-                credited.add(e.get("id"))
-                key = f"{tech}|{e.get('pattern')}"
-                row = ledger.setdefault(key, {"technique": tech, "pattern": e.get("pattern"), "trials": 0, "successes": 0, "evidence": []})
-                row["trials"] += 1
-                row["successes"] += 1 if is_unaided(a) else 0
-                row["evidence"].append(f"{e.get('id')}->{a.get('id')}")
-    for row in ledger.values():
-        row["estimate"] = round((row["successes"] + 1) / (row["trials"] + 2), 2)
-        row["provisional"] = row["trials"] < 3
+                credited.add(earlier.get("id"))
+                entry = ledger.setdefault(f"{technique}|{earlier.get('pattern')}", {
+                    "technique": technique, "pattern": earlier.get("pattern"), "trials": 0, "successes": 0, "evidence": []})
+                entry["trials"] += 1
+                entry["successes"] += 1 if is_unaided(later) else 0
+                entry["evidence"].append(f"{earlier.get('id')}->{later.get('id')}")
+    for entry in ledger.values():
+        entry["estimate"] = round((entry["successes"] + 1) / (entry["trials"] + 2), 2)
+        entry["provisional"] = entry["trials"] < 3
     return ledger
 
 
-def card_due(card: dict) -> date | None:
-    due = card.get("due")
-    return date.fromisoformat(due) if due else None
+def is_card_due(card: dict, on: date) -> bool:
+    """An active card whose review date has come."""
+    return card.get("status") == "active" and bool(card.get("due")) and date.fromisoformat(card["due"]) <= on
 
 
 def card_held(card: dict) -> bool:
@@ -398,6 +500,16 @@ def card_held(card: dict) -> bool:
     return False
 
 
+def planned_week(row: PatternRow) -> int:
+    """The week a pattern is planned for. One with no week counts as far in the future."""
+    return row["week"] or 99
+
+
+def plan_order(row: PatternRow) -> tuple:
+    """Sort key for patterns: by planned week, then by tier."""
+    return (planned_week(row), row["tier"] or 9)
+
+
 def pick_new(rows: list, pattern: str | None = None, week: int | None = None) -> dict | None:
     """The next new problem, or the named pattern's next problem.
 
@@ -405,46 +517,43 @@ def pick_new(rows: list, pattern: str | None = None, week: int | None = None) ->
     order once its week has come. Otherwise mix: the started pattern practised least recently.
     `block` is false after a pattern's block, and the coach then presents the problem unlabeled.
     """
-    def item(r):
-        return {"kind": "new", "pattern": r["key"], "name": r["name"], "problem": r["next_problem"],
-                "first": r["attempted"] == 0, "block": r["attempted"] < BLOCK}
+    def item(row):
+        return {"kind": "new", "pattern": row["key"], "name": row["name"], "problem": row["next_problem"],
+                "first": row["attempted"] == 0, "block": row["attempted"] < BLOCK}
 
     if pattern:
-        named = [r for r in rows if r["key"] == pattern]
+        named = [row for row in rows if row["key"] == pattern]
         return item(named[0]) if named else None
-    open_rows = [r for r in sorted(rows, key=lambda r: (r["week"] or 99, r["tier"] or 9))
-                 if r["key"] not in LONG_FORMATS and r["attempted"] < r["target"]]
-    started = [r for r in open_rows if r["attempted"]]
-    in_block = next((r for r in started if r["attempted"] < BLOCK), None)
+    open_rows = [row for row in sorted(rows, key=plan_order)
+                 if row["key"] not in LONG_FORMATS and row["attempted"] < row["target"]]
+    started = [row for row in open_rows if row["attempted"]]
+    in_block = next((row for row in started if row["attempted"] < BLOCK), None)
     if in_block:
         return item(in_block)
-    fresh = next((r for r in open_rows if not r["attempted"]), None)
-    if fresh and (not started or week is None or (fresh["week"] or 99) <= week):
+    fresh = next((row for row in open_rows if not row["attempted"]), None)
+    if fresh and (not started or week is None or planned_week(fresh) <= week):
         return item(fresh)
     if started:
-        return item(min(started, key=lambda r: r.get("last_attempt") or ""))
+        return item(min(started, key=lambda row: row.get("last_attempt") or ""))
     return None
 
 
-def pick_next(j: dict, pattern: str | None = None) -> dict:
+def pick_next(journey: Journey, pattern: str | None = None) -> dict:
     """One item to practise now. A named pattern skips everything due."""
-    d = j["due"]
+    due = journey["due"]
     if not pattern:
-        if d["inbox"]:
-            return {"kind": "inbox", "files": d["inbox"]}
-        if d["resolves"]:
-            return dict(d["resolves"][0], kind="resolve")
-        if d["cards"]:
-            return {"kind": "cards", "count": len(d["cards"])}
-    return pick_new(j["patterns"], pattern, j["plan"]["week"]) or {"kind": "none"}
+        if due["inbox"]:
+            return {"kind": "inbox", "files": due["inbox"]}
+        if due["resolves"]:
+            return dict(due["resolves"][0], kind="resolve")
+        if due["cards"]:
+            return {"kind": "cards", "count": len(due["cards"])}
+    return pick_new(journey["patterns"], pattern, journey["plan"]["week"]) or {"kind": "none"}
 
 
-def compute(state: dict, on: date | None = None) -> dict:
-    on = on or today()
-    cfg = state["config"]
-    roadmap = state["roadmap"]
-    patterns = roadmap["patterns"]
-    problems = analyze_problems(state)
+# compute, one job per function ------------------------------------------------
+def plan_clock(cfg: dict, roadmap: dict, on: date) -> dict:
+    """Where `on` falls in the plan: the day, the week and the roadmap phase."""
     try:
         start = date.fromisoformat(cfg.get("start_date", on.isoformat()))
     except ValueError:
@@ -453,107 +562,148 @@ def compute(state: dict, on: date | None = None) -> dict:
         target = date.fromisoformat(cfg.get("target_date", ""))
     except ValueError:
         target = None
-    day_index = (on - start).days + 1
-    total_days = (target - start).days if target else None
-    week = max(1, (day_index - 1) // 7 + 1)
-    phase = roadmap["phases"][-1]["name"]
-    for ph in roadmap["phases"]:
-        if ph["weeks"][0] <= week <= ph["weeks"][1]:
-            phase = ph["name"]
-            break
+    day = (on - start).days + 1
+    week = max(1, (day - 1) // 7 + 1)
+    phases = roadmap["phases"]
+    phase = next((ph["name"] for ph in phases if ph["weeks"][0] <= week <= ph["weeks"][1]), phases[-1]["name"])
+    return {
+        "start_date": start.isoformat(), "target_date": target.isoformat() if target else None,
+        "day": day, "total_days": (target - start).days if target else None, "week": week,
+        "plan_weeks": roadmap.get("plan_weeks", 12), "phase": phase, "weekly_hours": cfg.get("weekly_hours"),
+    }
 
-    # activity per pattern / concept
-    activity: dict = {}
+
+def last_activity(state: dict) -> dict:
+    """The latest date anything touched each pattern or concept: an attempt, a question, an explainer or a card.
+    A concept with only a notes folder is listed with an empty date."""
+    latest: dict = {}
 
     def touch(key, when):
         if key:
-            activity[key] = max(activity.get(key, ""), when or "")
+            latest[key] = max(latest.get(key, ""), when or "")
 
-    for a in state["attempts"]:
-        touch(a.get("pattern"), a.get("date"))
-    for q in state["questions"]:
-        touch(q.get("concept"), q.get("date"))
-    for art in state["registry"]:
-        touch(art.get("concept"), art.get("updated") or art.get("created"))
-    for c in state["cards"]:
-        touch(c.get("concept"), c.get("created"))
-    for c in state["concepts"]:
-        touch(c, activity.get(c, ""))
+    for attempt in state["attempts"]:
+        touch(attempt.get("pattern"), attempt.get("date"))
+    for question in state["questions"]:
+        touch(question.get("concept"), question.get("date"))
+    for artifact in state["registry"]:
+        touch(artifact.get("concept"), artifact.get("updated") or artifact.get("created"))
+    for card in state["cards"]:
+        touch(card.get("concept"), card.get("created"))
+    for concept in state["concepts"]:
+        touch(concept, "")
+    return latest
 
-    rows = []
-    for p in patterns:
-        key = p["key"]
-        probs = [v for v in problems.values() if v["pattern"] == key]
-        practicing = sum(v["status"] in ("practicing", "retained", "ready") for v in probs)
-        retained = sum(v["status"] in ("retained", "ready") for v in probs)
-        ready = sum(v["status"] == "ready" for v in probs)
-        target_n = int(p.get("target", 3))
-        touched = key in activity
-        if not probs:
-            status = "exploring" if touched else "not started"
-        elif ready >= min(3, target_n):
-            status = "ready"
-        elif retained >= min(2, target_n):
-            status = "retained"
-        elif practicing:
-            status = "practicing"
-        else:
-            status = "learning"
-        rows.append({
-            "key": key, "name": p["name"], "tier": p.get("tier"), "week": p.get("week"), "target": target_n,
-            "attempted": len(probs), "practicing": practicing, "retained": retained, "ready": ready,
-            "status": status, "last_activity": activity.get(key, "") or None,
-            "last_attempt": max((v["last"] for v in probs), default=None),
-            "next_problem": next((s for s in p.get("canonical", []) if s not in problems), None),
-        })
-    by_key = {r["key"]: r for r in rows}
 
-    # focus: most recent activity on a pattern that isn't ready; else the next planned pattern
-    recent = sorted(((when, k) for k, when in activity.items() if k in by_key and by_key[k]["status"] != "ready"), reverse=True)
-    if recent:
-        focus = recent[0][1]
+def pattern_row(pattern: dict, problems: dict, activity: dict) -> PatternRow:
+    """One roadmap pattern with its counts and its status, from the problems attempted in it."""
+    key, target = pattern["key"], int(pattern.get("target", 3))
+    mine = [problem for problem in problems.values() if problem["pattern"] == key]
+    practicing = sum(problem["status"] in SOLVED for problem in mine)
+    retained = sum(problem["status"] in RETAINED for problem in mine)
+    ready = sum(problem["status"] == "ready" for problem in mine)
+    if not mine:
+        status = "exploring" if key in activity else "not started"
+    elif ready >= min(PATTERN_READY_AT, target):
+        status = "ready"
+    elif retained >= min(PATTERN_RETAINED_AT, target):
+        status = "retained"
+    elif practicing:
+        status = "practicing"
     else:
-        pending = [r for r in sorted(rows, key=lambda r: (r["week"] or 99, r["tier"] or 9)) if r["status"] == "not started"]
-        focus = pending[0]["key"] if pending else None
+        status = "learning"
+    return {
+        "key": key, "name": pattern["name"], "tier": pattern.get("tier"), "week": pattern.get("week"), "target": target,
+        "attempted": len(mine), "practicing": practicing, "retained": retained, "ready": ready,
+        "status": status, "last_activity": activity.get(key, "") or None,
+        "last_attempt": max((problem["last"] for problem in mine), default=None),
+        "next_problem": next((slug for slug in pattern.get("canonical", []) if slug not in problems), None),
+    }
 
-    behind = [r["key"] for r in rows if (r["week"] or 99) < week and r["status"] == "not started"]
-    this_week = [r["key"] for r in rows if r["week"] == week and r["status"] == "not started"]
-    ahead = [r["key"] for r in rows if (r["week"] or 0) > week and r["status"] != "not started"]
 
-    due_resolves = sorted(
-        ({"problem": v["problem"], "pattern": v["pattern"], "due": v["next_due"], "overdue_days": (on - date.fromisoformat(v["next_due"])).days, "status": v["status"]}
-         for v in problems.values() if date.fromisoformat(v["next_due"]) <= on),
-        key=lambda d: d["due"],
-    )
-    active_cards = [c for c in state["cards"] if c.get("status") == "active"]
-    due_cards = sorted((c for c in active_cards if card_due(c) and card_due(c) <= on), key=lambda c: c["due"])
-    drafts = [c for c in state["cards"] if c.get("status") == "draft"]
+def pick_focus(rows: list, activity: dict) -> str | None:
+    """The pattern in focus: the one touched most recently that isn't ready, else the next unstarted one in the plan."""
+    by_key = {row["key"]: row for row in rows}
+    recent = [(when, key) for key, when in activity.items() if key in by_key and by_key[key]["status"] != "ready"]
+    if recent:
+        return max(recent)[1]
+    return next((row["key"] for row in sorted(rows, key=plan_order) if row["status"] == "not started"), None)
 
-    since = on - timedelta(days=30)
-    recent_attempts = [a for a in state["attempts"] if date.fromisoformat(a["date"]) >= since]
-    mistakes: dict = {}
-    for a in recent_attempts:
-        for m in a.get("mistakes") or []:
-            mistakes[m] = mistakes.get(m, 0) + 1
-    weak = sorted(mistakes.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
 
-    rated = [a for a in state["attempts"] if a.get("confidence") is not None]
-    good = [int(a["confidence"]) for a in rated if is_unaided(a)]
-    bad = [int(a["confidence"]) for a in rated if not is_unaided(a)]
-    hi_miss = [a for a in rated if int(a["confidence"]) >= 4 and not is_unaided(a)]
+def due_items(state: dict, problems: dict, on: date) -> dict:
+    """What is waiting on `on`: re-solves and cards (earliest due date first), draft cards and inbox deltas."""
+    resolves = [{"problem": problem["problem"], "pattern": problem["pattern"], "due": problem["next_due"],
+                 "overdue_days": (on - date.fromisoformat(problem["next_due"])).days, "status": problem["status"]}
+                for problem in problems.values() if date.fromisoformat(problem["next_due"]) <= on]
+    cards = sorted((card for card in state["cards"] if is_card_due(card, on)), key=lambda card: card["due"])
+    return {
+        "resolves": sorted(resolves, key=lambda item: item["due"]),
+        "cards": [{"id": card["id"], "concept": card.get("concept"), "type": card.get("type"), "due": card["due"]} for card in cards],
+        "drafts": sum(card.get("status") == "draft" for card in state["cards"]),
+        "inbox": state["inbox"],
+    }
 
-    ledger = technique_ledger(state)
-    unaided_total = sum(is_unaided(a) for a in state["attempts"])
-    last_mock = max((a["date"] for a in state["attempts"] if a.get("mode") == "mock"), default=None)
 
+def totals(state: dict, problems: dict) -> dict:
+    attempts, cards = state["attempts"], state["cards"]
+    active = [card for card in cards if card.get("status") == "active"]
+    return {
+        "problems": len(problems), "attempts": len(attempts), "unaided_solves": sum(is_unaided(attempt) for attempt in attempts),
+        "retained": sum(problem["status"] in RETAINED for problem in problems.values()),
+        "ready": sum(problem["status"] == "ready" for problem in problems.values()),
+        "minutes": sum(int(attempt.get("minutes") or 0) for attempt in attempts),
+        "sessions": len(state["sessions"]), "questions": len(state["questions"]),
+        "cards_active": len(active), "cards_held": sum(card_held(card) for card in active),
+        "cards_draft": sum(card.get("status") == "draft" for card in cards),
+        "cards_retired": sum(card.get("status") == "retired" for card in cards),
+        "explainers": len(state["registry"]),
+    }
+
+
+def weak_spots(attempts: list, on: date) -> list:
+    """The three mistake codes logged most often in the last WEAK_SPOT_DAYS days."""
+    since = on - timedelta(days=WEAK_SPOT_DAYS)
+    counts: dict = {}
+    for attempt in attempts:
+        if date.fromisoformat(attempt["date"]) >= since:
+            for code in attempt.get("mistakes") or []:
+                counts[code] = counts.get(code, 0) + 1
+    top = sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))[:3]
+    return [{"code": code, "count": count, "meaning": MISTAKES.get(code, "")} for code, count in top]
+
+
+def calibration(attempts: list) -> dict:
+    """Does the confidence he gives before an attempt match how it goes? The average before unaided solves,
+    the average before the rest, and the latest misses at HIGH_CONFIDENCE or above."""
+    rated = [attempt for attempt in attempts if attempt.get("confidence") is not None]
+    unaided = [int(attempt["confidence"]) for attempt in rated if is_unaided(attempt)]
+    other = [int(attempt["confidence"]) for attempt in rated if not is_unaided(attempt)]
+    misses = [attempt for attempt in rated if int(attempt["confidence"]) >= HIGH_CONFIDENCE and not is_unaided(attempt)]
+    return {
+        "rated_attempts": len(rated),
+        "avg_conf_unaided": round(sum(unaided) / len(unaided), 2) if unaided else None,
+        "avg_conf_other": round(sum(other) / len(other), 2) if other else None,
+        "high_confidence_misses": [{"id": attempt.get("id"), "problem": attempt.get("problem"), "date": attempt.get("date")}
+                                   for attempt in misses[-5:]],
+    }
+
+
+def next_steps(journey: Journey) -> list:
+    """Up to six suggestions for the session, in the order to do them. Reads the rest of the journey."""
+    on, week, due = date.fromisoformat(journey["generated"]), journey["plan"]["week"], journey["due"]
+    names = {row["key"]: row["name"] for row in journey["patterns"]}
+    weeks = {row["key"]: row["week"] for row in journey["patterns"]}
+    behind, this_week, last_mock = journey["behind"], journey["this_week"], journey["last_mock"]
+    misses = journey["calibration"]["high_confidence_misses"]
     steps = []
-    if state["inbox"]:
-        steps.append(f"Import {len(state['inbox'])} session delta(s) waiting in inbox/ (`coach.py import`).")
-    if due_resolves:
-        steps.append("Re-solve from a blank page: " + ", ".join(d["problem"] for d in due_resolves[:3]) + " (a plan-only check is fine for the first).")
-    if due_cards:
-        steps.append(f"Quiz: {len(due_cards)} due card(s), about {max(2, len(due_cards))} minutes (`coach.py quiz`).")
-    new = pick_new(rows, week=week)
+    if due["inbox"]:
+        steps.append(f"Import {len(due['inbox'])} session delta(s) waiting in inbox/ (`coach.py import`).")
+    if due["resolves"]:
+        steps.append("Re-solve from a blank page: " + ", ".join(item["problem"] for item in due["resolves"][:3])
+                     + " (a plan-only check is fine for the first).")
+    if due["cards"]:
+        steps.append(f"Quiz: {len(due['cards'])} due card(s), about {max(2, len(due['cards']))} minutes (`coach.py quiz`).")
+    new = pick_new(journey["patterns"], week=week)
     if new and not new["block"]:
         steps.append(f"Solve {new['problem']} unaided (mixed practice: name the pattern yourself)." if new["problem"]
                      else "Mixed practice: one new problem with the pattern unlabeled (`coach.py next` picks it).")
@@ -561,88 +711,82 @@ def compute(state: dict, on: date | None = None) -> dict:
         steps.append(f"Solve {new['problem']} unaided to move {new['name']} forward.")
     elif new:
         steps.append(f"Pick an unattempted problem from the NeetCode {new['name']} section.")
-    if drafts:
-        steps.append(f"Approve, edit or retire {len(drafts)} draft card(s) (`coach.py card list --drafts`).")
+    if due["drafts"]:
+        steps.append(f"Approve, edit or retire {due['drafts']} draft card(s) (`coach.py card list --drafts`).")
     if behind:
-        steps.append(f"Behind plan: start {by_key[behind[0]]['name']} (planned for week {by_key[behind[0]]['week']}).")
+        steps.append(f"Behind plan: start {names[behind[0]]} (planned for week {weeks[behind[0]]}).")
     elif this_week:
-        steps.append(f"This week's plan: start {fmt_list(by_key[k]['name'] for k in this_week)}.")
-    if week >= 6 and (not last_mock or (on - date.fromisoformat(last_mock)).days > 14):
+        steps.append(f"This week's plan: start {fmt_list(names[key] for key in this_week)}.")
+    if week >= MOCKS_FROM_WEEK and (not last_mock or (on - date.fromisoformat(last_mock)).days > MOCK_EVERY_DAYS):
         steps.append("Run a timed mock (`--mode mock`); the last one was " + (f"on {last_mock}." if last_mock else "never."))
-    if hi_miss:
-        steps.append(f"Revisit high-confidence miss {hi_miss[-1].get('id')} ({hi_miss[-1].get('problem')}).")
+    if misses:
+        steps.append(f"Revisit high-confidence miss {misses[-1]['id']} ({misses[-1]['problem']}).")
     if not steps:
         steps.append("Nothing due. Start the next pattern in the plan or do an unlabeled mixed set.")
+    return steps[:6]
 
-    return {
+
+def compute(state: dict, on: date | None = None) -> Journey:
+    """The journey on one date, worked out from the notebook's state. Every view shows a part of it."""
+    on = on or today()
+    cfg, roadmap, attempts = state["config"], state["roadmap"], state["attempts"]
+    plan = plan_clock(cfg, roadmap, on)
+    problems = analyze_problems(state)
+    activity = last_activity(state)
+    rows = [pattern_row(pattern, problems, activity) for pattern in roadmap["patterns"]]
+    week = plan["week"]
+    unstarted = [row for row in rows if row["status"] == "not started"]
+    journey: Journey = {
         "generated": on.isoformat(),
         "skill_version": SKILL_VERSION,
         "learner": cfg.get("learner"),
         "goal": cfg.get("goal"),
         "targets": cfg.get("targets", []),
-        "plan": {
-            "start_date": start.isoformat(), "target_date": target.isoformat() if target else None,
-            "day": day_index, "total_days": total_days, "week": week, "plan_weeks": roadmap.get("plan_weeks", 12),
-            "phase": phase, "weekly_hours": cfg.get("weekly_hours"),
-        },
-        "focus": focus,
+        "plan": plan,
+        "focus": pick_focus(rows, activity),
         "patterns": rows,
-        "behind": behind,
-        "this_week": this_week,
-        "ahead": ahead,
+        "behind": [row["key"] for row in unstarted if planned_week(row) < week],
+        "this_week": [row["key"] for row in unstarted if row["week"] == week],
+        "ahead": [row["key"] for row in rows if row["status"] != "not started" and (row["week"] or 0) > week],
         "problems": problems,
-        "due": {"resolves": due_resolves, "cards": [{"id": c["id"], "concept": c.get("concept"), "type": c.get("type"), "due": c["due"]} for c in due_cards],
-                "drafts": len(drafts), "inbox": state["inbox"]},
-        "totals": {
-            "problems": len(problems), "attempts": len(state["attempts"]), "unaided_solves": unaided_total,
-            "retained": sum(v["status"] in ("retained", "ready") for v in problems.values()),
-            "ready": sum(v["status"] == "ready" for v in problems.values()),
-            "minutes": sum(int(a.get("minutes") or 0) for a in state["attempts"]),
-            "sessions": len(state["sessions"]), "questions": len(state["questions"]),
-            "cards_active": len(active_cards), "cards_held": sum(card_held(c) for c in active_cards),
-            "cards_draft": len(drafts), "cards_retired": sum(c.get("status") == "retired" for c in state["cards"]),
-            "explainers": len(state["registry"]),
-        },
-        "weak_spots": [{"code": k, "count": v, "meaning": MISTAKES.get(k, "")} for k, v in weak],
-        "calibration": {
-            "rated_attempts": len(rated),
-            "avg_conf_unaided": round(sum(good) / len(good), 2) if good else None,
-            "avg_conf_other": round(sum(bad) / len(bad), 2) if bad else None,
-            "high_confidence_misses": [{"id": a.get("id"), "problem": a.get("problem"), "date": a.get("date")} for a in hi_miss[-5:]],
-        },
-        "techniques": sorted(ledger.values(), key=lambda r: (-r["trials"], r["technique"])),
+        "due": due_items(state, problems, on),
+        "totals": totals(state, problems),
+        "weak_spots": weak_spots(attempts, on),
+        "calibration": calibration(attempts),
+        "techniques": sorted(technique_ledger(state).values(), key=lambda entry: (-entry["trials"], entry["technique"])),
         "questions": state["questions"][-5:],
         "artifacts": state["registry"],
-        "sessions": [session_digest(state["root"], d) for d in state["sessions"][-5:]],
-        "last_mock": last_mock,
-        "next_steps": steps[:6],
-        "other_concepts": sorted(k for k in activity if k not in by_key),
+        "sessions": [session_digest(state["root"], day) for day in state["sessions"][-5:]],
+        "last_mock": max((attempt["date"] for attempt in attempts if attempt.get("mode") == "mock"), default=None),
+        "other_concepts": sorted(set(activity) - {row["key"] for row in rows}),
     }
+    journey["next_steps"] = next_steps(journey)  # it reads the rest of the journey, so it comes last
+    return journey
 
 
 # --------------------------------------------------------------------------- rendering
-def render_journey(j: dict) -> str:
-    plan = j["plan"]
-    by_key = {r["key"]: r for r in j["patterns"]}
-    focus = by_key.get(j["focus"]) if j["focus"] else None
+def render_journey(journey: Journey) -> str:
+    plan = journey["plan"]
+    by_key = {r["key"]: r for r in journey["patterns"]}
+    focus = by_key.get(journey["focus"]) if journey["focus"] else None
     days = f"Day {plan['day']} of {plan['total_days']}" if plan["total_days"] else f"Day {plan['day']}"
     span = f"{plan['start_date']} → {plan['target_date']}" if plan["target_date"] else f"since {plan['start_date']}"
     out = [
-        f"# Journey snapshot · {j['generated']}",
+        f"# Journey snapshot · {journey['generated']}",
         "",
-        f"**Goal:** {j['goal']}  ",
-        f"**Targets:** {fmt_list(j['targets'])}  ",
+        f"**Goal:** {journey['goal']}  ",
+        f"**Targets:** {fmt_list(journey['targets'])}  ",
         f"**Plan:** {days} ({span}) · Week {plan['week']} of {plan['plan_weeks']} · Phase: {plan['phase']} · {plan['weekly_hours']} h/week  ",
-        f"**Focus:** {focus['name'] + ' (' + focus['status'] + ')' if focus else 'not set'} · Skill v{j['skill_version']}",
+        f"**Focus:** {focus['name'] + ' (' + focus['status'] + ')' if focus else 'not set'} · Skill v{journey['skill_version']}",
         "",
         "_Generated by `coach.py snapshot`. Don't edit by hand; change the logs and run it again._",
         "",
         "## Next steps",
         "",
     ]
-    out += [f"{i}. {s}" for i, s in enumerate(j["next_steps"], 1)]
+    out += [f"{i}. {s}" for i, s in enumerate(journey["next_steps"], 1)]
     out += ["", "## Due today", ""]
-    due = j["due"]
+    due = journey["due"]
     if not due["resolves"] and not due["cards"]:
         out.append("Nothing due.")
     else:
@@ -657,24 +801,24 @@ def render_journey(j: dict) -> str:
     out += ["", "## Pattern map", "",
             "| Week | Pattern | Tier | Status | Attempted | Unaided | Retained | Ready | Target | Last activity |",
             "|---|---|---|---|---|---|---|---|---|---|"]
-    for r in sorted(j["patterns"], key=lambda r: (r["week"] or 99, r["tier"] or 9)):
+    for r in sorted(journey["patterns"], key=plan_order):
         out.append(f"| {r['week']} | {r['name']} | {r['tier']} | {r['status']} | {r['attempted']} | {r['practicing']} | {r['retained']} | {r['ready']} | {r['target']} | {r['last_activity'] or ''} |")
-    started = sum(r["status"] != "not started" for r in j["patterns"])
-    out += ["", f"Started {started} of {len(j['patterns'])} patterns. "
-            + (f"Behind plan: {fmt_list(by_key[k]['name'] for k in j['behind'])}. " if j["behind"] else "Nothing from earlier weeks is behind. ")
-            + (f"Planned this week: {fmt_list(by_key[k]['name'] for k in j['this_week'])}. " if j["this_week"] else "")
-            + (f"Ahead of plan: {fmt_list(by_key[k]['name'] for k in j['ahead'])}." if j["ahead"] else "")]
-    if j["other_concepts"]:
-        out.append(f"Other concepts touched: {fmt_list(j['other_concepts'])}.")
-    t = j["totals"]
+    started = sum(r["status"] != "not started" for r in journey["patterns"])
+    out += ["", f"Started {started} of {len(journey['patterns'])} patterns. "
+            + (f"Behind plan: {fmt_list(by_key[k]['name'] for k in journey['behind'])}. " if journey["behind"] else "Nothing from earlier weeks is behind. ")
+            + (f"Planned this week: {fmt_list(by_key[k]['name'] for k in journey['this_week'])}. " if journey["this_week"] else "")
+            + (f"Ahead of plan: {fmt_list(by_key[k]['name'] for k in journey['ahead'])}." if journey["ahead"] else "")]
+    if journey["other_concepts"]:
+        out.append(f"Other concepts touched: {fmt_list(journey['other_concepts'])}.")
+    t = journey["totals"]
     out += ["", "## Totals", "",
             f"- Problems attempted: {t['problems']} · unaided solves: {t['unaided_solves']} · retained: {t['retained']} · ready: {t['ready']}",
             f"- Attempts logged: {t['attempts']} · minutes: {t['minutes']} · sessions: {t['sessions']}",
             f"- Cards: {t['cards_active']} active ({t['cards_held']} held at {HELD_DAYS}+ days), {t['cards_draft']} draft, {t['cards_retired']} retired",
             f"- Questions asked: {t['questions']} · explainers saved: {t['explainers']}"]
-    out += ["", "## Weak spots (last 30 days)", ""]
-    out += [f"- {w['code']} ({w['meaning']}): {w['count']}" for w in j["weak_spots"]] or ["No mistakes logged yet."]
-    cal = j["calibration"]
+    out += ["", f"## Weak spots (last {WEAK_SPOT_DAYS} days)", ""]
+    out += [f"- {w['code']} ({w['meaning']}): {w['count']}" for w in journey["weak_spots"]] or ["No mistakes logged yet."]
+    cal = journey["calibration"]
     out += ["", "## Calibration", ""]
     if cal["rated_attempts"]:
         out.append(f"- Average confidence before unaided solves: {cal['avg_conf_unaided']}; before other attempts: {cal['avg_conf_other']} ({cal['rated_attempts']} rated attempts)")
@@ -682,23 +826,24 @@ def render_journey(j: dict) -> str:
     else:
         out.append("No confidence ratings yet. Log `--confidence 1-5` before each attempt.")
     out += ["", "## What seems to work (delayed evidence only)", ""]
-    if j["techniques"]:
+    if journey["techniques"]:
         out += ["| Technique | Pattern | Delayed checks | Unaided | Estimate | |", "|---|---|---|---|---|---|"]
-        for r in j["techniques"]:
+        for r in journey["techniques"]:
             out.append(f"| {r['technique']} | {r['pattern']} | {r['trials']} | {r['successes']} | {r['estimate']} | {'provisional' if r['provisional'] else ''} |")
     else:
         out.append("No delayed re-solves yet, so no technique has earned credit. Preferences don't count as evidence.")
     out += ["", "## Recent questions", ""]
-    out += [f"- {q.get('date')} · {q.get('concept')}: {q.get('text')}" for q in reversed(j["questions"])] or ["None yet."]
+    out += [f"- {q.get('date')} · {q.get('concept')}: {q.get('text')}" for q in reversed(journey["questions"])] or ["None yet."]
     out += ["", "## Saved explainers", ""]
-    if j["artifacts"]:
-        for a in j["artifacts"]:
-            where = " · ".join(x for x in [f"[link]({a['url']})" if a.get("url") else "", f"`{a['file']}`" if a.get("file") else ""] if x)
-            out.append(f"- {a.get('title')} ({a.get('concept')}, v{a.get('version', 1)}): {where}")
+    if journey["artifacts"]:
+        for artifact in journey["artifacts"]:
+            where = " · ".join(x for x in [f"[link]({artifact['url']})" if artifact.get("url") else "",
+                                           f"`{artifact['file']}`" if artifact.get("file") else ""] if x)
+            out.append(f"- {artifact.get('title')} ({artifact.get('concept')}, v{artifact.get('version', 1)}): {where}")
     else:
         out.append("None yet.")
     out += ["", "## Recent sessions", ""]
-    out += [f"- {s['date']}: {s['summary']}" for s in reversed(j["sessions"])] or ["None yet."]
+    out += [f"- {s['date']}: {s['summary']}" for s in reversed(journey["sessions"])] or ["None yet."]
     return "\n".join(out) + "\n"
 
 
@@ -714,53 +859,52 @@ def session_digest(root: Path, day: str) -> dict:
     return {"date": day, "summary": (summary[:157] + "...") if len(summary) > 160 else summary}
 
 
-def render_summary(j: dict, preferences: str) -> str:
-    plan = j["plan"]
-    by_key = {r["key"]: r for r in j["patterns"]}
+def render_summary(journey: Journey, preferences: str) -> str:
+    plan = journey["plan"]
+    by_key = {r["key"]: r for r in journey["patterns"]}
     lines = [
-        f"DSA COACH LEARNER SUMMARY · generated {j['generated']} by coach.py snapshot · skill {j['skill_version']}",
-        f"Learner: {j['learner']} · Goal: {j['goal']}",
-        f"Targets: {fmt_list(j['targets'])}",
+        f"DSA COACH LEARNER SUMMARY · generated {journey['generated']} by coach.py snapshot · skill {journey['skill_version']}",
+        f"Learner: {journey['learner']} · Goal: {journey['goal']}",
+        f"Targets: {fmt_list(journey['targets'])}",
         f"Plan: day {plan['day']}" + (f" of {plan['total_days']}" if plan["total_days"] else "") + f", week {plan['week']} of {plan['plan_weeks']}, phase {plan['phase']}, target date {plan['target_date']}",
-        f"Focus: {by_key[j['focus']]['name'] + ' (' + by_key[j['focus']]['status'] + ')' if j['focus'] else 'not set'}",
+        f"Focus: {by_key[journey['focus']]['name'] + ' (' + by_key[journey['focus']]['status'] + ')' if journey['focus'] else 'not set'}",
         "",
         "Patterns started (status, attempted/unaided/retained/ready of target):",
     ]
-    started = [r for r in j["patterns"] if r["status"] != "not started"]
+    started = [r for r in journey["patterns"] if r["status"] != "not started"]
     lines += [f"- {r['name']}: {r['status']}, {r['attempted']}/{r['practicing']}/{r['retained']}/{r['ready']} of {r['target']}" for r in started] or ["- none yet"]
-    if j["other_concepts"]:
-        lines.append(f"Other concepts: {fmt_list(j['other_concepts'])}")
-    d = j["due"]
+    if journey["other_concepts"]:
+        lines.append(f"Other concepts: {fmt_list(journey['other_concepts'])}")
+    d = journey["due"]
     lines += ["", f"Due today: {len(d['resolves'])} re-solve(s) [{fmt_list(x['problem'] for x in d['resolves'][:5])}], {len(d['cards'])} card(s), {d['drafts']} draft card(s), {len(d['inbox'])} inbox delta(s)"]
-    lines.append("Weak spots (30 days): " + fmt_list(f"{w['code']}×{w['count']}" for w in j["weak_spots"]))
-    cal = j["calibration"]
+    lines.append(f"Weak spots ({WEAK_SPOT_DAYS} days): " + fmt_list(f"{w['code']}×{w['count']}" for w in journey["weak_spots"]))
+    cal = journey["calibration"]
     if cal["rated_attempts"]:
         lines.append(f"Calibration: avg confidence before unaided solves {cal['avg_conf_unaided'] if cal['avg_conf_unaided'] is not None else 'n/a'}, "
                      f"before other attempts {cal['avg_conf_other'] if cal['avg_conf_other'] is not None else 'n/a'}; "
                      f"high-confidence misses: {fmt_list(m['id'] for m in cal['high_confidence_misses'])}")
     else:
         lines.append("Calibration: no confidence ratings yet")
-    if j["sessions"]:
-        last = j["sessions"][-1]
+    if journey["sessions"]:
+        last = journey["sessions"][-1]
         lines.append(f"Last session: {last['date']}: {last['summary']}")
-    lines.append("Techniques with delayed evidence: " + fmt_list(f"{r['technique']}/{r['pattern']} {r['successes']}/{r['trials']}{' (provisional)' if r['provisional'] else ''}" for r in j["techniques"][:5]))
+    lines.append("Techniques with delayed evidence: " + fmt_list(f"{r['technique']}/{r['pattern']} {r['successes']}/{r['trials']}{' (provisional)' if r['provisional'] else ''}" for r in journey["techniques"][:5]))
     prefs = [ln.strip() for ln in preferences.splitlines() if ln.strip().startswith("- ")][:5]
     lines += ["", "Stated preferences (formatting defaults only, not evidence):"] + (prefs or ["- none recorded"])
-    lines += ["", "Recent questions:"] + ([f"- {q.get('date')} {q.get('concept')}: {q.get('text')[:140]}" for q in reversed(j["questions"][-3:])] or ["- none"])
-    lines += ["", "Next steps:"] + [f"{i}. {s}" for i, s in enumerate(j["next_steps"][:4], 1)]
+    lines += ["", "Recent questions:"] + ([f"- {q.get('date')} {q.get('concept')}: {q.get('text')[:140]}" for q in reversed(journey["questions"][-3:])] or ["- none"])
+    lines += ["", "Next steps:"] + [f"{i}. {s}" for i, s in enumerate(journey["next_steps"][:4], 1)]
     lines += ["", "Coach rules: attempt before answers; predict before reveal; credit only delayed unaided success; log everything with coach.py."]
     return "\n".join(lines[:60]) + "\n"
 
 
-def write_snapshot(root: Path, on: date | None = None) -> dict:
+def write_snapshot(root: Path, on: date | None = None) -> Journey:
     state = load_state(root)
-    j = compute(state, on)
-    write_json(root / "journey.json", j)
-    (root / "JOURNEY.md").write_text(render_journey(j), encoding="utf-8")
-    (root / "learner").mkdir(parents=True, exist_ok=True)
-    (root / "learner" / "summary.md").write_text(render_summary(j, state["preferences"]), encoding="utf-8")
-    write_json(root / "learner" / "techniques.json", j["techniques"])
-    return j
+    journey = compute(state, on)
+    write_json(root / "journey.json", journey)
+    write_text(root / "JOURNEY.md", render_journey(journey))
+    write_text(root / "learner" / "summary.md", render_summary(journey, state["preferences"]))
+    write_json(root / "learner" / "techniques.json", journey["techniques"])
+    return journey
 
 
 # --------------------------------------------------------------------------- commands
@@ -865,10 +1009,10 @@ def validate_attempt(a: dict, keys: list) -> list:
     if a.get("difficulty", "medium") not in DIFFICULTIES:
         errs.append(f"difficulty must be one of {DIFFICULTIES}")
     try:
-        if not 0 <= int(a.get("hints") or 0) <= 7:
-            errs.append("hints must be 0-7")
+        if not 0 <= int(a.get("hints") or 0) <= TOP_RUNG:
+            errs.append(f"hints must be 0-{TOP_RUNG}")
     except (TypeError, ValueError):
-        errs.append("hints must be an integer 0-7")
+        errs.append(f"hints must be an integer 0-{TOP_RUNG}")
     conf = a.get("confidence")
     if conf is not None and (not isinstance(conf, int) or not 1 <= conf <= 5):
         errs.append("confidence must be 1-5 or null")
@@ -899,7 +1043,7 @@ def add_attempt(root: Path, a: dict, source: str = "cli") -> dict:
         "outcome": a["outcome"],
         "minutes": a.get("minutes"),
         "hints": hints,
-        "assisted": bool(a.get("assisted")) or hints >= 5 or mode == "ai",
+        "assisted": bool(a.get("assisted")) or hints >= ASSISTED_MIN_RUNG or mode == "ai",
         "confidence": a.get("confidence"),
         "technique": a.get("technique"),
         "mistakes": list(a.get("mistakes") or []),
@@ -1119,7 +1263,7 @@ def cmd_card(args) -> None:
         if args.drafts:
             cards = [c for c in cards if c.get("status") == "draft"]
         elif args.due:
-            cards = [c for c in cards if c.get("status") == "active" and card_due(c) and card_due(c) <= on]
+            cards = [c for c in cards if is_card_due(c, on)]
         elif not args.all:
             cards = [c for c in cards if c.get("status") != "retired"]
         if args.concept:
@@ -1138,7 +1282,7 @@ def cmd_card(args) -> None:
 def cmd_quiz(args) -> None:
     root = find_root(args.root)
     on = today()
-    cards = [c for c in load_cards(root) if c.get("status") == "active" and card_due(c) and card_due(c) <= on]
+    cards = [c for c in load_cards(root) if is_card_due(c, on)]
     if args.concept:
         cards = [c for c in cards if c.get("concept") == slugify(args.concept)]
     cards = sorted(cards, key=lambda c: c["due"])[: args.n]
@@ -1155,8 +1299,8 @@ def cmd_quiz(args) -> None:
 
 def cmd_due(args) -> None:
     root = find_root(args.root)
-    j = compute(load_state(root), parse_date(args.date))
-    d = j["due"]
+    journey = compute(load_state(root), parse_date(args.date))
+    d = journey["due"]
     if args.json:
         print(json.dumps(d, indent=2, ensure_ascii=False))
         return
@@ -1198,24 +1342,21 @@ def cmd_next(args) -> None:
 
 
 
-SOLVED = ("practicing", "retained", "ready")  # a problem solved unaided at least once
-
-
 def list_progress(problems: list, name: str) -> dict:
     on = [x for x in problems if name in x["lists"]]
     return {"done": sum(x["status"] in SOLVED for x in on), "total": len(on)}
 
 
-def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
+def map_view(journey: Journey, roadmap: dict, catalogue: dict) -> dict:
     """The panel's map: every pattern with its status, explainer and problems (Blind 75 first)."""
-    explainers = {a["concept"]: a["file"] for a in j["artifacts"] if (a.get("file") or "").endswith(".html")}
-    due = {d["problem"] for d in j["due"]["resolves"]}
-    status = {r["key"]: r["status"] for r in j["patterns"]}
+    explainers = {a["concept"]: a["file"] for a in journey["artifacts"] if (a.get("file") or "").endswith(".html")}
+    due = {d["problem"] for d in journey["due"]["resolves"]}
+    status = {r["key"]: r["status"] for r in journey["patterns"]}
     patterns = []
     for p in roadmap["patterns"]:
         problems = []
         for c in sorted(catalogue.get(p["key"], []), key=lambda c: "blind75" not in c["lists"]):
-            seen = j["problems"].get(c["slug"]) or {}
+            seen = journey["problems"].get(c["slug"]) or {}
             problems.append({**c, "url": problem_url(roadmap, c["slug"]),
                              "status": seen.get("status", "not started"), "last_outcome": seen.get("last_outcome"),
                              "next_due": seen.get("next_due"), "due": c["slug"] in due})
@@ -1227,8 +1368,8 @@ def map_view(j: dict, roadmap: dict, catalogue: dict) -> dict:
             "lists": {name: list_progress(problems, name) for name in ("blind75", "nc150")},
             "problems": problems,
         })
-    nxt = pick_next(j)
-    return {"plan": j["plan"], "next": nxt, "next_text": render_next(nxt),
+    nxt = pick_next(journey)
+    return {"plan": journey["plan"], "next": nxt, "next_text": render_next(nxt),
             "next_url": problem_url(roadmap, nxt["problem"]) if nxt.get("problem") else None,
             "patterns": patterns}
 
@@ -1245,10 +1386,10 @@ def render_map(view: dict) -> str:
 def cmd_map(args) -> None:
     root = find_root(args.root)
     state = load_state(root)
-    j, roadmap = compute(state, parse_date(args.date)), state["roadmap"]
+    journey, roadmap = compute(state, parse_date(args.date)), state["roadmap"]
     live = load_live(root, required=False)
-    due = dict(j["due"], resolves=[dict(r, url=problem_url(roadmap, r["problem"])) for r in j["due"]["resolves"]])
-    view = dict(map_view(j, roadmap, load_catalogue()), due=due, live=live_view(live) if live else None)
+    due = dict(journey["due"], resolves=[dict(r, url=problem_url(roadmap, r["problem"])) for r in journey["due"]["resolves"]])
+    view = dict(map_view(journey, roadmap, load_catalogue()), due=due, live=live_view(live) if live else None)
     print(json.dumps(view, indent=2, ensure_ascii=False) if args.json else render_map(view))
 
 # live solve -----------------------------------------------------------------
@@ -1292,7 +1433,7 @@ def live_view(live: dict) -> dict:
     timer = f"block {len(blocks)}: {elapsed} of {length} min" if current else f"on a break after block {len(blocks)}"
     return dict(live, stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]], minutes=minutes,
                 block={"number": len(blocks), "open": current is not None, "length": length, "elapsed": elapsed},
-                line=f"stage {live['stage']}/{len(STAGES)} {stage} · hint rung {live['rung']}/7 · {timer} · {minutes} min in all")
+                line=f"stage {live['stage']}/{len(STAGES)} {stage} · hint rung {live['rung']}/{TOP_RUNG} · {timer} · {minutes} min in all")
 
 
 def describe_live(v: dict) -> str:
@@ -1394,7 +1535,7 @@ def cmd_solve(args) -> None:
     if action == "stage":
         live["stage"] = args.n
     elif action == "hint":
-        live["rung"] = min(7, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
+        live["rung"] = min(TOP_RUNG, max(live["rung"], args.rung if args.rung is not None else live["rung"] + 1))
     elif action == "note":  # a blank note clears the stage's note
         notes = live.setdefault("notes", {})
         if args.text.strip():
@@ -1468,8 +1609,8 @@ def cmd_artifact(args) -> None:
 # snapshot / status ----------------------------------------------------------
 def cmd_snapshot(args) -> None:
     root = find_root(args.root)
-    j = write_snapshot(root, parse_date(args.date) if args.date else None)
-    print(f"Snapshot written: {root / 'JOURNEY.md'} (day {j['plan']['day']}, week {j['plan']['week']}, {j['plan']['phase']}).")
+    journey = write_snapshot(root, parse_date(args.date) if args.date else None)
+    print(f"Snapshot written: {root / 'JOURNEY.md'} (day {journey['plan']['day']}, week {journey['plan']['week']}, {journey['plan']['phase']}).")
     if args.print:
         print()
         print((root / "JOURNEY.md").read_text(encoding="utf-8"))
@@ -1477,12 +1618,12 @@ def cmd_snapshot(args) -> None:
 
 def cmd_status(args) -> None:
     root = find_root(args.root)
-    j = write_snapshot(root)
-    plan = j["plan"]
-    by_key = {r["key"]: r for r in j["patterns"]}
-    focus = by_key.get(j["focus"]) if j["focus"] else None
-    d = j["due"]
-    print(f"DSA Coach · {j['generated']} · day {plan['day']}" + (f"/{plan['total_days']}" if plan["total_days"] else "")
+    journey = write_snapshot(root)
+    plan = journey["plan"]
+    by_key = {r["key"]: r for r in journey["patterns"]}
+    focus = by_key.get(journey["focus"]) if journey["focus"] else None
+    d = journey["due"]
+    print(f"DSA Coach · {journey['generated']} · day {plan['day']}" + (f"/{plan['total_days']}" if plan["total_days"] else "")
           + f" · week {plan['week']} · {plan['phase']} · skill {SKILL_VERSION}")
     print(f"Focus: {focus['name'] + ' (' + focus['status'] + ')' if focus else 'not set'}")
     print(f"Due: {len(d['resolves'])} re-solve(s) · {len(d['cards'])} card(s) · {d['drafts']} draft card(s) to approve · {len(d['inbox'])} inbox delta(s)")
@@ -1490,13 +1631,13 @@ def cmd_status(args) -> None:
     if live:
         print(f"Live solve: {describe_live(live_view(live))}. Resume it: `coach.py solve show --json`.")
     if not args.brief:
-        started = [r for r in j["patterns"] if r["status"] != "not started"]
+        started = [r for r in journey["patterns"] if r["status"] != "not started"]
         if started:
             print("Patterns: " + "; ".join(f"{r['name']} {r['status']} ({r['attempted']}/{r['target']})" for r in started))
-        if j["weak_spots"]:
-            print("Weak spots: " + ", ".join(f"{w['code']}×{w['count']}" for w in j["weak_spots"]))
+        if journey["weak_spots"]:
+            print("Weak spots: " + ", ".join(f"{w['code']}×{w['count']}" for w in journey["weak_spots"]))
     print("Next:")
-    for i, s in enumerate(j["next_steps"][: (3 if args.brief else 6)], 1):
+    for i, s in enumerate(journey["next_steps"][: (3 if args.brief else 6)], 1):
         print(f"  {i}. {s}")
     print(f"Notebook: {root} (JOURNEY.md, learner/summary.md)")
 
@@ -1516,10 +1657,10 @@ def delta_section() -> str:
 
 def cmd_export(args) -> None:
     root = find_root(args.root)
-    j = write_snapshot(root)
+    journey = write_snapshot(root)
     on = today().isoformat()
     out = Path(args.out).expanduser() if args.out else root / "exports" / f"pack-{on}.md"
-    due = j["due"]
+    due = journey["due"]
     lines = [
         f"# DSA Coach context pack · {on}",
         "",
@@ -1810,7 +1951,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("status", help="where you are and what's due (also refreshes the snapshot)")
     s.add_argument("--brief", action="store_true")
-    s.set_defaults(func=cmd_status, writes=True)
+    s.set_defaults(func=cmd_status)
 
     log = sub.add_parser("log", help="log an attempt, a question or a session").add_subparsers(dest="log_cmd", required=True)
     s = log.add_parser("attempt")
@@ -1820,7 +1961,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mode", default="practice", choices=MODES)
     s.add_argument("--outcome", required=True, choices=OUTCOMES)
     s.add_argument("--minutes", type=int)
-    s.add_argument("--hints", type=int, default=0, help="highest hint-ladder rung used, 0-7")
+    s.add_argument("--hints", type=int, default=0, help=f"highest hint-ladder rung used, 0-{TOP_RUNG}")
     s.add_argument("--assisted", action="store_true", help="saw a solution or used AI")
     s.add_argument("--confidence", type=int, choices=range(1, 6), help="confidence before starting, 1-5")
     s.add_argument("--technique", choices=TECHNIQUES)
@@ -1828,25 +1969,25 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--complexity-stated", action="store_true")
     s.add_argument("--note")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_attempt, writes=True)
+    s.set_defaults(func=cmd_log_attempt)
     s = log.add_parser("question")
     s.add_argument("--concept", required=True)
     s.add_argument("--text", required=True)
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_question, writes=True)
+    s.set_defaults(func=cmd_log_question)
     s = log.add_parser("session")
     s.add_argument("--summary", required=True)
     s.add_argument("--minutes", type=int)
     s.add_argument("--platform")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_log_session, writes=True)
+    s.set_defaults(func=cmd_log_session)
 
     s = sub.add_parser("concept", help="create concept notes").add_subparsers(dest="concept_cmd", required=True).add_parser("add")
     s.add_argument("--slug", required=True)
     s.add_argument("--title")
     s.add_argument("--pattern")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_concept_add, writes=True)
+    s.set_defaults(func=cmd_concept_add)
 
     card = sub.add_parser("card", help="retrieval cards").add_subparsers(dest="card_cmd", required=True)
     s = card.add_parser("add")
@@ -1879,29 +2020,29 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--date")
     card.required = True
     for name, sp in card.choices.items():
-        sp.set_defaults(func=cmd_card, writes=name != "list")
+        sp.set_defaults(func=cmd_card, lock=name != "list")
 
     s = sub.add_parser("quiz", help="due card fronts (answers with --json)")
     s.add_argument("--n", type=int, default=10)
     s.add_argument("--concept")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_quiz)
+    s.set_defaults(func=cmd_quiz, lock=False)
 
     s = sub.add_parser("due", help="list due re-solves and cards")
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_due)
+    s.set_defaults(func=cmd_due, lock=False)
 
     s = sub.add_parser("next", help="the one thing to practise now")
     s.add_argument("--pattern", help="pick a new problem from this pattern, skipping anything due")
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_next)
+    s.set_defaults(func=cmd_next, lock=False)
 
     s = sub.add_parser("map", help="every pattern with its status, explainer and problems, plus what's due and the live solve (the panel's data)")
     s.add_argument("--json", action="store_true")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_map)
+    s.set_defaults(func=cmd_map, lock=False)
 
     solve = sub.add_parser("solve", help="the live solve: stage, hint rung and focus blocks").add_subparsers(dest="solve_cmd", required=True)
     s = solve.add_parser("start", help="start a solve; he writes and runs the code on LeetCode")
@@ -1914,7 +2055,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = solve.add_parser("stage", help="move to a solve-protocol stage")
     s.add_argument("n", type=int, choices=range(1, len(STAGES) + 1))
     s = solve.add_parser("hint", help="record the next hint rung (or --rung N); the highest rung is kept")
-    s.add_argument("--rung", type=int, choices=range(1, 8))
+    s.add_argument("--rung", type=int, choices=range(1, TOP_RUNG + 1))
     s = solve.add_parser("note", help="save the learner's note for a stage (replaces that stage's note)")
     s.add_argument("--stage", type=int, required=True, choices=range(1, len(STAGES) + 1))
     s.add_argument("--text", required=True)
@@ -1934,7 +2075,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--note")
     s.add_argument("--json", action="store_true", help="print the receipt: id, outcome, kind, status, next_due")
     for name, sp in solve.choices.items():
-        sp.set_defaults(func=cmd_solve, writes=name != "show")
+        sp.set_defaults(func=cmd_solve, lock=name != "show")
 
     art = sub.add_parser("artifact", help="saved explainers and published pages").add_subparsers(dest="artifact_cmd", required=True)
     s = art.add_parser("add")
@@ -1945,27 +2086,27 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--version", type=int)
     s.add_argument("--note")
     s.add_argument("--date")
-    s.set_defaults(func=cmd_artifact, writes=True)
-    s = art.add_parser("list")
     s.set_defaults(func=cmd_artifact)
+    s = art.add_parser("list")
+    s.set_defaults(func=cmd_artifact, lock=False)
 
     s = sub.add_parser("snapshot", help="regenerate JOURNEY.md, journey.json and learner/summary.md")
     s.add_argument("--date", help="compute as of this date")
     s.add_argument("--print", action="store_true", help="also print JOURNEY.md")
-    s.set_defaults(func=cmd_snapshot, writes=True)
+    s.set_defaults(func=cmd_snapshot)
 
     s = sub.add_parser("export", help="write a context pack for a web chat")
     s.add_argument("--platform", default="Claude or ChatGPT web")
     s.add_argument("--out")
-    s.set_defaults(func=cmd_export, writes=True)
+    s.set_defaults(func=cmd_export)
 
     s = sub.add_parser("import", help="import session deltas (default: everything in inbox/)")
     s.add_argument("files", nargs="*")
-    s.set_defaults(func=cmd_import, writes=True)
+    s.set_defaults(func=cmd_import)
 
     s = sub.add_parser("package", help="zip the skill for uploading to Claude")
     s.add_argument("--out")
-    s.set_defaults(func=cmd_package)
+    s.set_defaults(func=cmd_package, lock=False)
 
     s = sub.add_parser("install", help="make the skill visible to Claude Code and Codex")
     s.add_argument("--claude", action="store_true", help="only Claude Code (.claude/skills)")
@@ -1974,10 +2115,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--copy", action="store_true", help="copy instead of symlinking")
     s.add_argument("--force", action="store_true", help="replace an existing install")
     s.add_argument("--no-hook", action="store_true", help="don't add the Claude Code SessionStart hook")
-    s.set_defaults(func=cmd_install)
+    s.set_defaults(func=cmd_install, lock=False)
 
     s = sub.add_parser("validate", help="check the skill against the Agent Skills spec and the notebook files")
-    s.set_defaults(func=cmd_validate)
+    s.set_defaults(func=cmd_validate, lock=False)
     return p
 
 
@@ -2019,10 +2160,11 @@ def notebook_lock(root: Path, timeout: float = 5):
 
 def main(argv=None) -> None:
     args = build_parser().parse_args(argv)
-    if not getattr(args, "writes", False):  # set where a command that changes the notebook is defined
+    if not getattr(args, "lock", True):  # only a command defined with lock=False runs without the lock
         return args.func(args)
+    root = init_root(args.root) if args.cmd == "init" else find_root(args.root)
     try:
-        with notebook_lock(find_root(args.root)):
+        with notebook_lock(root):
             args.func(args)
     except TimeoutError as exc:
         die(str(exc))

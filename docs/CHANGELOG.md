@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.2 · 2026-11-11 · The lock is the default; `compute` is split into named steps
+
+No rule or schedule changed. On a copy of the notebook, `compute`, `JOURNEY.md`, `learner/summary.md` and `map` come out the same before and after, on 10 dates.
+
+- **Every command takes the notebook lock unless it is defined with `lock=False`.** Before, a command ran unlocked unless someone remembered `writes=True`; that is how `card list` (0.9.1) and `init` came to write without it. `init` now waits like any other writer. The unlocked commands are the reads (`quiz`, `due`, `next`, `map`, `card list`, `solve show`, `artifact list`, `validate`) and the two that write outside the notebook (`package`, `install`).
+- **`JOURNEY.md` and `learner/summary.md` are replaced whole**, as `journey.json` already was: `write_text` writes a temp file and renames it, and `write_json` is that plus `json.dumps`.
+- **`compute` reads as a list of steps.** Its nine jobs are functions: `plan_clock`, `last_activity`, `pattern_row`, `pick_focus`, `due_items`, `totals`, `weak_spots`, `calibration`, `next_steps`. `analyze_problems` is `problem_status` once per problem. In `journey.json`, `next_steps` is now the last key.
+- **Thresholds have names** in the constants block: `PATTERN_RETAINED_AT`, `PATTERN_READY_AT`, `WEAK_SPOT_DAYS`, `HIGH_CONFIDENCE`, `MOCKS_FROM_WEEK`, `MOCK_EVERY_DAYS`, `UNAIDED_MAX_RUNG`, `ASSISTED_MIN_RUNG`, `TOP_RUNG`. `delay_days` has one default, in `DEFAULT_CONFIG`.
+- **Names and shapes:** the journey dict is `journey` everywhere (it was `j`). `Attempt`, `ProblemStatus`, `PatternRow` and `Journey` are declared as TypedDicts, plain dicts at run time. `is_card_due` and `plan_order` replace three copies each.
+- Tests: `test_init_waits_for_the_notebook_lock`, `test_only_reads_skip_the_lock_and_they_change_nothing` (it fails when a new unlocked command isn't listed as a read), `test_snapshot_replaces_the_markdown_files_whole`, `test_the_declared_shapes_match_the_data`.
+
 ## 0.9.1 · 2026-11-10 · Three fixes from the code critique (pane 0.2.1)
 
 - **`card list` is a query:** it no longer rewrites `JOURNEY.md` and `journey.json`. Reads run without the notebook lock, so a read that wrote could race a real write.
