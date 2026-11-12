@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.2.0 (`/practice`). Kept for history: paths inside are as they were when it was written.
+
 # /practice command design
 
 Date: 2026-11-01. Status: approved. Target version: 0.2.0.

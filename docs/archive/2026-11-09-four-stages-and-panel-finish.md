@@ -1,3 +1,5 @@
+> **Archived.** Four stages built in 0.8.0 and kept; finishing a solve in the panel was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Plan: four solve stages, and finishing a solve in the panel (0.8.0)
 
 Design: `docs/superpowers/specs/2026-11-09-panel-completion-design.md` (see "Approved scope (trimmed)").

@@ -49,7 +49,8 @@ flowchart LR
   WEB -- "export pack" --> SK
   WEB -- "session delta" --> INBOX --> CLI
   CLI -- "map --json" --> APP
-  NOTES --> PANE
+  NOTES -- "sessions/current.json" --> PANE
+  SNAP -- "journey.json" --> PANE
   CC -. "looks with browser tools" .-> LC
 ```
 

@@ -1,3 +1,5 @@
+> **Archived.** Done in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # 003: Make coaching sessions independent of local editors
 
 Planned at `eee3d4c`, 2026-11-10. P1, effort M, risk MED. Status: IN PROGRESS. No dependencies; integrate together with 002.

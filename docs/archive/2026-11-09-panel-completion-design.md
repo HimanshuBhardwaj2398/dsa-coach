@@ -1,3 +1,5 @@
+> **Archived.** Four stages built in 0.8.0 and kept; finishing a solve in the panel was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # A simpler guided solve, finished inside the coach panel
 
 Date: 2026-11-09

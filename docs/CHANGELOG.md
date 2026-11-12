@@ -32,7 +32,7 @@ No rule or schedule changed. On a copy of the notebook, `compute`, `JOURNEY.md`,
 
 ## 0.9.0 · 2026-11-10 · Solve on LeetCode; the app becomes a read-only learning view (extension 0.3.0, pane 0.2.0)
 
-He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `plans/2026-11-10-app-critique.md`, `plans/002-learning-app.md`, `plans/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.
+He always solves on LeetCode, and the coach can look at LeetCode with its own browser and computer-use tools. So everything that existed to solve somewhere else, or to read LeetCode for the coach, is gone. What stays is the record (`coach.py`), the teaching (the skill), and read-only views of both. Critique and plans: `docs/archive/2026-11-10-app-critique.md`, `docs/archive/002-learning-app.md`, `docs/archive/003-external-coaching.md`. The browser panel and the pane are kept (he asked for both), cut down to showing progress and theory.
 
 - **No attempt files:** `solve start` no longer writes `problems/<slug>/<date>.py`; it prints the LeetCode link. Stage notes are filed under the solve's session id. Older attempt files stay as history.
 - **Seeing his work:** SKILL.md tells the coach to look at the LeetCode tab with a browser or computer-use tool where it has one, else to ask him to paste code and results; a screenshot shows only what is on screen, and the coach only looks, never types. The PreToolUse guard on attempt files is gone with them.
@@ -47,7 +47,7 @@ He always solves on LeetCode, and the coach can look at LeetCode with its own br
 
 ## 0.8.0 · 2026-11-09 · Four stages, and finishing in the panel
 
-Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/superpowers/specs/2026-11-09-panel-completion-design.md` (approved with trims).
+Fewer stages to navigate, more help with the thinking inside them, and a solve can be finished beside LeetCode. Design: `docs/archive/2026-11-09-panel-completion-design.md` (approved with trims).
 
 - **Four stages:** Understand, Find an approach, Build it, Check and finish, one for each of Polya's phases. The old stages 2–6 (brute force, count, repeated work, classify, plan card) are now teaching moves inside Find an approach. The coach asks the one that fits and doesn't make him fill in each one. `references/protocol.md` spells out the moves: find something that works, count the work concretely (uneven loops are added, hidden work counted), connect the count to the limit, improve only for a reason, and keep a short plan. Build it bridges the plan to code with one question at a time. Why (`learning-principles.md`): the four phases were already the frame, and eight visible stops were a burden that didn't add practice.
 - **Old solves move over:** a live solve from before 0.8.0 maps stage 1→1, 2–6→2, 7→3, 8→4 (`protocol: 2` marks new ones). Notes from old stages 2–6 are joined into stage 2, each under its old name. Archived notes and logged attempts are unchanged. The pane maps an unmigrated solve the same way. Browser drafts saved before 0.8.0 can't be restored into the new stages; the recovery banner keeps them for copying.

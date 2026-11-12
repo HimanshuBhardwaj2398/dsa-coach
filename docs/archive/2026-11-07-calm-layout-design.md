@@ -1,3 +1,5 @@
+> **Archived.** Built in 0.5.2; the Solve tab was removed in 0.9.0. Kept for history: paths inside are as they were when it was written.
+
 # Study app: a calmer Solve tab
 
 Date: 2026-11-07 · Status: approved in brainstorming · Target: dsa-coach 0.5.2 · Builds on `2026-11-06-study-app-solve-design.md`
