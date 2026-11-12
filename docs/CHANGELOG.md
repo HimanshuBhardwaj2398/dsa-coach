@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3 · 2026-11-12 · Errors are raised, not exits; a torn log line costs one row
+
+- **`CoachError` replaces `die()`.** Helpers raise it, and only `main` prints `error: ...` and exits 1, so code that imports coach.py (tests, the app) keeps its process. `validate` catches `CoachError` instead of `SystemExit`. The CLI's messages and exit codes are unchanged.
+- **A line in `attempts.jsonl` or `questions.jsonl` that isn't JSON is skipped with a warning**, where before it stopped every command, the session-start `status --brief` included. `validate` lists it as an issue.
+- **`append_jsonl` ends a torn last line before writing**, so the next row isn't glued onto the fragment and lost with it.
+- Tests: `test_helpers_raise_and_only_main_exits`, `test_a_torn_last_line_is_skipped_and_the_next_row_starts_clean`.
+
 ## 0.9.2 · 2026-11-11 · The lock is the default; `compute` is split into named steps
 
 No rule or schedule changed. On a copy of the notebook, `compute`, `JOURNEY.md`, `learner/summary.md` and `map` come out the same before and after, on 10 dates.

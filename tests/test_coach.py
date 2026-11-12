@@ -17,7 +17,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 COACH = HERE.parent / "skills" / "dsa-coach" / "scripts" / "coach.py"
 sys.path.insert(0, str(COACH.parent))
-from coach import Attempt, Journey, PatternRow, ProblemStatus, build_parser, notebook_lock
+from coach import (Attempt, CoachError, Journey, PatternRow, ProblemStatus, build_parser, find_root,
+                   notebook_lock, parse_date)
 
 READS = [("quiz",), ("due",), ("next",), ("map",), ("card", "list"), ("solve", "show"), ("artifact", "list"), ("validate",)]
 OUTSIDE = [("package",), ("install",)]  # these write, but never inside the notebook
@@ -668,6 +669,41 @@ class CoachTest(unittest.TestCase):
                               capture_output=True, text=True, env=self.env, cwd=self.tmp)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("0.0.1", proc.stdout)
+
+    def test_a_torn_last_line_is_skipped_and_the_next_row_starts_clean(self):
+        # A crash while appending can leave half a line. It should cost that row, not the notebook.
+        self.attempt("two-sum", "2026-11-01", pattern="arrays-hashing")
+        log = self.root / "learner" / "attempts.jsonl"
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write('{"id": "a0002", "date": "2026-11')  # no closing brace, no newline
+        status = self.run_cli("status", "--brief")
+        self.assertIn("attempts.jsonl:2", status.stderr)
+        self.attempt("valid-anagram", "2026-11-01", pattern="arrays-hashing")
+        self.assertEqual([a["problem"] for a in self.attempts_skipping_bad()], ["two-sum", "valid-anagram"])
+        self.assertEqual(self.journey()["totals"]["attempts"], 2)
+        self.attempt("group-anagrams", "2026-11-01", pattern="arrays-hashing")  # after a whole line: no blank line
+        self.assertNotIn("\n\n", log.read_text())
+        bad = self.run_cli("validate", ok=False)
+        self.assertNotEqual(bad.returncode, 0)
+        self.assertIn("attempts.jsonl:2", bad.stdout)
+
+    def attempts_skipping_bad(self):
+        rows = []
+        for line in (self.root / "learner" / "attempts.jsonl").read_text().splitlines():
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+        return rows
+
+    def test_helpers_raise_and_only_main_exits(self):
+        # coach.py is imported by tests and could be by the app: a helper must not end the caller's process.
+        with self.assertRaises(CoachError):
+            parse_date("tomorrow")
+        with self.assertRaises(CoachError):
+            find_root(str(self.tmp / "nowhere"))
+        proc = self.run_cli("next", "--pattern", "nope", ok=False)
+        self.assertEqual((proc.returncode, proc.stderr.splitlines()[-1][:22]), (1, "error: unknown pattern"))
 
     def test_validate_flags_bad_attempt(self):
         with (self.root / "learner/attempts.jsonl").open("a") as fh:

@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
 
-SKILL_VERSION = "0.9.2"
+SKILL_VERSION = "0.9.3"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -177,9 +177,9 @@ class Journey(TypedDict):
 
 
 # --------------------------------------------------------------------------- helpers
-def die(msg: str, code: int = 1) -> None:
-    print(f"error: {msg}", file=sys.stderr)
-    sys.exit(code)
+class CoachError(Exception):
+    """A problem the user can fix: a bad argument, a missing file, a notebook in the wrong state.
+    Code anywhere raises it; only main() prints it and exits."""
 
 
 def today() -> date:
@@ -193,8 +193,7 @@ def parse_date(value: str | None, default: date | None = None) -> date:
     try:
         return date.fromisoformat(value)
     except ValueError:
-        die(f"bad date {value!r}; use YYYY-MM-DD")
-    raise AssertionError  # unreachable
+        raise CoachError(f"bad date {value!r}; use YYYY-MM-DD")
 
 
 def slugify(text: str) -> str:
@@ -209,7 +208,7 @@ def read_json(path: Path, default):
         with path.open(encoding="utf-8") as fh:
             return json.load(fh)
     except json.JSONDecodeError as exc:
-        die(f"{path} is not valid JSON ({exc})")
+        raise CoachError(f"{path} is not valid JSON ({exc})")
 
 
 def write_text(path: Path, text: str) -> None:
@@ -233,7 +232,9 @@ def write_json(path: Path, data) -> None:
     write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
-def read_jsonl(path: Path) -> list:
+def read_jsonl(path: Path, bad: list | None = None) -> list:
+    """The rows of a log. A line that isn't JSON (say, half written when a process died) is skipped:
+    added to `bad` when given (validate does), else named in a warning."""
     rows = []
     if not path.exists():
         return rows
@@ -245,14 +246,25 @@ def read_jsonl(path: Path) -> list:
             try:
                 rows.append(json.loads(line))
             except json.JSONDecodeError as exc:
-                die(f"{path}:{n} is not valid JSON ({exc})")
+                problem = f"{path}:{n} is not valid JSON ({exc})"
+                if bad is None:
+                    print(f"warning: skipping {problem}; run `coach.py validate`", file=sys.stderr)
+                else:
+                    bad.append(problem)
     return rows
 
 
 def append_jsonl(path: Path, row: dict) -> None:
+    """Add one row. If the last line was left without its newline, end it first, so the new row stays whole."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(row, ensure_ascii=False) + "\n"
+    if path.exists() and path.stat().st_size:
+        with path.open("rb") as fh:
+            fh.seek(-1, os.SEEK_END)
+            if fh.read(1) != b"\n":
+                text = "\n" + text
     with path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        fh.write(text)
 
 
 def next_id(prefix: str, existing: list, width: int = 4) -> str:
@@ -263,14 +275,14 @@ def next_id(prefix: str, existing: list, width: int = 4) -> str:
 def load_roadmap() -> dict:
     data = read_json(ASSETS / "roadmap.json", None)
     if data is None:
-        die(f"missing {ASSETS / 'roadmap.json'}")
+        raise CoachError(f"missing {ASSETS / 'roadmap.json'}")
     return data
 
 
 def load_catalogue() -> dict:
     data = read_json(ASSETS / "problems.json", None)
     if data is None:
-        die(f"missing {ASSETS / 'problems.json'}")
+        raise CoachError(f"missing {ASSETS / 'problems.json'}")
     return data
 
 
@@ -325,13 +337,13 @@ def find_root(arg: str | None) -> Path:
         p = Path(arg).expanduser()
         if (p / "config.json").exists():
             return p.resolve()
-        die(f"no notebook at {p} (missing config.json). Run `coach.py --root {p} init` first.")
+        raise CoachError(f"no notebook at {p} (missing config.json). Run `coach.py --root {p} init` first.")
     env = os.environ.get("DSA_NOTEBOOK")
     if env:
         p = Path(env).expanduser()
         if (p / "config.json").exists():
             return p.resolve()
-        die(f"DSA_NOTEBOOK points to {p}, which has no config.json")
+        raise CoachError(f"DSA_NOTEBOOK points to {p}, which has no config.json")
     candidates = [Path.cwd() / "notebook", Path.cwd()]
     if POINTER.exists():
         candidates.append(Path(POINTER.read_text(encoding="utf-8").strip()).expanduser())
@@ -339,8 +351,7 @@ def find_root(arg: str | None) -> Path:
     for c in candidates:
         if (c / "config.json").exists():
             return c.resolve()
-    die("no notebook found. Run `coach.py init` (optionally with --root PATH) or set DSA_NOTEBOOK.")
-    raise AssertionError  # unreachable
+    raise CoachError("no notebook found. Run `coach.py init` (optionally with --root PATH) or set DSA_NOTEBOOK.")
 
 
 def init_root(arg: str | None) -> Path:
@@ -1080,7 +1091,7 @@ def cmd_log_attempt(args) -> None:
 def log_and_report(root: Path, a: dict, as_json: bool = False) -> None:
     errs = validate_attempt(a, pattern_keys())
     if errs:
-        die("; ".join(errs))
+        raise CoachError("; ".join(errs))
     row = add_attempt(root, a)
     write_snapshot(root)
     report_attempt(root, row, as_json)
@@ -1173,8 +1184,7 @@ def find_card(cards: list, cid: str) -> dict:
     for c in cards:
         if c.get("id") == cid:
             return c
-    die(f"no card {cid}")
-    raise AssertionError  # unreachable
+    raise CoachError(f"no card {cid}")
 
 
 def validate_card(c: dict) -> list:
@@ -1189,7 +1199,7 @@ def validate_card(c: dict) -> list:
 def add_card(root: Path, c: dict, source: str = "cli") -> dict:
     errs = validate_card(c)
     if errs:
-        die("card " + "; ".join(errs))
+        raise CoachError("card " + "; ".join(errs))
     cards = load_cards(root)
     on = parse_date(c.get("date"))
     draft = c.get("draft", True)
@@ -1214,11 +1224,11 @@ def add_card(root: Path, c: dict, source: str = "cli") -> dict:
 
 def review_card(root: Path, cid: str, grade: str, on: date) -> dict:
     if grade not in GRADES:
-        die(f"grade must be one of {GRADES}")
+        raise CoachError(f"grade must be one of {GRADES}")
     cards = load_cards(root)
     card = find_card(cards, cid)
     if card.get("status") != "active":
-        die(f"{cid} is {card.get('status')}; accept it first with `card accept --id {cid}`")
+        raise CoachError(f"{cid} is {card.get('status')}; accept it first with `card accept --id {cid}`")
     cfg = dict(DEFAULT_CONFIG)
     cfg.update(read_json(root / "config.json", {}))
     if grade == "pass":
@@ -1254,7 +1264,7 @@ def cmd_card(args) -> None:
                 value = getattr(args, field, None)
                 if value:
                     if field == "type" and value not in CARD_TYPES:
-                        die(f"card type must be one of {CARD_TYPES}")
+                        raise CoachError(f"card type must be one of {CARD_TYPES}")
                     card[field] = slugify(value) if field == "concept" else value
         save_cards(root, cards)
         print(f"{card['id']}: {card['status']}" + (f", due {card['due']}" if card.get("due") else ""))
@@ -1336,7 +1346,7 @@ def cmd_next(args) -> None:
     root = find_root(args.root)
     pattern = slugify(args.pattern) if args.pattern else None
     if pattern and pattern not in pattern_keys():
-        die(f"unknown pattern {pattern}. Choose from: {', '.join(pattern_keys())}")
+        raise CoachError(f"unknown pattern {pattern}. Choose from: {', '.join(pattern_keys())}")
     item = pick_next(compute(load_state(root), parse_date(args.date)), pattern)
     print(json.dumps(item, indent=2, ensure_ascii=False) if args.json else render_next(item))
 
@@ -1405,7 +1415,7 @@ def stamp() -> str:
 def load_live(root: Path, required: bool = True) -> dict | None:
     live = read_json(root / LIVE, None)
     if live is None and required:
-        die("no live solve. Start one with `coach.py solve start --problem SLUG`.")
+        raise CoachError("no live solve. Start one with `coach.py solve start --problem SLUG`.")
     return live
 
 
@@ -1448,17 +1458,17 @@ def print_live(live: dict) -> None:
 
 def solve_start(root: Path, args) -> None:
     if load_live(root, required=False):
-        die("a solve is already live (`coach.py solve show`). End it with `solve end --outcome ...` or `solve end --discard`.")
+        raise CoachError("a solve is already live (`coach.py solve show`). End it with `solve end --outcome ...` or `solve end --discard`.")
     slug = slugify(args.problem)
     if not slug:
-        die(f"--problem {args.problem!r} has no letters or digits to make a slug from")
+        raise CoachError(f"--problem {args.problem!r} has no letters or digits to make a slug from")
     roadmap = load_roadmap()
     past = [a for a in usable_attempts(read_jsonl(root / "learner" / "attempts.jsonl")) if a["problem"] == slug]
     listed = next(((key, p) for key, ps in load_catalogue().items() for p in ps if p["slug"] == slug), (None, {}))
     canonical = next((p["key"] for p in roadmap["patterns"] if slug in p.get("canonical", [])), None)
     pattern = args.pattern or (past[-1]["pattern"] if past else None) or listed[0] or canonical
     if not pattern:
-        die(f"which pattern is {slug}? Pass --pattern ({', '.join(pattern_keys())}).")
+        raise CoachError(f"which pattern is {slug}? Pass --pattern ({', '.join(pattern_keys())}).")
     difficulty = args.difficulty or (past[-1].get("difficulty") if past else None) or listed[1].get("difficulty") or "medium"
     pattern_name = next(p["name"] for p in roadmap["patterns"] if p["key"] == pattern)
     url = problem_url(roadmap, slug)
@@ -1479,7 +1489,7 @@ def solve_end(root: Path, live: dict, args) -> None:
         print(f"Discarded the live solve of {live['problem']}; nothing logged.")
         return
     if not args.outcome:
-        die("give --outcome (solved, partial or failed), or --discard")
+        raise CoachError("give --outcome (solved, partial or failed), or --discard")
     session = live["session_id"]
     row = logged_from(root, session)  # an end that stopped after logging: finish it, don't log again
     if row:
@@ -1560,7 +1570,7 @@ def add_artifact(root: Path, a: dict, source: str = "cli") -> dict:
     if a.get("file"):
         src = Path(a["file"]).expanduser()
         if not src.exists():
-            die(f"file not found: {src}")
+            raise CoachError(f"file not found: {src}")
         src = src.resolve()
         try:
             rel_file = str(src.relative_to(root))
@@ -1596,7 +1606,7 @@ def cmd_artifact(args) -> None:
     root = find_root(args.root)
     if args.artifact_cmd == "add":
         if not args.url and not args.file:
-            die("give --url, --file or both")
+            raise CoachError("give --url, --file or both")
         row = add_artifact(root, {"concept": args.concept, "title": args.title, "url": args.url, "file": args.file,
                                   "version": args.version, "note": args.note, "date": args.date})
         write_snapshot(root)
@@ -1912,11 +1922,12 @@ def cmd_validate(args) -> None:
     root = None
     try:
         root = find_root(args.root) if (args.root or os.environ.get("DSA_NOTEBOOK") or (Path.cwd() / "notebook" / "config.json").exists() or (WORKSPACE / "notebook" / "config.json").exists()) else None
-    except SystemExit:
+    except CoachError:
         root = None
     if root:
-        for i, a in enumerate(read_jsonl(root / "learner" / "attempts.jsonl")):
+        for i, a in enumerate(read_jsonl(root / "learner" / "attempts.jsonl", issues)):
             issues += [f"attempts line {i + 1} ({a.get('id')}): {e}" for e in validate_attempt(a, keys)]
+        read_jsonl(root / "learner" / "questions.jsonl", issues)
         for c in read_json(root / "learner" / "cards.json", []):
             if c.get("type") not in CARD_TYPES or c.get("status") not in ("draft", "active", "retired"):
                 issues.append(f"card {c.get('id')}: bad type or status")
@@ -2158,8 +2169,7 @@ def notebook_lock(root: Path, timeout: float = 5):
             release()
 
 
-def main(argv=None) -> None:
-    args = build_parser().parse_args(argv)
+def run(args) -> None:
     if not getattr(args, "lock", True):  # only a command defined with lock=False runs without the lock
         return args.func(args)
     root = init_root(args.root) if args.cmd == "init" else find_root(args.root)
@@ -2167,7 +2177,16 @@ def main(argv=None) -> None:
         with notebook_lock(root):
             args.func(args)
     except TimeoutError as exc:
-        die(str(exc))
+        raise CoachError(str(exc)) from None
+
+
+def main(argv=None) -> None:
+    args = build_parser().parse_args(argv)
+    try:
+        run(args)
+    except CoachError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
