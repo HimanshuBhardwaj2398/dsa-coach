@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.4 · 2026-11-12 · A glossary
+
+- **`GLOSSARY.md`** at the repo root: one name per idea, with the names to avoid. It settles the pairs that drifted: re-solve (not resolve), live solve (not session), focus block and learning block (never bare "block"), coaching mode and attempt mode (never bare "mode"), explainer (not artifact), pattern and concept.
+- **JOURNEY.md and learner/summary.md say "Solved"** for a pattern's count of problems at practicing or beyond, where they said "Unaided". The `practicing` field in journey.json keeps its name.
+
 ## 0.9.3 · 2026-11-12 · Errors are raised, not exits; a torn log line costs one row
 
 - **`CoachError` replaces `die()`.** Helpers raise it, and only `main` prints `error: ...` and exits 1, so code that imports coach.py (tests, the app) keeps its process. `validate` catches `CoachError` instead of `SystemExit`. The CLI's messages and exit codes are unchanged.

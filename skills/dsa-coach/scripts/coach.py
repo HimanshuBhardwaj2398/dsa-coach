@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
 
-SKILL_VERSION = "0.9.3"
+SKILL_VERSION = "0.9.4"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -140,7 +140,7 @@ class PatternRow(TypedDict):
     week: int | None  # the week the plan starts it
     target: int  # how many problems the plan asks for
     attempted: int
-    practicing: int  # problems solved unaided at least once
+    practicing: int  # solved problems: at practicing or beyond
     retained: int
     ready: int
     status: str  # not started, exploring, learning, practicing, retained or ready
@@ -810,7 +810,7 @@ def render_journey(journey: Journey) -> str:
     out.append("")
     out.append(f"Draft cards to approve: {due['drafts']} · Session deltas in inbox: {len(due['inbox'])}")
     out += ["", "## Pattern map", "",
-            "| Week | Pattern | Tier | Status | Attempted | Unaided | Retained | Ready | Target | Last activity |",
+            "| Week | Pattern | Tier | Status | Attempted | Solved | Retained | Ready | Target | Last activity |",
             "|---|---|---|---|---|---|---|---|---|---|"]
     for r in sorted(journey["patterns"], key=plan_order):
         out.append(f"| {r['week']} | {r['name']} | {r['tier']} | {r['status']} | {r['attempted']} | {r['practicing']} | {r['retained']} | {r['ready']} | {r['target']} | {r['last_activity'] or ''} |")
@@ -880,7 +880,7 @@ def render_summary(journey: Journey, preferences: str) -> str:
         f"Plan: day {plan['day']}" + (f" of {plan['total_days']}" if plan["total_days"] else "") + f", week {plan['week']} of {plan['plan_weeks']}, phase {plan['phase']}, target date {plan['target_date']}",
         f"Focus: {by_key[journey['focus']]['name'] + ' (' + by_key[journey['focus']]['status'] + ')' if journey['focus'] else 'not set'}",
         "",
-        "Patterns started (status, attempted/unaided/retained/ready of target):",
+        "Patterns started (status, attempted/solved/retained/ready of target):",
     ]
     started = [r for r in journey["patterns"] if r["status"] != "not started"]
     lines += [f"- {r['name']}: {r['status']}, {r['attempted']}/{r['practicing']}/{r['retained']}/{r['ready']} of {r['target']}" for r in started] or ["- none yet"]
