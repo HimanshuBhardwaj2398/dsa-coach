@@ -90,6 +90,10 @@ _Avoid_: skipped, abandoned
 Solving an earlier problem again from a blank page when it falls due.
 _Avoid_: resolve, retry, review (that is a coaching mode)
 
+**Plan-only check**:
+A re-solve done from memory as a plan, with no code written: the pattern, the invariant, one trace, the complexity and one changed constraint. It keeps the review schedule moving and earns no status.
+_Avoid_: quick review, light re-solve
+
 **Due**:
 Waiting for him today or earlier: a re-solve whose date has come, or a card whose review date has come.
 _Avoid_: pending, overdue (overdue means due on an earlier day)
@@ -99,7 +103,7 @@ The days that must pass after a problem's first attempt before a solve counts as
 _Avoid_: gap, spacing
 
 **Card**:
-A retrieval prompt with a front and a back, about one concept, quizzed on a schedule. A card is a **draft** until he approves it, then **active**, then **retired**.
+A retrieval prompt with a front and a back, about one concept, quizzed on a schedule. A card is **active** once he keeps it and **retired** when he drops it. One that arrives from a web chat waits as a **draft** until he decides.
 _Avoid_: flashcard, note
 
 **Held card**:
@@ -121,7 +125,7 @@ How far a pattern has come: **not started**, **exploring** (studied but no attem
 _Avoid_: level, progress
 
 **Focus**:
-The pattern the learner is working on now: the one touched most recently that isn't ready.
+The pattern the learner is working on now: the one his next new problem comes from.
 _Avoid_: current pattern, active pattern
 
 **Weak spot**:
@@ -157,6 +161,20 @@ _Avoid_: artifact, visualization, animation, page
 **Mock**:
 A timed, talk-aloud attempt under interview conditions, where the coach only watches.
 _Avoid_: test, exam, interview
+
+## Improving the coach
+
+**Feedback note**:
+One remark about the coach or its tools, logged in a line during a session and left alone until triage.
+_Avoid_: note (alone; a stage has notes too), idea, issue, bug report
+
+**Backlog**:
+The triaged feedback notes: what the next version takes, what waits, and what was declined and why.
+_Avoid_: roadmap (that is the order of patterns), todo list
+
+**Test period**:
+A stretch of real study sessions on one unchanged version, after which the feedback notes are triaged.
+_Avoid_: beta, trial, freeze (the freeze is the rule that holds during it)
 
 ## Web chats
 

@@ -8,7 +8,8 @@ My step-by-step coach for DSA and coding interviews (AI engineer roles), built a
 dsa-coach/
 ├── skills/dsa-coach/      the skill: SKILL.md, references/, scripts/coach.py, assets/
 ├── notebook/              my data: JOURNEY.md, attempts, cards, concepts, problems, sessions, saved explainers
-├── docs/                  architecture, platform setup, the research behind the design
+├── docs/                  platform setup, the coach check, the changelog, the research behind the design
+├── plans/                 open work: the backlog that feedback notes are triaged into
 ├── tests/                 tests for coach.py, the app, the extension (tests/frontend, tests/browser)
 ├── plugins/dsa-coach-pane the coach pane for Claude Code (the live solve beside the chat)
 ├── app/                   the learning app: python3 app/server.py serves Today, the map and Learn pages (read-only)
@@ -37,7 +38,7 @@ python3 skills/dsa-coach/scripts/coach.py snapshot --print
 | Cowork | A "DSA Coach" project with this folder connected (setup in docs/PLATFORMS.md) |
 | Claude web or ChatGPT web | `coach.py export`, attach the pack, study, then save the session delta into `notebook/inbox/` and run `coach.py import` |
 
-Full setup for each platform: [docs/PLATFORMS.md](docs/PLATFORMS.md).
+Claude Code is the one platform proven in real sessions. The others are set up and haven't had a real session yet. Full setup for each: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 ## How a solve works
 
@@ -73,8 +74,9 @@ The coach runs these for you; they're here so you can check or fix things by han
 | `coach.py solve show` | The solve in progress: stage, hint rung, focus block (`start`, `stage`, `hint`, `note`, `break`, `block`, `end`) |
 | `coach.py due` | Due re-solves and cards |
 | `coach.py quiz` | Due card fronts (`--json` adds answers) |
-| `coach.py card list --drafts` | Cards waiting for your approval (`card accept`, `card edit`, `card retire`) |
+| `coach.py card list` | Your cards (`card add`, `card edit`, `card retire`; `--drafts` lists cards from web chats that wait for `card accept`) |
 | `coach.py log attempt ...` | Log an attempt (`--help` lists every field) |
+| `coach.py log feedback --text "..."` | Note something about the coach or its tools for later (`/note` in Claude Code) |
 | `coach.py artifact list` | Saved explainers and published pages |
 | `coach.py export` / `coach.py import` | Web-chat round trip |
 | `coach.py map --json` | Progress by pattern, what's due and the live solve (what the learning app shows) |
@@ -99,10 +101,16 @@ After a study session, commit the notebook so every machine sees the same journe
 git add -A && git commit -m "Session 2026-11-02: two pointers" && git push
 ```
 
+## Improving it
+
+When something about the coach or its tools bothers you in a session, say "note: ..." or type `/note ...`. It is logged in `notebook/feedback.jsonl` with the version and where you were in the solve, and the session carries on. Nothing gets built then.
+
+Notes are triaged between versions into [plans/backlog.md](plans/backlog.md): what the next version takes, what waits, and what was declined and why. That file also says whether a test period is running. During one, the product stays as it is, apart from a fix for something that blocks a session or corrupts the record.
+
 ## Changing the skill
 
 1. Edit files in `skills/dsa-coach/`.
-2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`.
+2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`. After changing how the coach teaches, also run [docs/coach-check.md](docs/coach-check.md) by hand.
 3. Bump the version in two places: `metadata.version` in SKILL.md and `SKILL_VERSION` in coach.py.
 4. `coach.py package`, then re-upload `dist/dsa-coach.zip` wherever you uploaded it (Claude web, Cowork). Claude Code and Codex use the folder directly.
 
