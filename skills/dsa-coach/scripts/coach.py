@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
 
-SKILL_VERSION = "0.9.4"
+SKILL_VERSION = "1.0.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -39,6 +39,9 @@ WEAK_SPOT_DAYS = 30      # weak spots count the mistakes logged in this many day
 HIGH_CONFIDENCE = 4      # a miss at this confidence or above is worth a second look
 MOCKS_FROM_WEEK = 6      # timed mocks start in this week of the plan
 MOCK_EVERY_DAYS = 14     # and are suggested again after this many days
+REVIEWS_PER_DAY = 3      # re-solves `next` serves in a day before it moves on to cards and new problems
+OVERRUN_GRACE = 3        # minutes a focus block may run past its length before its time is in doubt
+AREAS = ["coach", "schedule", "cli", "app", "panel", "pane", "explainer", "content", "docs"]  # what a feedback note is about
 MODES = ["learn", "practice", "review", "mock", "ai", "machine"]
 OUTCOMES = ["solved", "partial", "failed"]
 DIFFICULTIES = ["easy", "medium", "hard"]
@@ -111,6 +114,7 @@ class Attempt(TypedDict, total=False):
     technique: str | None
     mistakes: list  # codes from MISTAKES
     complexity_stated: bool
+    plan_only: bool  # a re-solve checked as a plan, with no code written
     note: str
     skill_version: str
     source: str  # "cli", or the web chat a delta came from
@@ -403,6 +407,12 @@ def is_unaided(attempt: Attempt) -> bool:
             and int(attempt.get("hints") or 0) <= UNAIDED_MAX_RUNG)
 
 
+def is_code_solve(attempt: Attempt) -> bool:
+    """An unaided solve where he wrote and ran the code. A plan-only check keeps the review schedule moving;
+    only code earns a problem its status or credits a technique."""
+    return is_unaided(attempt) and not attempt.get("plan_only")
+
+
 def review_cap(cfg: dict, on: date) -> int | None:
     try:
         target = date.fromisoformat(cfg.get("target_date", ""))
@@ -436,7 +446,7 @@ def problem_status(attempts: list, cfg: dict) -> ProblemStatus:
     for attempt in attempts:
         streak = streak + 1 if is_unaided(attempt) else 0
     interval = capped(RESOLVE_LADDER[min(streak, len(RESOLVE_LADDER) - 1)], cfg, last_day)
-    unaided = [attempt for attempt in attempts if is_unaided(attempt)]
+    unaided = [attempt for attempt in attempts if is_code_solve(attempt)]  # plan-only checks earn no status
     delayed = [attempt for attempt in unaided
                if (date.fromisoformat(attempt["date"]) - first_day).days >= int(cfg["delay_days"])]
     # ready: a delayed unaided solve that was also timed, within the cap, with complexity stated
@@ -469,13 +479,14 @@ def analyze_problems(state: dict) -> dict:
 
 def technique_ledger(state: dict) -> dict:
     """Which teaching techniques are followed by unaided solves. A technique used on an attempt gets one trial:
-    the first later attempt on that problem at least delay_days on. The trial succeeds if that attempt is unaided."""
+    the first later attempt on that problem at least delay_days on. The trial succeeds if that attempt is unaided.
+    AI drills and plan-only checks are never trials."""
     delay = int(state["config"]["delay_days"])
     ledger: dict = {}
     for attempts in by_problem(state["attempts"]).values():
         credited = set()
         for i, later in enumerate(attempts):
-            if later.get("mode") == "ai":
+            if later.get("mode") == "ai" or later.get("plan_only"):
                 continue
             day = date.fromisoformat(later["date"])
             for earlier in attempts[:i]:
@@ -549,14 +560,24 @@ def pick_new(rows: list, pattern: str | None = None, week: int | None = None) ->
     return None
 
 
+def resolves_left(journey: Journey) -> list:
+    """The due re-solves still to do on the journey's date: at most REVIEWS_PER_DAY a day, so reviews
+    leave room for new problems. A problem counts as re-solved that day when it was attempted then
+    and first met on an earlier day."""
+    on = journey["generated"]
+    done = sum(problem["last"] == on and problem["first"] < on for problem in journey["problems"].values())
+    return journey["due"]["resolves"][:max(0, REVIEWS_PER_DAY - done)]
+
+
 def pick_next(journey: Journey, pattern: str | None = None) -> dict:
     """One item to practise now. A named pattern skips everything due."""
     due = journey["due"]
     if not pattern:
         if due["inbox"]:
             return {"kind": "inbox", "files": due["inbox"]}
-        if due["resolves"]:
-            return dict(due["resolves"][0], kind="resolve")
+        resolves = resolves_left(journey)
+        if resolves:
+            return dict(resolves[0], kind="resolve")
         if due["cards"]:
             return {"kind": "cards", "count": len(due["cards"])}
     return pick_new(journey["patterns"], pattern, journey["plan"]["week"]) or {"kind": "none"}
@@ -632,19 +653,19 @@ def pattern_row(pattern: dict, problems: dict, activity: dict) -> PatternRow:
     }
 
 
-def pick_focus(rows: list, activity: dict) -> str | None:
-    """The pattern in focus: the one touched most recently that isn't ready, else the next unstarted one in the plan."""
-    by_key = {row["key"]: row for row in rows}
-    recent = [(when, key) for key, when in activity.items() if key in by_key and by_key[key]["status"] != "ready"]
-    if recent:
-        return max(recent)[1]
-    return next((row["key"] for row in sorted(rows, key=plan_order) if row["status"] == "not started"), None)
+def check_kind(last: Attempt, problem: ProblemStatus) -> str:
+    """How a due re-solve is run: "code" (he writes and runs it) or "plan" (a plan-only check).
+    Code until the problem is retained and after every attempt that wasn't an unaided solve in code,
+    so once it is retained the two alternate."""
+    return "plan" if problem["status"] in RETAINED and is_code_solve(last) else "code"
 
 
 def due_items(state: dict, problems: dict, on: date) -> dict:
     """What is waiting on `on`: re-solves and cards (earliest due date first), draft cards and inbox deltas."""
+    attempts = by_problem(state["attempts"])
     resolves = [{"problem": problem["problem"], "pattern": problem["pattern"], "due": problem["next_due"],
-                 "overdue_days": (on - date.fromisoformat(problem["next_due"])).days, "status": problem["status"]}
+                 "overdue_days": (on - date.fromisoformat(problem["next_due"])).days, "status": problem["status"],
+                 "check": check_kind(attempts[problem["problem"]][-1], problem)}
                 for problem in problems.values() if date.fromisoformat(problem["next_due"]) <= on]
     cards = sorted((card for card in state["cards"] if is_card_due(card, on)), key=lambda card: card["due"])
     return {
@@ -655,14 +676,16 @@ def due_items(state: dict, problems: dict, on: date) -> dict:
     }
 
 
-def totals(state: dict, problems: dict) -> dict:
+def totals(state: dict, problems: dict, on: date) -> dict:
     attempts, cards = state["attempts"], state["cards"]
     active = [card for card in cards if card.get("status") == "active"]
+    week = [attempt for attempt in attempts if 0 <= (on - date.fromisoformat(attempt["date"])).days < 7]
     return {
-        "problems": len(problems), "attempts": len(attempts), "unaided_solves": sum(is_unaided(attempt) for attempt in attempts),
+        "problems": len(problems), "attempts": len(attempts), "unaided_solves": sum(is_code_solve(attempt) for attempt in attempts),
         "retained": sum(problem["status"] in RETAINED for problem in problems.values()),
         "ready": sum(problem["status"] == "ready" for problem in problems.values()),
         "minutes": sum(int(attempt.get("minutes") or 0) for attempt in attempts),
+        "minutes_7d": sum(int(attempt.get("minutes") or 0) for attempt in week),
         "sessions": len(state["sessions"]), "questions": len(state["questions"]),
         "cards_active": len(active), "cards_held": sum(card_held(card) for card in active),
         "cards_draft": sum(card.get("status") == "draft" for card in cards),
@@ -709,9 +732,14 @@ def next_steps(journey: Journey) -> list:
     steps = []
     if due["inbox"]:
         steps.append(f"Import {len(due['inbox'])} session delta(s) waiting in inbox/ (`coach.py import`).")
-    if due["resolves"]:
-        steps.append("Re-solve from a blank page: " + ", ".join(item["problem"] for item in due["resolves"][:3])
-                     + " (a plan-only check is fine for the first).")
+    resolves = resolves_left(journey)
+    waiting = len(due["resolves"]) - len(resolves)
+    if resolves:
+        steps.append("Re-solve from a blank page: "
+                     + ", ".join(item["problem"] + (" (plan-only check)" if item["check"] == "plan" else "") for item in resolves)
+                     + (f". Also due after these: {waiting}." if waiting else "."))
+    elif waiting:
+        steps.append(f"Today's {REVIEWS_PER_DAY} re-solves are done. Still due, for tomorrow: {waiting}.")
     if due["cards"]:
         steps.append(f"Quiz: {len(due['cards'])} due card(s), about {max(2, len(due['cards']))} minutes (`coach.py quiz`).")
     new = pick_new(journey["patterns"], week=week)
@@ -747,6 +775,7 @@ def compute(state: dict, on: date | None = None) -> Journey:
     rows = [pattern_row(pattern, problems, activity) for pattern in roadmap["patterns"]]
     week = plan["week"]
     unstarted = [row for row in rows if row["status"] == "not started"]
+    new = pick_new(rows, week=week)
     journey: Journey = {
         "generated": on.isoformat(),
         "skill_version": SKILL_VERSION,
@@ -754,14 +783,14 @@ def compute(state: dict, on: date | None = None) -> Journey:
         "goal": cfg.get("goal"),
         "targets": cfg.get("targets", []),
         "plan": plan,
-        "focus": pick_focus(rows, activity),
+        "focus": new["pattern"] if new else None,  # the pattern his next new problem comes from
         "patterns": rows,
         "behind": [row["key"] for row in unstarted if planned_week(row) < week],
         "this_week": [row["key"] for row in unstarted if row["week"] == week],
         "ahead": [row["key"] for row in rows if row["status"] != "not started" and (row["week"] or 0) > week],
         "problems": problems,
         "due": due_items(state, problems, on),
-        "totals": totals(state, problems),
+        "totals": totals(state, problems, on),
         "weak_spots": weak_spots(attempts, on),
         "calibration": calibration(attempts),
         "techniques": sorted(technique_ledger(state).values(), key=lambda entry: (-entry["trials"], entry["technique"])),
@@ -776,6 +805,14 @@ def compute(state: dict, on: date | None = None) -> Journey:
 
 
 # --------------------------------------------------------------------------- rendering
+def pace_line(journey: Journey) -> str:
+    """Time logged on problems in the last seven days, beside the plan's weekly hours.
+    Time on task, not a count of problems: the habit is the block, not the tally."""
+    minutes, hours = journey["totals"]["minutes_7d"], journey["plan"]["weekly_hours"]
+    spent = f"{minutes // 60} h {minutes % 60} min" if minutes >= 60 else f"{minutes} min"
+    return f"Last 7 days: {spent} on problems" + (f"; the plan sets aside {hours} h a week" if hours else "")
+
+
 def render_journey(journey: Journey) -> str:
     plan = journey["plan"]
     by_key = {r["key"]: r for r in journey["patterns"]}
@@ -825,6 +862,7 @@ def render_journey(journey: Journey) -> str:
     out += ["", "## Totals", "",
             f"- Problems attempted: {t['problems']} · unaided solves: {t['unaided_solves']} · retained: {t['retained']} · ready: {t['ready']}",
             f"- Attempts logged: {t['attempts']} · minutes: {t['minutes']} · sessions: {t['sessions']}",
+            f"- {pace_line(journey)}",
             f"- Cards: {t['cards_active']} active ({t['cards_held']} held at {HELD_DAYS}+ days), {t['cards_draft']} draft, {t['cards_retired']} retired",
             f"- Questions asked: {t['questions']} · explainers saved: {t['explainers']}"]
     out += ["", f"## Weak spots (last {WEAK_SPOT_DAYS} days)", ""]
@@ -930,6 +968,7 @@ Your learning data for the dsa-coach skill. Write to it through `coach.py` (see 
 - `artifacts/registry.json`: every saved or published explainer.
 - `inbox/`: session deltas from web chats, waiting for `coach.py import`.
 - `exports/`: context packs for web chats (`coach.py export`).
+- `feedback.jsonl`: your notes about the coach and its tools (`coach.py log feedback`).
 """
 
 PREFERENCES_TEMPLATE = """# Stated preferences
@@ -1059,6 +1098,7 @@ def add_attempt(root: Path, a: dict, source: str = "cli") -> dict:
         "technique": a.get("technique"),
         "mistakes": list(a.get("mistakes") or []),
         "complexity_stated": bool(a.get("complexity_stated")),
+        "plan_only": bool(a.get("plan_only")),
         "note": a.get("note", ""),
         "skill_version": a.get("skill_version", SKILL_VERSION),
         "source": source,
@@ -1084,7 +1124,7 @@ def cmd_log_attempt(args) -> None:
         "problem": args.problem, "pattern": args.pattern, "difficulty": args.difficulty, "mode": args.mode,
         "outcome": args.outcome, "minutes": args.minutes, "hints": args.hints, "assisted": args.assisted,
         "confidence": args.confidence, "technique": args.technique, "mistakes": split_codes(args.mistakes),
-        "complexity_stated": args.complexity_stated, "note": args.note or "", "date": args.date,
+        "complexity_stated": args.complexity_stated, "plan_only": args.plan_only, "note": args.note or "", "date": args.date,
     })
 
 
@@ -1100,7 +1140,8 @@ def log_and_report(root: Path, a: dict, as_json: bool = False) -> None:
 def report_attempt(root: Path, row: dict, as_json: bool = False, already: bool = False) -> None:
     """What logging an attempt led to: a JSON receipt (--json), or one line for the chat."""
     info = analyze_problems(load_state(root))[row["problem"]]
-    kind = "unaided" if is_unaided(row) else "assisted" if row["assisted"] else "not unaided"
+    kind = ("unaided" if is_code_solve(row) else "plan-only check" if is_unaided(row)
+            else "assisted" if row["assisted"] else "not unaided")
     if as_json:
         print(json.dumps({"id": row["id"], "problem": row["problem"], "outcome": row["outcome"], "kind": kind,
                           "status": info["status"], "next_due": info["next_due"]}))
@@ -1142,6 +1183,28 @@ def cmd_log_question(args) -> None:
     row = add_question(root, {"concept": args.concept, "text": args.text, "date": args.date})
     write_snapshot(root)
     print(f"Logged {row['id']} under {row['concept']}.")
+
+
+def add_feedback(root: Path, text: str, area: str | None, by: str) -> dict:
+    """One feedback note about the coach or its tools, kept for the next triage (plans/backlog.md).
+    The script stamps what a model would misremember: the id, the date, the skill version and,
+    when a solve is live, where in it he was."""
+    path = root / "feedback.jsonl"
+    row = {"id": next_id("f", [x.get("id") for x in read_jsonl(path)]), "date": today().isoformat(), "by": by,
+           "area": area, "text": text.strip(), "skill_version": SKILL_VERSION}
+    live = load_live(root, required=False)
+    if live:
+        row["during"] = {"problem": live["problem"], "stage": live["stage"], "rung": live["rung"]}
+    append_jsonl(path, row)
+    return row
+
+
+def cmd_log_feedback(args) -> None:
+    root = find_root(args.root)
+    if not args.text.strip():
+        raise CoachError("--text is empty: say what you noticed")
+    row = add_feedback(root, args.text, args.area, args.by)
+    print(f"Noted {row['id']}. It waits in feedback.jsonl for the next triage.")
 
 
 def append_session(root: Path, on: date, text: str, minutes: int | None, platform: str | None = None) -> Path:
@@ -1330,8 +1393,11 @@ def render_next(item: dict) -> str:
     kind = item["kind"]
     if kind == "inbox":
         return f"Import {len(item['files'])} session delta(s) waiting in inbox/: {', '.join(item['files'])}."
+    if kind == "resolve" and item.get("check") == "plan":
+        return (f"Plan-only check of {item['problem']} ({item['pattern']}), from memory: the pattern, the invariant, "
+                "one trace, the complexity and one changed constraint.")
     if kind == "resolve":
-        return f"Re-solve {item['problem']} ({item['pattern']}) from a blank page."
+        return f"Re-solve {item['problem']} ({item['pattern']}) in code, from a blank page."
     if kind == "cards":
         return f"Quiz: {item['count']} due card(s)."
     mixed = "" if item.get("block", True) else " Mixed practice: present it without the pattern name."
@@ -1419,12 +1485,27 @@ def load_live(root: Path, required: bool = True) -> dict | None:
     return live
 
 
-def block_minutes(block: dict, at: datetime, length: int) -> float:
-    """Minutes in a focus block, from its start to its end (or now), less any idle time older solves paused out.
-    A block counts at most its length: one left open overnight is one block, not the hours since."""
+def block_ran(block: dict, at: datetime) -> float:
+    """Minutes from a focus block's start to its end (or now), less any idle time older solves paused out."""
     end = datetime.fromisoformat(block["end"]) if block.get("end") else at
-    minutes = (end - datetime.fromisoformat(block["start"])).total_seconds() / 60 - block.get("paused", 0) / 60
-    return min(max(0.0, minutes), length)
+    return max(0.0, (end - datetime.fromisoformat(block["start"])).total_seconds() / 60 - block.get("paused", 0) / 60)
+
+
+def block_minutes(block: dict, at: datetime, length: int) -> float:
+    """What a focus block counts for: the minutes it ran, at most its length.
+    One left open overnight is one block, not the hours since."""
+    return min(block_ran(block, at), length)
+
+
+def overrun(live: dict, at: datetime) -> str | None:
+    """The first focus block that ran more than OVERRUN_GRACE minutes past its length, in words, or None.
+    Past that, the script can't tell working on from walking away, so the time he worked is in doubt."""
+    length = live["block_minutes"]
+    for number, block in enumerate(live["blocks"], 1):
+        ran = int(block_ran(block, at))
+        if ran > length + OVERRUN_GRACE:
+            return f"focus block {number} ran {ran} min, past its {length}"
+    return None
 
 
 def open_block(live: dict) -> dict | None:
@@ -1490,20 +1571,27 @@ def solve_end(root: Path, live: dict, args) -> None:
         return
     if not args.outcome:
         raise CoachError("give --outcome (solved, partial or failed), or --discard")
+    if "session_id" not in live:  # a solve started before 0.9.0. Save the id first, so a retried end still logs once
+        live["session_id"] = os.urandom(16).hex()
+        write_json(root / LIVE, live)
     session = live["session_id"]
     row = logged_from(root, session)  # an end that stopped after logging: finish it, don't log again
     if row:
         report_attempt(root, row, args.json, already=True)
     else:
         v = live_view(live)
+        over = overrun(live, now())
+        if over and args.minutes is None:
+            raise CoachError(f"{over}, so the time he worked isn't known ({v['minutes']} min counted). "
+                             "Ask him how long he worked on it and pass --minutes N.")
         log_and_report(root, {
             "problem": live["problem"], "pattern": live["pattern"], "difficulty": live["difficulty"], "mode": live["mode"],
             "outcome": args.outcome, "minutes": v["minutes"] if args.minutes is None else args.minutes,
             "hints": live["rung"], "assisted": args.assisted,
             "confidence": live.get("confidence") if args.confidence is None else args.confidence,
             "technique": args.technique, "mistakes": split_codes(args.mistakes),
-            "complexity_stated": args.complexity_stated, "note": args.note or "", "skill_version": live["skill_version"],
-            "session": session,
+            "complexity_stated": args.complexity_stated, "plan_only": args.plan_only, "note": args.note or "",
+            "skill_version": live["skill_version"], "session": session,
         }, args.json)
     notes = root / "problems" / live["problem"] / "notes.md"
     if live.get("notes") and not re.search(rf"^### .* \({re.escape(session)}\)$", notes.read_text(encoding="utf-8"), re.M):
@@ -1637,9 +1725,16 @@ def cmd_status(args) -> None:
           + f" · week {plan['week']} · {plan['phase']} · skill {SKILL_VERSION}")
     print(f"Focus: {focus['name'] + ' (' + focus['status'] + ')' if focus else 'not set'}")
     print(f"Due: {len(d['resolves'])} re-solve(s) · {len(d['cards'])} card(s) · {d['drafts']} draft card(s) to approve · {len(d['inbox'])} inbox delta(s)")
+    print(pace_line(journey))
     live = load_live(root, required=False)
     if live:
-        print(f"Live solve: {describe_live(live_view(live))}. Resume it: `coach.py solve show --json`.")
+        line = describe_live(live_view(live))
+        days = (now().date() - datetime.fromisoformat(live["blocks"][-1]["start"]).date()).days
+        if days >= 1:  # left from an earlier day: he decides, the coach doesn't resume it unasked
+            print(f"Live solve, untouched for {days} day(s): {line}. Ask him: resume it (`coach.py solve show --json`), "
+                  "park it (`solve end --outcome partial --note \"parked: ...\"`) or drop it (`solve end --discard`).")
+        else:
+            print(f"Live solve: {line}. Resume it: `coach.py solve show --json`.")
     if not args.brief:
         started = [r for r in journey["patterns"] if r["status"] != "not started"]
         if started:
@@ -1928,6 +2023,7 @@ def cmd_validate(args) -> None:
         for i, a in enumerate(read_jsonl(root / "learner" / "attempts.jsonl", issues)):
             issues += [f"attempts line {i + 1} ({a.get('id')}): {e}" for e in validate_attempt(a, keys)]
         read_jsonl(root / "learner" / "questions.jsonl", issues)
+        read_jsonl(root / "feedback.jsonl", issues)
         for c in read_json(root / "learner" / "cards.json", []):
             if c.get("type") not in CARD_TYPES or c.get("status") not in ("draft", "active", "retired"):
                 issues.append(f"card {c.get('id')}: bad type or status")
@@ -1978,9 +2074,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--technique", choices=TECHNIQUES)
     s.add_argument("--mistakes", help=f"comma-separated codes: {', '.join(MISTAKES)}")
     s.add_argument("--complexity-stated", action="store_true")
+    s.add_argument("--plan-only", action="store_true", help="a re-solve checked as a plan, with no code written")
     s.add_argument("--note")
     s.add_argument("--date")
     s.set_defaults(func=cmd_log_attempt)
+    s = log.add_parser("feedback", help="note something about the coach or its tools, for the next triage")
+    s.add_argument("--text", required=True)
+    s.add_argument("--area", choices=AREAS)
+    s.add_argument("--by", default="learner", choices=["learner", "coach"], help="who noticed it")
+    s.set_defaults(func=cmd_log_feedback)
     s = log.add_parser("question")
     s.add_argument("--concept", required=True)
     s.add_argument("--text", required=True)
@@ -2083,6 +2185,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--technique", choices=TECHNIQUES)
     s.add_argument("--mistakes", help=f"comma-separated codes: {', '.join(MISTAKES)}")
     s.add_argument("--complexity-stated", action="store_true")
+    s.add_argument("--plan-only", action="store_true", help="a re-solve checked as a plan, with no code written")
     s.add_argument("--note")
     s.add_argument("--json", action="store_true", help="print the receipt: id, outcome, kind, status, next_due")
     for name, sp in solve.choices.items():

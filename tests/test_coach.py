@@ -70,6 +70,8 @@ class CoachTest(unittest.TestCase):
             args += ["--mistakes", kw["mistakes"]]
         if kw.get("complexity", True):
             args.append("--complexity-stated")
+        if kw.get("plan_only"):
+            args.append("--plan-only")
         return self.run_cli(*args, today=date)
 
     def next_item(self, *args, today=None):
@@ -179,7 +181,30 @@ class CoachTest(unittest.TestCase):
         rows = {r["key"]: r for r in j["patterns"]}
         self.assertEqual(rows["two-pointers"]["status"], "practicing")
         self.assertEqual(rows["sliding-window"]["status"], "exploring")
-        self.assertEqual(j["focus"], "sliding-window")  # most recent activity
+        self.assertEqual(j["focus"], "two-pointers")  # where the next new problem comes from, not the last thing touched
+        self.assertEqual(self.next_item()["pattern"], j["focus"])
+
+    def test_plan_only_check_moves_the_schedule_and_earns_nothing(self):
+        self.attempt("p", "2026-11-01", technique="worked-example")
+        self.attempt("p", "2026-11-02", mode="review", plan_only=True)
+        p = self.journey()["problems"]["p"]
+        self.assertEqual((p["status"], p["streak"], p["next_due"]), ("practicing", 2, "2026-11-09"))
+        out = self.attempt("p", "2026-11-05", mode="review", plan_only=True).stdout  # delayed, but no code was written
+        self.assertIn("plan-only check", out)
+        j = self.journey()
+        self.assertEqual((j["problems"]["p"]["status"], j["techniques"], j["totals"]["unaided_solves"]), ("practicing", [], 1))
+        self.attempt("p", "2026-11-12", mode="review")  # code: now it counts
+        j = self.journey()
+        self.assertEqual(j["problems"]["p"]["status"], "ready")
+        self.assertEqual((j["techniques"][0]["trials"], j["techniques"][0]["evidence"]), (1, ["a0001->a0004"]))
+
+    def test_pace_is_the_last_seven_days_of_minutes(self):
+        self.attempt("p", "2026-11-01", minutes=50)
+        self.attempt("q", "2026-11-03", minutes=25)
+        self.assertIn("Last 7 days: 1 h 15 min on problems; the plan sets aside 11 h a week",
+                      self.run_cli("status", "--brief", today="2026-11-07").stdout)
+        self.assertIn("Last 7 days: 25 min on problems", self.run_cli("status", today="2026-11-08").stdout)
+        self.assertIn("- Last 7 days: 25 min on problems", (self.root / "JOURNEY.md").read_text())
 
     # ------------------------------------------------------------------ technique ledger
     def test_technique_credit_only_after_delay(self):
@@ -309,6 +334,20 @@ class CoachTest(unittest.TestCase):
         self.run_cli("card", "review", "--id", "c0001", "--grade", "pass", "--date", "2026-11-02", today="2026-11-02")
         item = self.next_item(today="2026-11-02")
         self.assertEqual((item["kind"], item["problem"], item["first"]), ("new", "group-anagrams", False))
+
+    def test_next_serves_three_resolves_a_day_and_says_how_to_check_each(self):
+        slugs = ["two-sum", "valid-anagram", "contains-duplicate", "group-anagrams"]
+        for slug in slugs:
+            self.attempt(slug, "2026-11-01", pattern="arrays-hashing", hints=3)  # all due 11-02
+        item = self.next_item(today="2026-11-02")
+        self.assertEqual((item["kind"], item["problem"], item["check"]), ("resolve", "two-sum", "code"))
+        self.assertIn("contains-duplicate. Also due after these: 1.", self.run_cli("status", today="2026-11-02").stdout)
+        for slug in slugs[:3]:
+            self.attempt(slug, "2026-11-02", pattern="arrays-hashing", mode="review")
+        self.assertEqual(self.next_item(today="2026-11-02")["kind"], "new")  # the day's three are done
+        self.assertIn("Today's 3 re-solves are done. Still due, for tomorrow: 1.", self.run_cli("status", today="2026-11-02").stdout)
+        item = self.next_item(today="2026-11-03")
+        self.assertEqual((item["kind"], item["problem"]), ("resolve", "group-anagrams"))
 
     def test_next_leaves_the_choice_to_the_coach_after_named_problems(self):
         for slug in ("two-sum", "group-anagrams", "longest-consecutive-sequence"):
@@ -483,13 +522,90 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "hint", "--rung", "3", now="10:12")
         self.run_cli("solve", "hint", "--rung", "2", now="10:13")  # the highest rung stays
         self.assertEqual((self.live()["stage"], self.live()["rung"]), (3, 3))
-        self.run_cli("solve", "break", now="10:20")  # 20 minutes, counted as the 15-minute block it is
+        self.run_cli("solve", "break", now="10:17")  # 17 minutes, counted as the 15-minute block it is
         self.run_cli("solve", "block", now="10:30")
         self.run_cli("solve", "end", "--outcome", "solved", "--note", "complement lookup", now="10:42")
         self.assertIsNone(self.live())
         [a] = self.attempts()
         self.assertEqual((a["problem"], a["pattern"], a["difficulty"]), ("two-sum", "arrays-hashing", "easy"))
         self.assertEqual((a["minutes"], a["hints"], a["confidence"], a["outcome"]), (27, 3, 3, "solved"))
+
+    def test_a_block_that_ran_well_over_needs_the_minutes_from_him(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        proc = self.run_cli("solve", "end", "--outcome", "solved", ok=False, now="10:40")  # one open block, 40 minutes
+        self.assertIn("focus block 1 ran 40 min, past its 15", proc.stderr)
+        self.assertIn("--minutes", proc.stderr)
+        self.assertEqual(self.attempts(), [])
+        self.assertIsNotNone(self.live())
+        self.run_cli("solve", "end", "--outcome", "solved", "--minutes", "35", now="10:41")
+        self.assertEqual(self.attempts()[0]["minutes"], 35)
+
+    def test_a_solve_from_before_session_ids_ends_and_logs_once(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        live_path = self.root / "sessions/current.json"
+        old = {k: v for k, v in self.live().items() if k != "session_id"}
+        live_path.write_text(json.dumps(old))
+        self.run_cli("solve", "end", "--outcome", "solved", ok=False, now="11:00")  # stops: the block ran over
+        session = self.live()["session_id"]  # but the id it was given is saved
+        saved = live_path.read_bytes()
+        self.run_cli("solve", "end", "--outcome", "solved", "--minutes", "20", now="11:01")
+        live_path.write_bytes(saved)  # as if it stopped before removing the live solve
+        self.run_cli("solve", "end", "--outcome", "solved", "--minutes", "20", now="11:02")
+        self.assertEqual([a["session"] for a in self.attempts()], [session])
+
+    def test_status_asks_about_a_live_solve_left_from_an_earlier_day(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="22:00")
+        self.assertIn("Live solve: two-sum", self.run_cli("status", "--brief", now="23:30").stdout)
+        self.env["DSA_NOW"] = "2026-11-03T09:00:00+05:30"
+        out = self.run_cli("status", "--brief").stdout
+        self.assertIn("Live solve, untouched for 2 day(s): two-sum", out)
+        self.assertIn("solve end --discard", out)
+
+    def test_feedback_note_is_stamped_and_changes_nothing_else(self):
+        journey = (self.root / "journey.json").read_bytes()
+        self.assertIn("Noted f0001", self.run_cli("log", "feedback", "--text", " the timer is easy to miss ").stdout)
+        self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
+        self.run_cli("solve", "stage", "2", now="10:03")
+        self.run_cli("log", "feedback", "--text", "gave the pattern away", "--area", "coach", "--by", "coach")
+        first, second = [json.loads(line) for line in (self.root / "feedback.jsonl").read_text().splitlines()]
+        self.assertEqual((first["id"], first["text"], first["by"], first["area"], first["date"], "during" in first),
+                         ("f0001", "the timer is easy to miss", "learner", None, "2026-11-01", False))
+        self.assertEqual((second["id"], second["by"], second["area"], second["during"], bool(second["skill_version"])),
+                         ("f0002", "coach", "coach", {"problem": "two-sum", "stage": 2, "rung": 0}, True))
+        self.assertEqual((self.root / "journey.json").read_bytes(), journey)
+        self.assertNotEqual(self.run_cli("log", "feedback", "--text", "  ", ok=False).returncode, 0)
+        self.assertIn("OK", self.run_cli("validate").stdout)
+
+    def test_two_weeks_of_the_loop(self):
+        """One problem from first solve to ready: a card, a delayed re-solve in code, a ledger row, then a plan-only check."""
+        self.run_cli("solve", "start", "--problem", "two-sum", "--confidence", "3", now="10:00")
+        self.run_cli("solve", "hint", now="10:05")  # rung 1: still unaided
+        self.run_cli("solve", "end", "--outcome", "solved", "--technique", "hint-ladder", "--complexity-stated", now="10:12")
+        self.run_cli("card", "add", "--concept", "arrays-hashing", "--type", "invariant", "--front", "Q?", "--back", "A.")
+        self.assertEqual(self.journey()["problems"]["two-sum"]["status"], "practicing")
+
+        self.assertEqual(self.next_item(today="2026-11-02")["kind"], "cards")  # the next day: the card, then something new
+        self.run_cli("card", "review", "--id", "c0001", "--grade", "pass", today="2026-11-02")
+        self.assertEqual(self.next_item(today="2026-11-02")["kind"], "new")
+
+        item = self.next_item(today="2026-11-04")  # three days on: in code, because it isn't retained yet
+        self.assertEqual((item["kind"], item["problem"], item["check"]), ("resolve", "two-sum", "code"))
+        self.run_cli("solve", "start", "--problem", "two-sum", "--mode", "review", today="2026-11-04", now="10:00")
+        self.run_cli("solve", "end", "--outcome", "solved", "--complexity-stated", today="2026-11-04", now="10:09")
+        j = self.journey()
+        self.assertEqual((j["problems"]["two-sum"]["status"], j["problems"]["two-sum"]["next_due"]), ("ready", "2026-11-11"))
+        [row] = j["techniques"]
+        self.assertEqual((row["technique"], row["trials"], row["successes"], row["evidence"]),
+                         ("hint-ladder", 1, 1, ["a0001->a0002"]))
+        self.assertEqual((j["totals"]["unaided_solves"], j["totals"]["cards_active"]), (2, 1))
+
+        item = self.next_item(today="2026-11-11")  # retained: a five-minute plan-only check this time
+        self.assertEqual((item["problem"], item["check"]), ("two-sum", "plan"))
+        self.assertIn("Plan-only check of two-sum", self.run_cli("next", today="2026-11-11").stdout)
+        self.attempt("two-sum", "2026-11-11", pattern="arrays-hashing", mode="review", minutes=5, plan_only=True)
+        p = self.journey()["problems"]["two-sum"]
+        self.assertEqual((p["status"], p["next_due"]), ("ready", "2026-11-25"))
+        self.assertEqual(self.next_item(today="2026-11-25")["check"], "code")  # and code after a plan-only check
 
     def view(self, now):
         return json.loads(self.run_cli("solve", "show", "--json", now=now).stdout)

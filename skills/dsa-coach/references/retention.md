@@ -39,14 +39,13 @@ LLMs left to themselves write shallow term-and-definition cards. Write cards in 
 | trace | "Sliding window on s = ADOBECODEBANC, t = ABC: what are l and r after the first shrink?" | Values from the executed trace |
 | salience | "Where would a monotonic deque show up in an LLM serving stack?" | "Sliding-window maximum over latency samples for autoscaling or rate limits." |
 
-Every card is drafted with `--draft`. He accepts, edits or retires each one (`card accept`, `card edit`, `card retire`). Cards he wrote or edited himself matter more to him, and he decides what's worth remembering.
+Show him each card when you write it. He says keep, edit or drop, and the ones he keeps are added active, first due the next day. Cards he wrote or edited himself matter more to him, and he decides what's worth remembering. A card that waits as a draft is never reviewed, so `--draft` is only for cards that arrive from a web chat, where he can't decide yet.
 
 ```bash
-coach.py card add --concept sliding-window --type invariant --front "..." --back "..." --draft
-coach.py card list --drafts
-coach.py card accept --id c0004
+coach.py card add --concept sliding-window --type invariant --front "..." --back "..."
 coach.py card edit --id c0004 --back "..."
 coach.py card retire --id c0005
+coach.py card list --drafts          # from web chats: then card accept --id c0006, or card retire
 ```
 
 ## Card schedule
@@ -70,7 +69,7 @@ A card that survives a gap of 5 days or more is very likely to be remembered lat
 | Trains | Cues, invariants, complexities, traps | Producing working code under time pressure |
 | Takes | Under a minute each | 5 minutes (plan-only) to 25+ minutes (full code) |
 | Schedule | 1, 3, 7, 14, 30, 60 days | 1, 3, 7, 14, 30 days |
-| Counts toward | Recall stats in the snapshot | Problem and pattern status |
+| Counts toward | Recall stats in the snapshot | Problem and pattern status (re-solves in code only; a plan-only check just keeps the schedule moving) |
 
 ## Later (build step 2)
 

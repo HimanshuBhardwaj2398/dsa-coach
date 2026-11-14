@@ -46,7 +46,7 @@ Four stages, one current question at a time. When he asks for help thinking, ask
 | 1 Understand | "What is the unknown, what is given, and what must hold? Restate it in one sentence. What do these two inputs return? What about an empty or single-element input?" | Correct outputs for his own examples |
 | 2 Find an approach | "If speed didn't matter, how would you get the answer?" | A method that works, its count compared with the constraints, and, when it is too slow, an improvement with its reason; a short plan traced on one example |
 | 3 Build it | "What from your plan needs a variable, and what does it hold before the first step?" | Code that follows the plan, each step checked against the invariant |
-| 4 Check and finish | "Trace the edge case as if there's a bug. What's the complexity? Why does it work, in one sentence?" Then one of: "Another way to solve it, and the trade-off?", "What if <constraint> changed?", "What other problem does this solve?" | Tests pass; complexity and the one-sentence reason stated; a one-line lesson |
+| 4 Check and finish | "Trace the edge case as if there's a bug. What's the complexity? Why does it work, in one sentence?" Then, on a first solve of a medium or a hard, one of: "Another way to solve it, and the trade-off?", "What if <constraint> changed?", "What other problem does this solve?" | Tests pass; complexity and the one-sentence reason stated; a one-line lesson |
 
 **Moves for stage 2**, in roughly this order, skipping any his answers already cover:
 1. *Find something that works.* "If speed didn't matter, what could you try?" Too abstract: "Solve this tiny input by hand. What did you do?" Separate listing candidates from checking one.
@@ -70,7 +70,7 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `kind` | First prompt |
 |---|---|
 | `inbox` | Say what the deltas contain, run `coach.py import`, then run `coach.py next --json` again |
-| `resolve` | Review mode, from a blank page |
+| `resolve` | Review mode, from a blank page: a re-solve in code or a plan-only check, as `check` says |
 | `cards` | Quiz mode, one card at a time |
 | `new` with `first: true` | Link the problem, then the first-step probe |
 | `new` with `block: true` | Link the problem and name its pattern, then stage 1 of the solve protocol |
@@ -78,7 +78,7 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
 | `none` | Offer a mock or an unlabeled mixed set |
 
-For a problem, run `coach.py solve start --problem SLUG` before the first prompt, with `--unlabeled` when `block` is false. For a re-solve, run the same command; he solves it on LeetCode from a blank editor. Then give him the LeetCode link it prints.
+For a problem, run `coach.py solve start --problem SLUG` before the first prompt, with `--unlabeled` when `block` is false. Then give him the LeetCode link it prints. For a re-solve with `check: code`, run the same command with `--mode review`, and have him reset LeetCode's editor to the default code first: LeetCode reopens a problem with his last code in it, and a re-solve starts from a blank page. For `check: plan`, don't start a solve; run the plan-only check described under review.
 
 `block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it (`solve end` for a problem) and offer the next one in a line.
 
@@ -89,7 +89,7 @@ For a problem, run `coach.py solve start --problem SLUG` before the first prompt
 - "My block is over": `solve break`, then the stuck-block options in SKILL.md.
 - "Break's over": `solve block`.
 
-At the end, if draft cards are waiting, ask once: "Keep all N, or go through them?" Keeping all means `card accept` for each. Drafts never hold up practice.
+Cards are settled when they are written. After a solve that was hard somewhere, show him one to three cards, one at a time. He says keep, edit or drop, and you add the ones he keeps with `card add`. If drafts are waiting from a web chat, ask once at the end: "Keep all N, or go through them?" Keeping all means `card accept` for each.
 
 ### learn
 
@@ -97,7 +97,7 @@ At the end, if draft cards are waiting, ask once: "Keep all N, or go through the
 2. Low mastery: a worked example on the canonical problem, written as the plan card plus a step-through explainer with prediction prompts (references/explainers.md). Then he closes it and explains it back in his own words, and you save that, in his words, as the Core idea in `concepts/<slug>/notes.md`. Recall, not rereading, is what makes it stick.
 3. A faded example: the same pattern on a second problem with parts of the plan card left blank for him.
 4. One solo problem from the NeetCode section for that pattern, with the hint ladder.
-5. Draft 2–3 retrieval cards; log the attempt with `--mode learn` and the technique used.
+5. Write 2–3 retrieval cards with him (keep, edit or drop); log the attempt with `--mode learn` and the technique used.
 
 ### solve
 
@@ -105,10 +105,12 @@ The solve protocol in SKILL.md. Before giving any verdict on his code, run it ag
 
 ### review
 
-1. List what's due with `coach.py due`.
-2. For each due re-solve, start from a blank page. Most reviews are a 5-minute plan-only check: pattern, invariant, one trace, complexity, and one changed constraint ("what if the values could be negative?"). Reproducing a solution can come from memory; adapting it shows he understands why it works. Every second or third review of a problem is a full-code re-solve with tests.
+1. List what's due with `coach.py due`. `next` serves at most three re-solves a day, so that reviews leave room for new problems; in a review session he can go past three if he wants to.
+2. Each due re-solve starts from a blank page and carries a `check`:
+   - `code` is a full re-solve with tests. A problem gets it until it is retained, and after any attempt that wasn't an unaided solve in code.
+   - `plan` is a 5-minute plan-only check: pattern, invariant, one trace, complexity, and one changed constraint ("what if the values could be negative?"). Reproducing a solution can come from memory; adapting it shows he understands why it works. Once a problem is retained, the two alternate.
 3. Then due cards (see the quiz mode).
-4. Log each re-solve with `--mode review`. Unaided success moves the problem up the review ladder; anything else resets it to tomorrow.
+4. Log a re-solve in code through `solve end`, started with `--mode review`. Log a plan-only check with `log attempt --mode review --plan-only`, as `solved` when the plan was right and complete without help. Unaided success moves the problem up the review ladder; anything else resets it to tomorrow. Only a re-solve in code earns `retained` or `ready`, or credits a technique.
 
 ### quiz
 

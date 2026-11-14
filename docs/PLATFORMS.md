@@ -2,6 +2,8 @@
 
 Everything below assumes the workspace is at `~/Desktop/dsa-coach`. Commands use `coach.py` as short for `python3 skills/dsa-coach/scripts/coach.py`, run from the workspace folder.
 
+As of 1.0.0, Claude Code is the one platform proven in real study sessions. The others below are set up and tested by the unit tests, and haven't had a real session yet.
+
 ## Claude Code
 
 Already set up: `.claude/skills/dsa-coach` links to the skill, and `.claude/settings.json` has a SessionStart hook that prints your status when a session starts.

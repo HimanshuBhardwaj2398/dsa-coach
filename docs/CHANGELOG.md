@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.0.0 · 2026-11-13 · The loop, held still
+
+By day 15 of the plan the notebook held one coached attempt and eleven releases. The record showed why (critique of 2026-11-13): the one live solve could not be ended, review debt blocked new problems, cards waited as drafts for two weeks, and every idea raised in a session became that evening's build. This release fixes what stopped the loop from closing, then freezes the product for a test period. No new views, no new modes.
+
+**The record**
+- **A solve started before 0.9.0 can be ended.** `solve end` read a session id the old live solve never had and would have crashed. It now gives the solve an id and saves it before logging, so ending twice still logs once.
+- **A plan-only check is recorded as one** (`--plan-only` on `solve end` and `log attempt`, field `plan_only`). A pass keeps the review schedule moving. It earns no status and is not a trial for a technique: `retained` and `ready` take an unaided solve in code. Before, a five-minute plan check logged as `solved` could promote a problem with no code written.
+- **A focus block that ran well over needs his minutes.** A block counts at most its length, and the lengths (15, 25, 25) never exceed the time caps (15, 25, 40), so a solve left in one open block always passed the time test for `ready`. When a block ran more than three minutes past its length (`OVERRUN_GRACE`), `solve end` now stops and asks for `--minutes`.
+
+**What `next` serves**
+- **Three re-solves a day** (`REVIEWS_PER_DAY`), then cards and new problems, so a pile of due re-solves no longer blocks everything new. The research notes describe a session as a warm-up, a due re-solve and new learning. `status` says how many more are due.
+- **Each due re-solve carries `check`:** `code` until the problem is retained and after any attempt that wasn't an unaided solve in code, `plan` otherwise. This replaces "every second or third time", which the coach had to remember.
+- **Focus is the pattern the next new problem comes from.** It was the last pattern touched, so one question about heaps made Heap the focus in week 3.
+- **One pace line** in `status` and JOURNEY.md: minutes logged on problems in the last seven days, beside `weekly_hours`. Time on task, not a count of problems (`learning-principles.md`: process over product).
+- **A live solve from an earlier day is asked about**, not resumed: `status` says how many days it has been untouched and gives the three choices (resume, park, discard).
+
+**Finishing a solve** (SKILL.md, `references/protocol.md`, `references/retention.md`)
+- **Stage 4 is sized to the problem.** The complexity and the one-sentence reason always; the extra question only on a first solve of a medium or a hard. The look back is the phase people skip (Polya), so it has to be short enough to happen.
+- **Cards are settled when they are written.** The coach shows each one, he says keep, edit or drop, and kept cards are added active. `--draft` stays for cards from web chats. Seven drafts sat for fourteen days and no card was ever reviewed.
+- **A re-solve in code starts with LeetCode's editor reset**, since LeetCode reopens a problem with the last code in it.
+
+**Improving the coach**
+- **Feedback notes:** `coach.py log feedback --text "..." [--area ...] [--by coach]` appends to `notebook/feedback.jsonl`, stamped with an id, the date, the skill version and, when a solve is live, the problem, stage and rung. `/note` does it in Claude Code. The coach logs a remark in one command and carries on. Nothing about notes appears at session start.
+- **`plans/backlog.md`:** the triaged notes (Next version, Later, Declined), the triage rules, and the test period: at least 10 sessions and 14 days on the unchanged version, with the conditions that make 1.0 proven. It is seeded with what the critique left for later.
+- **`docs/coach-check.md`:** eight situations that check the teaching by hand before a release.
+- CLAUDE.md and AGENTS.md carry the freeze and the note rule. GLOSSARY.md adds plan-only check, feedback note, backlog and test period.
+
+Tests: `test_two_weeks_of_the_loop` (first solve to ready, a card, a ledger row, then plan and code alternating), `test_plan_only_check_moves_the_schedule_and_earns_nothing`, `test_next_serves_three_resolves_a_day_and_says_how_to_check_each`, `test_a_block_that_ran_well_over_needs_the_minutes_from_him`, `test_a_solve_from_before_session_ids_ends_and_logs_once`, `test_status_asks_about_a_live_solve_left_from_an_earlier_day`, `test_feedback_note_is_stamped_and_changes_nothing_else`, `test_pace_is_the_last_seven_days_of_minutes`. 81 Python tests.
+
+Coach check: not yet run. It needs a fresh interactive session; run it before the test period's first study session.
+
 ## 2026-11-12 · Learning app: one script
 
 - **`app/static/nav.js` is merged into `app.js`.** The two depended on each other through globals (`nav.js` used `app.js`'s helpers, and `app.js`'s error notice called `nav.js`'s `show`), held together by script order. One file of 268 lines, one `DOMContentLoaded` handler.
