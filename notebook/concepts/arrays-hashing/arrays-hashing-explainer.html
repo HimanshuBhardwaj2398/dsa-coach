@@ -386,7 +386,7 @@ function gridGate() {
 }
 
 /* shared one-question gate: buttons, answer, feedback that stays */
-function askChoice(box, q, choices, answer, why, done) {
+function askChoice(box, q, choices, answer, why, done, focus = true) {
   box.innerHTML = `<div class="gate"><p>Predict: ${esc(q)}</p><div class="row">${choices.map((c) =>
     `<button type="button" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div class="fb"></div></div>`;
   box.querySelectorAll("button").forEach((b) => b.onclick = () => {
@@ -397,7 +397,7 @@ function askChoice(box, q, choices, answer, why, done) {
     fb.textContent = (ok ? "✓ Right: " : `✗ You said ${pick}, it's ${answer}. `) + (why || "");
     done(pick, ok);
   });
-  box.querySelector("button").focus();
+  if (focus) box.querySelector("button").focus();  // not for a gate drawn as the page loads: that would open the page here
 }
 
 /* ---------- 3 · doubling ---------- */
@@ -412,7 +412,7 @@ function renderDbl(showLast) {
 renderDbl(false);
 askChoice($("dblGate"), "n doubles from 32 to 64. About how many times more often does the brute-force compare line run?",
   ["×2", "×4", "×8"], "×4", "Doubling n roughly quadruples n(n−1)/2, the signature of O(n²). The hashing column only doubles: O(n).",
-  () => renderDbl(true));
+  () => renderDbl(true), false);
 
 /* ---------- 4 · stepper ---------- */
 let P = null, idx = -1, gate = null, timer = null;
