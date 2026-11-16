@@ -2,3 +2,4 @@
 {"id": "q0002", "date": "2026-10-29", "concept": "python-collections", "text": "Counter is a dict and accepts <= and >=. Does it implement them on .items()?", "source": "cli"}
 {"id": "q0003", "date": "2026-10-29", "concept": "sliding-window", "text": "What does it mean to increment have only when a character's count reaches the required count?", "source": "cli"}
 {"id": "q0004", "date": "2026-11-05", "concept": "stack", "text": "Does the page cover all relevant LeetCode examples? Asked for more examples, animations, and the math or rules that make a stack solution complete and efficient.", "source": "cli"}
+{"id": "q0005", "date": "2026-11-11", "concept": "heap", "text": "Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.", "source": "cli"}
