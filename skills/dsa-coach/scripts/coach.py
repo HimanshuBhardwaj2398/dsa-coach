@@ -1462,10 +1462,16 @@ def render_map(view: dict) -> str:
 def cmd_map(args) -> None:
     root = find_root(args.root)
     state = load_state(root)
-    journey, roadmap = compute(state, parse_date(args.date)), state["roadmap"]
+    journey, roadmap, catalogue = compute(state, parse_date(args.date)), state["roadmap"], load_catalogue()
+    titles = {c["slug"]: c["title"] for rows in catalogue.values() for c in rows}
+    title = lambda slug: titles.get(slug, slug)  # a problem outside the catalogue keeps its slug
     live = load_live(root, required=False)
-    due = dict(journey["due"], resolves=[dict(r, url=problem_url(roadmap, r["problem"])) for r in journey["due"]["resolves"]])
-    view = dict(map_view(journey, roadmap, load_catalogue()), due=due, live=live_view(live) if live else None)
+    # `today`: how many of the due re-solves, from the top of the list, are still today's (REVIEWS_PER_DAY)
+    due = dict(journey["due"], today=len(resolves_left(journey)),
+               resolves=[dict(r, title=title(r["problem"]), url=problem_url(roadmap, r["problem"]))
+                         for r in journey["due"]["resolves"]])
+    view = dict(map_view(journey, roadmap, catalogue), due=due,
+                live=dict(live_view(live), title=title(live["problem"])) if live else None)
     print(json.dumps(view, indent=2, ensure_ascii=False) if args.json else render_map(view))
 
 # live solve -----------------------------------------------------------------
@@ -1514,8 +1520,9 @@ def open_block(live: dict) -> dict | None:
 
 
 def live_view(live: dict) -> dict:
-    """The live solve plus what follows from it: stage and rung names, minutes so far, the current block, and
-    `line`, the state in words (never the pattern: the app shows it as it is)."""
+    """The live solve plus what follows from it: stage and rung names, minutes so far, the current block,
+    `idle_days` (whole days since its last block started) and `line`, the state in words (never the pattern:
+    the app shows it as it is)."""
     at, current = now(), open_block(live)
     blocks, length = live["blocks"], live["block_minutes"]
     stage, phase = STAGES[live["stage"] - 1]
@@ -1523,6 +1530,7 @@ def live_view(live: dict) -> dict:
     elapsed = int(block_minutes(current, at, length)) if current else None
     timer = f"block {len(blocks)}: {elapsed} of {length} min" if current else f"on a break after block {len(blocks)}"
     return dict(live, stage_name=stage, phase=phase, rung_name=RUNGS[live["rung"]], minutes=minutes,
+                idle_days=(at.date() - datetime.fromisoformat(blocks[-1]["start"]).date()).days,
                 block={"number": len(blocks), "open": current is not None, "length": length, "elapsed": elapsed},
                 line=f"stage {live['stage']}/{len(STAGES)} {stage} · hint rung {live['rung']}/{TOP_RUNG} · {timer} · {minutes} min in all")
 
@@ -1728,8 +1736,8 @@ def cmd_status(args) -> None:
     print(pace_line(journey))
     live = load_live(root, required=False)
     if live:
-        line = describe_live(live_view(live))
-        days = (now().date() - datetime.fromisoformat(live["blocks"][-1]["start"]).date()).days
+        view = live_view(live)
+        line, days = describe_live(view), view["idle_days"]
         if days >= 1:  # left from an earlier day: he decides, the coach doesn't resume it unasked
             print(f"Live solve, untouched for {days} day(s): {line}. Ask him: resume it (`coach.py solve show --json`), "
                   "park it (`solve end --outcome partial --note \"parked: ...\"`) or drop it (`solve end --discard`).")
