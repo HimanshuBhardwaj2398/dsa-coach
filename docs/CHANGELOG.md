@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.0.1 · 2026-11-16 · What the browser test found
+
+On 2026-11-16 the learning app was driven in a browser against a copy of the real notebook. This release fixes what that found: feedback notes f0001 to f0009. No attempt had been logged under 1.0.0, so test period 1 runs on this version.
+
+**Explainers** (f0001, f0002, f0003)
+- **The Arrays & Hashing stepper works from the app.** The app serves explainers sandboxed, where `localStorage` throws, and an unguarded read stopped the page's script before the stepper was set up (fixed on the day, `78b3214`). The page also opens at its top now: a prediction drawn on load no longer takes focus.
+- **The heap page can be read.** It was a widget fragment that took its colours from a chat host, so alone it drew black on black. It is a whole page with its own light and dark colours.
+- **`tests/browser/check_explainers.py`** opens every saved explainer the way the app serves it and fails on a script error, a missing doctype or title, or a page that opens part-way down. `references/explainers.md` says what a saved page must be.
+
+**Today** (f0006, f0007)
+- **A live solve left from an earlier day says so,** and says what to tell the coach: resume it, park it or drop it. `status` has asked this since 1.0.0; the page showed the solve as if it were running.
+- **Today's re-solves come first, by title.** The rest fold under "N more waiting". The live solve is not listed again below itself. `map --json` carries `due.today`, a `title` on each due re-solve and on the live solve, and `live.idle_days`.
+
+**The Learn page and getting around** (f0004, f0005, f0008, f0009)
+- Feedback typed into "Improve it" is no longer wiped by a visit to another tab. The form closes once its text has become the prompt.
+- The "Ask your coach" panel closes when he goes to another view, and no longer stops the page from reading the notebook again.
+- A view opens at its top, and "← Map" returns to where the map was left. The "app isn't answering" notice sits in the header, in view wherever he has scrolled to.
+- At the side panel's width the problems table shows "Next re-solve" and drops "Difficulty". Feedback enters the prompt as typed, without escaped quotes.
+
+**The browser check** sets the side panel's address before the panel opens. It used to fail whenever his own app was running on port 8765.
+
+Tests: `test_map_names_the_due_resolves_and_says_how_many_are_todays`, `test_map_says_how_long_a_live_solve_was_left`, three frontend tests (`splitDue`, `liveNote`, the prompt). 83 Python tests, 9 frontend tests.
+
+Coach check: not run. No teaching rule changed: the explainer guide gains rules about the saved file only (a whole page, no storage, nothing focused on load). The run that 1.0.0 still owes comes before the test period's first study session.
+
 ## 1.0.0 · 2026-11-13 · The loop, held still
 
 By day 15 of the plan the notebook held one coached attempt and eleven releases. The record showed why (critique of 2026-11-13): the one live solve could not be ended, review debt blocked new problems, cards waited as drafts for two weeks, and every idea raised in a session became that evening's build. This release fixes what stopped the loop from closing, then freezes the product for a test period. No new views, no new modes.

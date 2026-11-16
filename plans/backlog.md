@@ -1,4 +1,4 @@
-Triaged through f0000.
+Triaged through f0009.
 
 # Backlog
 
@@ -8,7 +8,7 @@ What the coach and its tools should change, and when. Raw feedback notes live in
 
 A test period is a stretch of real study sessions on one unchanged version. It lasts until at least 10 sessions and 14 days have passed.
 
-**Test period 1** is on 1.0.0. It starts with the first attempt logged under that version (`skill_version` in `attempts.jsonl`).
+**Test period 1** is on 1.0.1. It starts with the first attempt logged under that version (`skill_version` in `attempts.jsonl`).
 
 While it runs, the product is frozen. The one exception is a fix for something that blocks a session or corrupts the record. Everything else becomes a feedback note.
 
@@ -37,10 +37,10 @@ Nothing yet. The first triage fills this.
 
 ## Later
 
-Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed. Each waits for evidence from the test period.
+Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed, and from the browser test of 2026-11-16. Each waits for evidence from the test period.
 
-- **Explainers built from tested parts.** The trace-first pipeline in `references/explainers.md` is still done by hand, so the four saved pages share no structure and run from 11 KB to 326 KB. Leftovers to clear with it: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the heap page's source in an untracked `output/` folder.
-- **Predictions on explainer pages reach the notebook.** The learner model lists prediction accuracy as a signal, and nothing records it. No `trace` card exists yet either.
+- **Explainers built from tested parts.** The trace-first pipeline in `references/explainers.md` is still done by hand, so the five saved pages share no structure and run from 11 KB to 326 KB. Leftovers to clear with it: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the heap page's source in an untracked `output/` folder.
+- **Predictions on explainer pages reach the notebook.** The learner model lists prediction accuracy as a signal, and nothing records it. No `trace` card exists yet either. The "core idea" box on the Arrays & Hashing page is not remembered through the app, because the sandbox has no storage.
 - **An eval harness for the teaching.** `docs/coach-check.md` is run by hand. Automate it once the eight situations have caught something real.
 - **Self-reported attempts from before the coach.** a0001 (two-sum) counts as an unaided solve on his word alone. Its due re-solve will replace it with an observed one; decide then whether priors need their own mark.
 - **Fewer commands for the coach to remember in a solve.** About a dozen per solve today. Three focus blocks in the first live solve ran to their cap with no `solve break`.
@@ -51,6 +51,11 @@ Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed. Each w
 - **Feedback notes in session deltas**, so a web chat can send them back.
 - **The course layer and testers**: goal intake, a placement diagnostic, a notebook that lives apart from the product's repo, and a skill that doesn't name one learner.
 - **Remove the old Solve tab's draft recovery** from the learning app after 2026-12-10, as its changelog entry says.
+- **A tab title for each view.** It is "DSA Coach" everywhere (f0009).
+- **Cmd+Enter submits the Improve-it form** (f0009).
+- **What "Blind 75 1/8" counts.** It is problems solved unaided, shown beside rows that say "last: solved" (f0009). A wording decision.
+- **The heap page's layout:** the index label under the bottom-left node touches the "Array" caption.
+- **`check_app.py` failed once** with a Playwright error, on its first run after the 1.0.1 scroll change. The next 15 runs passed and the error text wasn't kept. If it fails again, keep the whole output.
 
 ## Declined
 
