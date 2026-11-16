@@ -83,11 +83,12 @@ def main() -> None:
                 expect(page.locator("#recovery")).to_contain_text("1 unsaved draft from the old Solve tab")
                 page.evaluate("localStorage.clear()")
 
+                # Set the address before the panel opens, so it never tries the default port, where his own app may be running.
+                worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker")
+                worker.evaluate(f"chrome.storage.local.set({{server: {origin!r}}})")
                 panel = context.new_page()
                 panel.set_viewport_size({"width": 390, "height": 844})
                 panel.goto(server.PANEL_PARENT + "/sidepanel.html")
-                panel.evaluate(f"chrome.storage.local.set({{server: {origin!r}}})")
-                panel.reload()
                 frame = panel.frame_locator("#coach")
                 expect(frame.locator("h1")).to_have_text("Solving two-sum")
                 frame.locator("[data-nav=map]").click()
