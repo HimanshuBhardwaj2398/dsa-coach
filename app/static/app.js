@@ -134,10 +134,10 @@ async function show(reload = true) {
     $("content").setAttribute("aria-busy", "true");
     let data;
     try { data = await getMap(); } catch (e) { if (mine === loads) fail(e); return; }
+    finally { if (mine === loads) $("content").setAttribute("aria-busy", "false"); }
     if (mine !== loads) return;
     mapData = data;
     $("notice").hidden = true;
-    $("content").setAttribute("aria-busy", "false");
   }
   const page = view === "map" ? renderMap() : view === "learn" ? renderLearn(key) : renderToday();
   if (page) $("content").replaceChildren(page);
@@ -275,9 +275,12 @@ function improveForm(p, box) {
   text.focus();
 }
 
-window.addEventListener("hashchange", () => {
+let mapScroll = 0;  // where the map was left, so "← Map" comes back to the pattern he opened
+window.addEventListener("hashchange", (e) => {
+  if (route(new URL(e.oldURL).hash).view === "map") mapScroll = scrollY;
   $("handoff").hidden = true;  // its prompt belongs to the page he just left
-  show(false);
+  show(false);  // draws at once: the data is already here
+  scrollTo(0, route(location.hash).view === "map" ? mapScroll : 0);
 });
 // The coach updates the notebook from the chat: coming back to this page or tab reads it again,
 // unless he is part-way through typing feedback, which a redraw would wipe.

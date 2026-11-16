@@ -91,6 +91,13 @@ def main() -> None:
                 expect(page.locator("#recovery")).to_contain_text("1 unsaved draft from the old Solve tab")
                 page.evaluate("localStorage.clear()")
 
+                page.set_viewport_size({"width": 390, "height": 600})  # the side panel's width: the map is one long column
+                page.goto(origin + "/#/map")
+                page.locator('a.node[href="#/learn/bit-manipulation"]').click()  # low on the map: clicking scrolls down to it
+                expect(page.locator(".learn h1")).to_be_in_viewport()  # a Learn page, long enough to scroll, opens at its top
+                page.click("text=← Map")
+                expect(page.locator('a.node[href="#/learn/bit-manipulation"]')).to_be_in_viewport()  # the map, where he left it
+
                 # Set the address before the panel opens, so it never tries the default port, where his own app may be running.
                 worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker")
                 worker.evaluate(f"chrome.storage.local.set({{server: {origin!r}}})")
@@ -108,6 +115,8 @@ def main() -> None:
                 srv.server_close()
                 panel.reload()
                 expect(panel.locator("#status")).to_contain_text("offline")
+                page.click("#refresh")  # still scrolled down the map
+                expect(page.locator("#notice")).to_be_in_viewport()
                 panel.screenshot(path=out / "panel-offline.png")
                 context.close()
         finally:
