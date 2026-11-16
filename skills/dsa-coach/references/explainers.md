@@ -54,14 +54,15 @@ No frame comes from imagination. Splitting execution from rendering (the LLM wri
 3. **Invariant checks.** Assert the invariant at every step (window valid, stack monotone, heap property, each DP cell equal to its brute-force value). Every visual claim is an assertion.
 4. **Renderer.** Views are pure functions of the step record. Precompute traces for 3–5 curated inputs and embed them as JSON in the page.
 5. **Your-own-input mode (optional).** A JavaScript port may run live inputs, but it must be checked against the Python trace on every step's values. Line counts alone are a weak check: `max(best, r - l)` and `max(best, r - l + 1)` run every line the same number of times and give different answers.
-6. **Page check.** If a browser is available, step through the built page and compare the displayed state with the trace, then look at it once at phone width.
+6. **Page check.** If a browser is available, step through the built page and compare the displayed state with the trace, then look at it once at phone width. In the dsa-coach repo, `python3 tests/browser/check_explainers.py` opens every saved page the way the learning app serves it.
 
 When you can't execute code, generate the page from a JavaScript step generator that checks its own invariants and shows a visible "invariant violated at step k" badge, and say the trace wasn't verified against Python.
 
 ## Output and saving
 
 - In Claude, publish the page as an artifact when possible: a single HTML file, inline CSS and JS, scripts only from the allowed CDNs. Keep the URL.
-- Elsewhere (ChatGPT, Codex), write a single self-contained HTML file he can open in a browser.
+- Elsewhere (ChatGPT, Codex), write a single HTML file he can open in a browser.
+- The saved file is a whole page that needs nothing from its host: `<!doctype html>`, a `<title>`, inline CSS and JS, and its own colours for light and dark. A widget written for a chat host is a fragment: wrap it in a page before saving. The learning app serves the file sandboxed, where `localStorage` and cookies throw, so keep state in memory or put storage inside `try`/`catch`. Nothing takes focus or scrolls while the page loads.
 - Always save the file to `notebook/concepts/<slug>/` and run:
 
 ```bash

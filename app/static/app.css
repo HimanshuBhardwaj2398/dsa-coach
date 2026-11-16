@@ -82,9 +82,9 @@ header nav a { padding: 4px 10px; border-radius: 6px; color: var(--muted); text-
 header nav a:hover { color: var(--fg); background: var(--raise); }
 body[data-view=today] [data-nav=today], body[data-view=map] [data-nav=map] { color: var(--fg); background: var(--raise); }
 header .note { flex: 1; color: var(--muted); font-size: 13px; }
-#notice, #recovery { margin: 12px 24px 0; padding: 10px 14px; border-radius: 8px; }
-#notice { background: var(--fail-soft); }
-#recovery { background: var(--nudge-soft); }
+#notice, #recovery { padding: 10px 14px; border-radius: 8px; }
+#notice { flex-basis: 100%; background: var(--fail-soft); }  /* inside the sticky header: seen wherever he has scrolled to */
+#recovery { margin: 12px 24px 0; background: var(--nudge-soft); }
 #notice p, #recovery p { display: inline; margin: 0; }
 
 /* --- the views --- */
@@ -95,6 +95,8 @@ article h2 { font-size: 15px; margin: 22px 0 6px; }
 .today section { margin-bottom: 20px; }
 .today h1 .muted { font-weight: 500; }
 .today li { margin: 4px 0; }
+.today summary { cursor: pointer; color: var(--muted); }
+.nudge { color: var(--nudge); font-weight: 600; }
 .map { max-width: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
 .map section { display: flex; flex-direction: column; gap: 8px; }
 .node { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
@@ -126,7 +128,7 @@ table.problems .tag { margin-left: 8px; font-size: 11px; font-weight: 600; color
   header { padding: 8px 12px; }
   header .note { display: none; }
   #content { padding: 14px 12px; }
-  #notice, #recovery, #handoff { margin-inline: 12px; }
+  #recovery, #handoff { margin-inline: 12px; }
   .map { grid-template-columns: 1fr; }
-  table.problems th:nth-child(4), table.problems td:nth-child(4) { display: none; }
+  table.problems th:nth-child(2), table.problems td:nth-child(2) { display: none; }  /* difficulty: "due now" matters more here */
 }

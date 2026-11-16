@@ -34,5 +34,29 @@
     "updated": "2026-11-09",
     "note": null,
     "source": "cli"
+  },
+  {
+    "id": "x0004",
+    "concept": "heap",
+    "title": "Min-heap: predict the next move",
+    "url": null,
+    "file": "concepts/heap/heap-explorer.html",
+    "version": 1,
+    "created": "2026-11-11",
+    "updated": "2026-11-11",
+    "note": "Executed Python traces; verified push, pop, duplicate insertion, prediction gates, and hidden recall. Teaching offered; learner answers and mastery not yet assessed.",
+    "source": "cli"
+  },
+  {
+    "id": "x0005",
+    "concept": "binary-search",
+    "title": "Binary Search, explained",
+    "url": null,
+    "file": "concepts/binary-search/binary-search-explainer.html",
+    "version": 1,
+    "created": "2026-11-16",
+    "updated": "2026-11-16",
+    "note": null,
+    "source": "cli"
   }
 ]

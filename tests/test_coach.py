@@ -718,10 +718,25 @@ class CoachTest(unittest.TestCase):
     def test_map_json_carries_due_and_the_live_solve(self):
         view = json.loads(self.run_cli("map", "--json").stdout)
         self.assertIsNone(view["live"])
-        self.assertEqual(set(view["due"]), {"resolves", "cards", "drafts", "inbox"})
+        self.assertEqual(set(view["due"]), {"resolves", "today", "cards", "drafts", "inbox"})
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
         live = json.loads(self.run_cli("map", "--json", now="10:05").stdout)["live"]
         self.assertEqual((live["problem"], live["stage_name"], live["block"]["elapsed"]), ("two-sum", "Understand", 5))
+
+    def test_map_names_the_due_resolves_and_says_how_many_are_todays(self):
+        for slug in ("two-sum", "valid-anagram", "contains-duplicate", "group-anagrams"):
+            self.attempt(slug, "2026-11-01", pattern="arrays-hashing")
+        due = json.loads(self.run_cli("map", "--json", today="2026-11-20").stdout)["due"]
+        self.assertEqual((len(due["resolves"]), due["today"]), (4, 3))  # REVIEWS_PER_DAY: the first three are today's
+        self.assertEqual(sorted(r["title"] for r in due["resolves"]),
+                         ["Contains Duplicate", "Group Anagrams", "Two Sum", "Valid Anagram"])
+
+    def test_map_says_how_long_a_live_solve_was_left(self):
+        self.run_cli("solve", "start", "--problem", "two-sum", now="22:00")
+        live = json.loads(self.run_cli("map", "--json", now="23:30").stdout)["live"]
+        self.assertEqual((live["title"], live["idle_days"]), ("Two Sum", 0))
+        self.env["DSA_NOW"] = "2026-11-03T09:00:00+05:30"
+        self.assertEqual(json.loads(self.run_cli("map", "--json").stdout)["live"]["idle_days"], 2)
 
     def test_write_json_replaces_the_file_whole(self):
         """The page polls `solve show --json` while the chat and the app write current.json."""
