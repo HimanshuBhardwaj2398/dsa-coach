@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-16",
-  "skill_version": "1.0.0",
+  "generated": "2026-11-17",
+  "skill_version": "1.0.1",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -11,7 +11,7 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 18,
+    "day": 19,
     "total_days": 90,
     "week": 3,
     "plan_weeks": 12,
@@ -624,7 +624,7 @@
         "problem": "contains-duplicate",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -632,7 +632,7 @@
         "problem": "valid-anagram",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -640,7 +640,7 @@
         "problem": "group-anagrams",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -648,7 +648,7 @@
         "problem": "top-k-frequent-elements",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -656,7 +656,7 @@
         "problem": "encode-and-decode-strings",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -664,7 +664,7 @@
         "problem": "product-of-array-except-self",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -672,7 +672,7 @@
         "problem": "longest-consecutive-sequence",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -680,7 +680,7 @@
         "problem": "valid-palindrome",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -688,7 +688,7 @@
         "problem": "3sum",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -696,7 +696,7 @@
         "problem": "container-with-most-water",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -704,7 +704,7 @@
         "problem": "best-time-to-buy-and-sell-stock",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -712,7 +712,7 @@
         "problem": "longest-substring-without-repeating-characters",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -720,7 +720,7 @@
         "problem": "longest-repeating-character-replacement",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -728,7 +728,7 @@
         "problem": "minimum-window-substring",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -736,7 +736,7 @@
         "problem": "valid-parentheses",
         "pattern": "stack",
         "due": "2026-11-06",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -744,7 +744,7 @@
         "problem": "binary-search",
         "pattern": "binary-search",
         "due": "2026-11-07",
-        "overdue_days": 9,
+        "overdue_days": 10,
         "status": "learning",
         "check": "code"
       },
@@ -752,7 +752,7 @@
         "problem": "two-sum",
         "pattern": "arrays-hashing",
         "due": "2026-11-08",
-        "overdue_days": 8,
+        "overdue_days": 9,
         "status": "practicing",
         "check": "code"
       }
@@ -770,7 +770,7 @@
     "minutes": 20,
     "minutes_7d": 0,
     "sessions": 3,
-    "questions": 5,
+    "questions": 6,
     "cards_active": 0,
     "cards_held": 0,
     "cards_draft": 7,
@@ -798,13 +798,6 @@
   "techniques": [],
   "questions": [
     {
-      "id": "q0001",
-      "date": "2026-10-29",
-      "concept": "python-collections",
-      "text": "Sets can be compared with < and > for subsets and supersets. Can dicts be compared the same way?",
-      "source": "cli"
-    },
-    {
       "id": "q0002",
       "date": "2026-10-29",
       "concept": "python-collections",
@@ -830,6 +823,13 @@
       "date": "2026-11-11",
       "concept": "heap",
       "text": "Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.",
+      "source": "cli"
+    },
+    {
+      "id": "q0006",
+      "date": "2026-11-16",
+      "concept": "binary-search",
+      "text": "This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we should broaden the idea on where to use binary search, how to spot the patterns where we can use it !",
       "source": "cli"
     }
   ],
@@ -888,10 +888,10 @@
       "title": "Binary Search, explained",
       "url": null,
       "file": "concepts/binary-search/binary-search-explainer.html",
-      "version": 1,
+      "version": 2,
       "created": "2026-11-16",
       "updated": "2026-11-16",
-      "note": null,
+      "note": "Broadened recognition of candidate spaces and monotone predicates; added minimum-speed answer-space trace, six recognition cases, and hidden transfer checks in response to q0006. Preserved the array walkthrough.",
       "source": "cli"
     }
   ],

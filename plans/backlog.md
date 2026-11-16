@@ -39,7 +39,7 @@ Nothing yet. The first triage fills this.
 
 Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed, and from the browser test of 2026-11-16. Each waits for evidence from the test period.
 
-- **Explainers built from tested parts.** The trace-first pipeline in `references/explainers.md` is still done by hand, so the five saved pages share no structure and run from 11 KB to 326 KB. Leftovers to clear with it: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the heap page's source in an untracked `output/` folder.
+- **Explainers built from tested parts.** The trace-first pipeline in `references/explainers.md` is still done by hand, so the five saved pages share no structure and run from 11 KB to 326 KB. Leftovers to clear with it: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the heap page's `reference.py` and `trace.json` in `concepts/heap/` (moved there from an untracked `output/` folder on 2026-11-17).
 - **Predictions on explainer pages reach the notebook.** The learner model lists prediction accuracy as a signal, and nothing records it. No `trace` card exists yet either. The "core idea" box on the Arrays & Hashing page is not remembered through the app, because the sandbox has no storage.
 - **An eval harness for the teaching.** `docs/coach-check.md` is run by hand. Automate it once the eight situations have caught something real.
 - **Self-reported attempts from before the coach.** a0001 (two-sum) counts as an unaided solve on his word alone. Its due re-solve will replace it with an observed one; decide then whether priors need their own mark.

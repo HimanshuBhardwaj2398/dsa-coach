@@ -53,10 +53,10 @@
     "title": "Binary Search, explained",
     "url": null,
     "file": "concepts/binary-search/binary-search-explainer.html",
-    "version": 1,
+    "version": 2,
     "created": "2026-11-16",
     "updated": "2026-11-16",
-    "note": null,
+    "note": "Broadened recognition of candidate spaces and monotone predicates; added minimum-speed answer-space trace, six recognition cases, and hidden transfer checks in response to q0006. Preserved the array walkthrough.",
     "source": "cli"
   }
 ]

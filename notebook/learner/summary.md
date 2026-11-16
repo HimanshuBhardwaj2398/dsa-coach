@@ -1,7 +1,7 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-16 by coach.py snapshot · skill 1.0.0
+DSA COACH LEARNER SUMMARY · generated 2026-11-17 by coach.py snapshot · skill 1.0.1
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
-Plan: day 18 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
+Plan: day 19 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
 Focus: Stack (learning)
 
 Patterns started (status, attempted/solved/retained/ready of target):
@@ -26,9 +26,9 @@ Stated preferences (formatting defaults only, not evidence):
 - Time complexity: count how often each line runs, from real runs, then derive the Big-O in one short method used the same way everywhere (stated 2026-11-05 after Stack, Derived v2: liked the counting, wanted it cleaner). Preferred; untested on delayed outcomes.
 
 Recent questions:
+- 2026-11-16 binary-search: This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we shou
 - 2026-11-11 heap: Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.
 - 2026-11-05 stack: Does the page cover all relevant LeetCode examples? Asked for more examples, animations, and the math or rules that make a stack solution co
-- 2026-10-29 sliding-window: What does it mean to increment have only when a character's count reaches the required count?
 
 Next steps:
 1. Re-solve from a blank page: contains-duplicate, valid-anagram, group-anagrams. Also due after these: 14.
