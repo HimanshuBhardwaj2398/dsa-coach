@@ -110,7 +110,7 @@ Notes are triaged between versions into [plans/backlog.md](plans/backlog.md): wh
 ## Changing the skill
 
 1. Edit files in `skills/dsa-coach/`.
-2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`. After changing how the coach teaches, also run [docs/coach-check.md](docs/coach-check.md) by hand.
+2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`. After saving or changing an explainer, also `python3 tests/browser/check_explainers.py`. After changing how the coach teaches, also run [docs/coach-check.md](docs/coach-check.md) by hand.
 3. Bump the version in two places: `metadata.version` in SKILL.md and `SKILL_VERSION` in coach.py.
 4. `coach.py package`, then re-upload `dist/dsa-coach.zip` wherever you uploaded it (Claude web, Cowork). Claude Code and Codex use the folder directly.
 
