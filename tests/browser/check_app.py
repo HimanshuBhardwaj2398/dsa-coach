@@ -24,9 +24,10 @@ def main() -> None:
         root = Path(temp) / "notebook"
         env = {k: v for k, v in os.environ.items() if k != "DSA_NOTEBOOK"}
 
-        def coach(*args, today=None):
+        def coach(*args, today=None, now=None):
+            dated = {name: value for name, value in (("DSA_TODAY", today), ("DSA_NOW", now)) if value}
             subprocess.run([sys.executable, str(server.COACH), "--root", str(root), *args], check=True,
-                           capture_output=True, env=dict(env, DSA_TODAY=today) if today else env)
+                           capture_output=True, env=dict(env, **dated))
 
         coach("init", "--name", "Tester", "--days", "90")
         coach("log", "attempt", "--problem", "valid-anagram", "--pattern", "arrays-hashing", "--outcome", "solved",
@@ -34,7 +35,7 @@ def main() -> None:
         page_file = Path(temp) / "stack.html"
         page_file.write_text("<!doctype html><title>Stack</title><h1>Stack, explained</h1>")
         coach("artifact", "add", "--concept", "stack", "--title", "Stack, explained", "--file", str(page_file))
-        coach("solve", "start", "--problem", "two-sum", "--unlabeled")
+        coach("solve", "start", "--problem", "two-sum", "--unlabeled", now="2026-01-02T10:00:00+05:30")  # left open
         srv = server.make_server(root, port=0, env=env)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         origin = f"http://127.0.0.1:{srv.server_address[1]}"
@@ -50,9 +51,10 @@ def main() -> None:
                 page = context.new_page()
 
                 page.goto(origin + "/#/solve")  # an old bookmark lands on Today
-                expect(page.locator("h1")).to_have_text("Solving two-sum")
+                expect(page.locator("h1")).to_have_text("Solving Two Sum")
                 assert "Arrays" not in page.locator("#content").inner_text()  # unlabeled: no pattern name
-                expect(page.locator("a", has_text="valid-anagram")).to_have_attribute(
+                expect(page.locator(".today .nudge")).to_contain_text("Untouched for")  # a solve from an earlier day
+                expect(page.locator("a", has_text="Valid Anagram")).to_have_attribute(
                     "href", "https://leetcode.com/problems/valid-anagram/")
                 page.screenshot(path=out / "today.png")
 
@@ -90,7 +92,7 @@ def main() -> None:
                 panel.set_viewport_size({"width": 390, "height": 844})
                 panel.goto(server.PANEL_PARENT + "/sidepanel.html")
                 frame = panel.frame_locator("#coach")
-                expect(frame.locator("h1")).to_have_text("Solving two-sum")
+                expect(frame.locator("h1")).to_have_text("Solving Two Sum")
                 frame.locator("[data-nav=map]").click()
                 expect(frame.locator("a.node")).to_have_count(22)
                 assert panel.evaluate("document.documentElement.scrollWidth") <= 390

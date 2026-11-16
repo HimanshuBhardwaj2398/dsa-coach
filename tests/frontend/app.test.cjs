@@ -38,3 +38,18 @@ test('explainer prompts name the pattern, the file and the feedback', () => {
   assert.match(run(`explainerPrompt(${p}, 'show equal heights')`),
     /Revise .* at notebook\/concepts\/stack\/stack-derived\.html.*"show equal heights"/);
 });
+
+test("due re-solves split into today's and the ones waiting, without the live solve", () => {
+  const run = load();
+  const split = (today, live) => JSON.parse(run(
+    `JSON.stringify(splitDue({today: ${today}, resolves: [{problem: 'a'}, {problem: 'b'}, {problem: 'c'}]}, ${live}))`));
+  assert.deepEqual(split(2, 'null'), {today: [{problem: 'a'}, {problem: 'b'}], later: [{problem: 'c'}]});
+  assert.deepEqual(split(2, `'a'`), {today: [{problem: 'b'}], later: [{problem: 'c'}]});  // the live solve is shown above the list
+  assert.deepEqual(split(0, 'null').today, []);  // today's are done: the rest wait
+});
+
+test('a live solve left from an earlier day asks him to decide', () => {
+  const run = load();
+  assert.match(run(`liveNote({idle_days: 0})`), /^Ask for checks and hints/);
+  assert.match(run(`liveNote({idle_days: 6})`), /^Untouched for 6 days\. .*resume it, park it or drop it/);
+});

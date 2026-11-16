@@ -91,6 +91,15 @@ function listsText(lists) {
   return [["Blind 75", lists.blind75], ["NeetCode 150", lists.nc150]]
     .filter(([, l]) => l.total).map(([name, l]) => `${name} ${l.done}/${l.total}`).join(" · ");
 }
+function splitDue(due, liveProblem) {  // today's re-solves and the ones waiting; the live solve has its own place above them
+  const listed = (r) => r.problem !== liveProblem;
+  return {today: due.resolves.slice(0, due.today).filter(listed), later: due.resolves.slice(due.today).filter(listed)};
+}
+function liveNote(live) {  // a solve left from an earlier day is his to decide on (the coach asks the same at session start)
+  return live.idle_days
+    ? `Untouched for ${plural(live.idle_days, "day")}. Tell the coach in chat: resume it, park it or drop it.`
+    : "Ask for checks and hints in your coach chat.";
+}
 function byWeek(patterns) {
   const weeks = new Map();
   for (const p of patterns) {
@@ -141,10 +150,10 @@ function renderToday() {
   page.append(elem("p", `Day ${plan.day} of ${plan.total_days} · week ${plan.week} · ${plan.phase}`, "eyebrow"));
   const live = mapData.live;
   if (live) {
-    const title = elem("h1", `Solving ${live.problem}`);
+    const title = elem("h1", `Solving ${live.title}`);
     if (live.labeled) title.append(elem("span", ` · ${live.pattern_name}`, "muted"));  // naming it is hint rung 3
     page.append(section(title, elem("p", live.line), link("Open on LeetCode", live.url, true),
-      elem("p", "Ask for checks and hints in your coach chat.", "hint")));
+      elem("p", liveNote(live), live.idle_days ? "nudge" : "hint")));
   } else {
     const next = section(elem("h1", "Next up"), elem("p", mapData.next_text));
     if (mapData.next_url) next.append(link("Open on LeetCode", mapData.next_url, true));
@@ -154,17 +163,23 @@ function renderToday() {
   const counts = [due.cards.length && plural(due.cards.length, "card") + " to quiz",
     due.drafts && plural(due.drafts, "draft card") + " to approve",
     due.inbox.length && plural(due.inbox.length, "session delta") + " to import"].filter(Boolean);
-  const dueBox = section(elem("h2", "Due"));
-  if (due.resolves.length) {
-    dueBox.append(list(due.resolves.map((r) => {
-      const item = elem("span");
-      item.append(link(r.problem, r.url, true),
-        elem("span", r.overdue_days ? ` · ${plural(r.overdue_days, "day")} overdue` : " · due today", "muted"));
-      return item;
-    })));
+  const {today, later} = splitDue(due, live?.problem);
+  const dueItem = (r) => {
+    const item = elem("span");
+    item.append(link(r.title, r.url, true),
+      elem("span", r.overdue_days ? ` · ${plural(r.overdue_days, "day")} overdue` : " · due today", "muted"));
+    return item;
+  };
+  const dueBox = section(elem("h2", "Due today"));
+  if (today.length) dueBox.append(list(today.map(dueItem)));
+  else if (later.length && !due.today) dueBox.append(elem("p", "Today's re-solves are done.", "muted"));
+  if (later.length) {  // the coach serves a few re-solves a day; the rest stay folded away
+    const more = elem("details");
+    more.append(elem("summary", `${later.length} more waiting`), list(later.map(dueItem)));
+    dueBox.append(more);
   }
   if (counts.length) dueBox.append(elem("p", counts.join(" · ") + ". Ask the coach in chat."));
-  if (!due.resolves.length && !counts.length) dueBox.append(elem("p", "Nothing due.", "muted"));
+  if (!today.length && !later.length && !counts.length) dueBox.append(elem("p", live ? "Nothing else due." : "Nothing due.", "muted"));
   page.append(dueBox);
   return page;
 }
