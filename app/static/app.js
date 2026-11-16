@@ -266,14 +266,24 @@ function improveForm(p, box) {
   actions.append(Object.assign(elem("button", "Make the prompt", "primary"), {type: "submit"}),
     button("Cancel", () => box.replaceWith(explainerBlock(p)), "ghost"));
   form.append(label, elem("p", "Attempting one problem first often shows what the page is really missing.", "hint"), actions);
-  form.onsubmit = (e) => { e.preventDefault(); openHandoff(explainerPrompt(p, text.value.trim())); };
+  form.onsubmit = (e) => {  // the feedback now lives in the prompt, where he can still edit it
+    e.preventDefault();
+    openHandoff(explainerPrompt(p, text.value.trim()));
+    box.replaceWith(explainerBlock(p));
+  };
   box.replaceChildren(form);
   text.focus();
 }
 
-window.addEventListener("hashchange", () => show(false));
-// The coach updates the notebook from the chat: coming back to this page or tab reads it again.
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && $("handoff").hidden) show(); });
+window.addEventListener("hashchange", () => {
+  $("handoff").hidden = true;  // its prompt belongs to the page he just left
+  show(false);
+});
+// The coach updates the notebook from the chat: coming back to this page or tab reads it again,
+// unless he is part-way through typing feedback, which a redraw would wipe.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !document.querySelector("form.improve")) show();
+});
 document.addEventListener("DOMContentLoaded", () => {
   $("refresh").onclick = () => show();
   $("copy-prompt").onclick = copyHandoff;

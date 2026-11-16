@@ -67,10 +67,16 @@ def main() -> None:
                 expect(page.locator(".explainer a")).to_have_attribute("href", "/explainer/stack")
                 page.click("text=Improve it")
                 page.fill(".improve textarea", "show two equal heights")
+                page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")  # as if he came back to the tab
+                page.wait_for_timeout(500)
+                expect(page.locator(".improve textarea")).to_have_value("show two equal heights")
                 page.click("text=Make the prompt")
                 prompt = page.locator("#handoff-prompt").input_value()
                 assert "Revise" in prompt and "show two equal heights" in prompt, prompt
+                expect(page.locator(".improve")).to_have_count(0)  # the feedback now lives in the prompt
                 page.screenshot(path=out / "learn-handoff.png", full_page=True)
+                page.click("[data-nav=today]")
+                expect(page.locator("#handoff")).to_be_hidden()  # the prompt doesn't follow him to another view
 
                 page.goto(origin + "/#/learn/binary-search")
                 page.click("text=Ask the coach to write it")
