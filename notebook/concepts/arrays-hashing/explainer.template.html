@@ -640,8 +640,11 @@ function updateScore() {
       `${right} of ${QS.length} right. Re-run the stepper on the ones you missed, then try the check again tomorrow.`;
   }
 }
-$("coreText").value = localStorage.getItem("ah-core") || "";
-$("coreText").oninput = (e) => localStorage.setItem("ah-core", e.target.value);
+// The learning app serves this page sandboxed, where localStorage throws: the box then just isn't remembered.
+try {
+  $("coreText").value = localStorage.getItem("ah-core") || "";
+  $("coreText").oninput = (e) => localStorage.setItem("ah-core", e.target.value);
+} catch {}
 $("showVisuals").onclick = () => document.body.classList.remove("checking");
 
 renderGrid();
