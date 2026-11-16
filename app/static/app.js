@@ -240,7 +240,7 @@ function explainerPrompt(p, feedback) {
       `coach.py artifact add --concept ${p.key} --title "${p.name}, explained" --file ${file}.`;
   }
   return `Use the dsa-coach skill. Revise the interactive explainer for ${p.name} (${p.key}) at ${p.explainer ? "notebook/" + p.explainer : file}, ` +
-    `following references/explainers.md. My feedback: ${JSON.stringify(feedback)}. Log it with coach.py log question ` +
+    `following references/explainers.md. My feedback: "${feedback}". Log it with coach.py log question ` +
     `--concept ${p.key}. Change what the feedback needs, keep what works, and save over the same file.`;
 }
 function explainerBlock(p) {

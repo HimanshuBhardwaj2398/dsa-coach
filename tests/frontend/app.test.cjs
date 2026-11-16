@@ -53,3 +53,9 @@ test('a live solve left from an earlier day asks him to decide', () => {
   assert.match(run(`liveNote({idle_days: 0})`), /^Ask for checks and hints/);
   assert.match(run(`liveNote({idle_days: 6})`), /^Untouched for 6 days\. .*resume it, park it or drop it/);
 });
+
+test('feedback goes into the prompt as he typed it', () => {
+  const run = load();
+  const p = `({key: 'stack', name: 'Stack', explainer: 'concepts/stack/stack-derived.html'})`;
+  assert.match(run(`explainerPrompt(${p}, 'show "two equal" heights')`), /My feedback: "show "two equal" heights"\. Log it/);
+});
