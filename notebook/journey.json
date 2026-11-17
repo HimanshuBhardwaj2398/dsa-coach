@@ -31,8 +31,8 @@
       "retained": 0,
       "ready": 0,
       "status": "practicing",
-      "last_activity": "2026-11-09",
-      "last_attempt": "2026-11-05",
+      "last_activity": "2026-11-17",
+      "last_attempt": "2026-11-17",
       "next_problem": null
     },
     {
@@ -101,13 +101,13 @@
       "tier": 1,
       "week": 3,
       "target": 7,
-      "attempted": 1,
-      "practicing": 0,
+      "attempted": 2,
+      "practicing": 1,
       "retained": 0,
       "ready": 0,
-      "status": "learning",
-      "last_activity": "2026-11-16",
-      "last_attempt": "2026-11-06",
+      "status": "practicing",
+      "last_activity": "2026-11-17",
+      "last_attempt": "2026-11-17",
       "next_problem": "koko-eating-bananas"
     },
     {
@@ -381,15 +381,16 @@
       "problem": "contains-duplicate",
       "pattern": "arrays-hashing",
       "difficulty": "easy",
-      "attempts": 1,
+      "attempts": 2,
       "first": "2026-11-05",
-      "last": "2026-11-05",
-      "last_outcome": "solved",
+      "last": "2026-11-17",
+      "last_outcome": "partial",
       "streak": 0,
-      "next_due": "2026-11-06",
+      "next_due": "2026-11-18",
       "status": "learning",
       "ids": [
-        "a0002"
+        "a0002",
+        "a0018"
       ]
     },
     "valid-anagram": {
@@ -616,18 +617,25 @@
       "ids": [
         "a0017"
       ]
+    },
+    "search-in-rotated-sorted-array": {
+      "problem": "search-in-rotated-sorted-array",
+      "pattern": "binary-search",
+      "difficulty": "medium",
+      "attempts": 1,
+      "first": "2026-11-17",
+      "last": "2026-11-17",
+      "last_outcome": "solved",
+      "streak": 1,
+      "next_due": "2026-11-20",
+      "status": "practicing",
+      "ids": [
+        "a0019"
+      ]
     }
   },
   "due": {
     "resolves": [
-      {
-        "problem": "contains-duplicate",
-        "pattern": "arrays-hashing",
-        "due": "2026-11-06",
-        "overdue_days": 11,
-        "status": "learning",
-        "check": "code"
-      },
       {
         "problem": "valid-anagram",
         "pattern": "arrays-hashing",
@@ -762,15 +770,15 @@
     "inbox": []
   },
   "totals": {
-    "problems": 17,
-    "attempts": 17,
-    "unaided_solves": 1,
+    "problems": 18,
+    "attempts": 19,
+    "unaided_solves": 2,
     "retained": 0,
     "ready": 0,
-    "minutes": 20,
-    "minutes_7d": 0,
-    "sessions": 3,
-    "questions": 6,
+    "minutes": 90,
+    "minutes_7d": 70,
+    "sessions": 4,
+    "questions": 7,
     "cards_active": 0,
     "cards_held": 0,
     "cards_draft": 7,
@@ -780,8 +788,13 @@
   "weak_spots": [
     {
       "code": "boundary",
-      "count": 1,
+      "count": 2,
       "meaning": "off-by-one or loop bounds"
+    },
+    {
+      "code": "comp",
+      "count": 1,
+      "meaning": "misread the problem or constraints"
     },
     {
       "code": "process",
@@ -790,20 +803,31 @@
     }
   ],
   "calibration": {
-    "rated_attempts": 1,
-    "avg_conf_unaided": null,
-    "avg_conf_other": 3.0,
-    "high_confidence_misses": []
+    "rated_attempts": 3,
+    "avg_conf_unaided": 3.0,
+    "avg_conf_other": 3.5,
+    "high_confidence_misses": [
+      {
+        "id": "a0018",
+        "problem": "contains-duplicate",
+        "date": "2026-11-17"
+      }
+    ]
   },
-  "techniques": [],
-  "questions": [
+  "techniques": [
     {
-      "id": "q0002",
-      "date": "2026-10-29",
-      "concept": "python-collections",
-      "text": "Counter is a dict and accepts <= and >=. Does it implement them on .items()?",
-      "source": "cli"
-    },
+      "technique": "reading",
+      "pattern": "arrays-hashing",
+      "trials": 1,
+      "successes": 0,
+      "evidence": [
+        "a0002->a0018"
+      ],
+      "estimate": 0.33,
+      "provisional": true
+    }
+  ],
+  "questions": [
     {
       "id": "q0003",
       "date": "2026-10-29",
@@ -830,6 +854,13 @@
       "date": "2026-11-16",
       "concept": "binary-search",
       "text": "This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we should broaden the idea on where to use binary search, how to spot the patterns where we can use it !",
+      "source": "cli"
+    },
+    {
+      "id": "q0007",
+      "date": "2026-11-17",
+      "concept": "binary-search",
+      "text": "Rotated search: when we say left and right half, is mid in both?",
       "source": "cli"
     }
   ],
@@ -907,6 +938,10 @@
     {
       "date": "2026-11-06",
       "summary": "Logged 16 prior Blind 75 solves (two-sum unaided, 15 assisted); started Binary Search: binary-search solved with rung 2 (left < right missed the last candida..."
+    },
+    {
+      "date": "2026-11-17",
+      "summary": "Parked contains-duplicate; solved search-in-rotated-sorted-array at rung 1 (sorted-half test, <= edge, duplicates follow-up); feedback f0014-f0018"
     }
   ],
   "last_mock": null,
@@ -914,9 +949,10 @@
     "python-collections"
   ],
   "next_steps": [
-    "Re-solve from a blank page: contains-duplicate, valid-anagram, group-anagrams. Also due after these: 14.",
+    "Re-solve from a blank page: valid-anagram, group-anagrams. Also due after these: 14.",
     "Solve daily-temperatures unaided to move Stack forward.",
     "Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).",
-    "Behind plan: start Prefix Sums (planned for week 2)."
+    "Behind plan: start Prefix Sums (planned for week 2).",
+    "Revisit high-confidence miss a0018 (contains-duplicate)."
   ]
 }

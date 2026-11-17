@@ -18,6 +18,8 @@ Pattern: binary-search · Created: 2026-11-16
 
 ## Questions asked
 
+- 2026-11-17 (q0007): Rotated search: when we say left and right half, is mid in both?
+
 ## Changelog
 
 - 2026-11-16 (v2, q0006): Broadened the explainer with recognition questions, monotone predicates and candidate spaces, a verified minimum-speed trace on unsorted jobs, limits and related variants, and hidden transfer checks. Preserved the original array walkthrough.

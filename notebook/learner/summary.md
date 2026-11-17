@@ -9,15 +9,15 @@ Patterns started (status, attempted/solved/retained/ready of target):
 - Two Pointers: learning, 3/0/0/0 of 5
 - Sliding Window: learning, 4/0/0/0 of 6
 - Stack: learning, 1/0/0/0 of 7
-- Binary Search: learning, 1/0/0/0 of 7
+- Binary Search: practicing, 2/1/0/0 of 7
 - Heap / Priority Queue: exploring, 0/0/0/0 of 7
 Other concepts: python-collections
 
-Due today: 17 re-solve(s) [contains-duplicate, valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings], 0 card(s), 7 draft card(s), 0 inbox delta(s)
-Weak spots (30 days): boundary×1, process×1
-Calibration: avg confidence before unaided solves n/a, before other attempts 3.0; high-confidence misses: none
-Last session: 2026-11-06: Logged 16 prior Blind 75 solves (two-sum unaided, 15 assisted); started Binary Search: binary-search solved with rung 2 (left < right missed the last candida...
-Techniques with delayed evidence: none
+Due today: 16 re-solve(s) [valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings, product-of-array-except-self], 0 card(s), 7 draft card(s), 0 inbox delta(s)
+Weak spots (30 days): boundary×2, comp×1, process×1
+Calibration: avg confidence before unaided solves 3.0, before other attempts 3.5; high-confidence misses: a0018
+Last session: 2026-11-17: Parked contains-duplicate; solved search-in-rotated-sorted-array at rung 1 (sorted-half test, <= edge, duplicates follow-up); feedback f0014-f0018
+Techniques with delayed evidence: reading/arrays-hashing 0/1 (provisional)
 
 Stated preferences (formatting defaults only, not evidence):
 - Visual, step-by-step walkthroughs by default (stated; liked the set-based Valid Sudoku walkthrough in Sep 2026). Preferred; untested on delayed outcomes.
@@ -26,12 +26,12 @@ Stated preferences (formatting defaults only, not evidence):
 - Time complexity: count how often each line runs, from real runs, then derive the Big-O in one short method used the same way everywhere (stated 2026-11-05 after Stack, Derived v2: liked the counting, wanted it cleaner). Preferred; untested on delayed outcomes.
 
 Recent questions:
+- 2026-11-17 binary-search: Rotated search: when we say left and right half, is mid in both?
 - 2026-11-16 binary-search: This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we shou
 - 2026-11-11 heap: Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.
-- 2026-11-05 stack: Does the page cover all relevant LeetCode examples? Asked for more examples, animations, and the math or rules that make a stack solution co
 
 Next steps:
-1. Re-solve from a blank page: contains-duplicate, valid-anagram, group-anagrams. Also due after these: 14.
+1. Re-solve from a blank page: valid-anagram, group-anagrams. Also due after these: 14.
 2. Solve daily-temperatures unaided to move Stack forward.
 3. Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).
 4. Behind plan: start Prefix Sums (planned for week 2).

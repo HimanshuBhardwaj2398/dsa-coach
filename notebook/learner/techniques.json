@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "technique": "reading",
+    "pattern": "arrays-hashing",
+    "trials": 1,
+    "successes": 0,
+    "evidence": [
+      "a0002->a0018"
+    ],
+    "estimate": 0.33,
+    "provisional": true
+  }
+]
