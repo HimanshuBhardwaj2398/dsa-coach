@@ -73,7 +73,7 @@ Other concepts touched: python-collections.
 - Problems attempted: 18 · unaided solves: 2 · retained: 0 · ready: 0
 - Attempts logged: 19 · minutes: 90 · sessions: 4
 - Last 7 days: 1 h 10 min on problems; the plan sets aside 11 h a week
-- Cards: 0 active (0 held at 5+ days), 7 draft, 0 retired
+- Cards: 1 active (0 held at 5+ days), 7 draft, 0 retired
 - Questions asked: 7 · explainers saved: 5
 
 ## Weak spots (last 30 days)

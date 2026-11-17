@@ -96,5 +96,19 @@
     "due": null,
     "history": [],
     "source": "cli"
+  },
+  {
+    "id": "c0008",
+    "concept": "binary-search",
+    "type": "trap",
+    "front": "Searching a rotated sorted array: what tells you which half is sorted, and why <= rather than <?",
+    "back": "nums[lo] <= nums[mid] means the left half is sorted. Equality happens only when lo == mid (a one-element half, as in [3,1]). There's only one drop, so if the left half isn't sorted, the right half is.",
+    "status": "active",
+    "created": "2026-11-17",
+    "accepted": "2026-11-17",
+    "step": 0,
+    "due": "2026-11-18",
+    "history": [],
+    "source": "cli"
   }
 ]
