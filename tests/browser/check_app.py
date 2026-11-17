@@ -58,6 +58,19 @@ def main() -> None:
                     "href", "https://leetcode.com/problems/valid-anagram/")
                 page.screenshot(path=out / "today.png")
 
+                # The answer box: what he types survives a visit to the Map, and ⌘/Ctrl+Enter copies it for the chat.
+                context.grant_permissions(["clipboard-read", "clipboard-write"], origin=origin)
+                expect(page.locator(".answer label")).to_contain_text("stage 1, Find an approach")
+                page.fill(".answer textarea", "check every pair, then remember what I have seen")
+                page.click("[data-nav=map]")
+                page.click("[data-nav=today]")
+                expect(page.locator(".answer textarea")).to_have_value("check every pair, then remember what I have seen")
+                page.locator(".answer textarea").press("Control+Enter")
+                expect(page.locator(".answer [role=status]")).to_have_text("Copied. Paste it into your coach chat.")
+                copied = page.evaluate("navigator.clipboard.readText()")
+                assert copied.startswith("My answer for stage 1 (Find an approach) on Two Sum:\n\ncheck every pair"), copied
+                expect(page.locator(".answer textarea")).to_have_value("")
+
                 page.click("[data-nav=map]")
                 expect(page.locator("a.node")).to_have_count(22)
                 page.screenshot(path=out / "map.png", full_page=True)
@@ -106,6 +119,8 @@ def main() -> None:
                 panel.goto(server.PANEL_PARENT + "/sidepanel.html")
                 frame = panel.frame_locator("#coach")
                 expect(frame.locator("h1")).to_have_text("Solving Two Sum")
+                expect(frame.locator(".answer textarea")).to_be_visible()  # he can type a stage answer beside LeetCode
+                panel.screenshot(path=out / "panel-today.png")
                 frame.locator("[data-nav=map]").click()
                 expect(frame.locator("a.node")).to_have_count(22)
                 assert panel.evaluate("document.documentElement.scrollWidth") <= 390

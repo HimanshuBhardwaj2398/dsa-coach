@@ -13,7 +13,6 @@ const TICK_MS = 30_000
 const MIN = 60_000
 
 const STAGES: readonly (readonly [string, string])[] = [
-  ['Understand', 'Understand'],
   ['Find an approach', 'Devise a plan'],
   ['Build it', 'Carry out the plan'],
   ['Check and finish', 'Look back'],

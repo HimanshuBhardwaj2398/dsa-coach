@@ -1,4 +1,4 @@
-Triaged through f0009.
+Triaged through f0018.
 
 # Backlog
 
@@ -8,11 +8,13 @@ What the coach and its tools should change, and when. Raw feedback notes live in
 
 A test period is a stretch of real study sessions on one unchanged version. It lasts until at least 10 sessions and 14 days have passed.
 
-**Test period 1** is on 1.0.1. It starts with the first attempt logged under that version (`skill_version` in `attempts.jsonl`).
+**Test period 1** ran on 1.0.1. It began with the first attempt under that version (2026-11-17) and ended the same day, after one session: he chose to build every open note (f0010–f0018) at once, without a triage. That built 1.1.0.
+
+**Test period 2** is on 1.1.0. It starts with the first attempt logged under that version (`skill_version` in `attempts.jsonl`).
 
 While it runs, the product is frozen. The one exception is a fix for something that blocks a session or corrupts the record. Everything else becomes a feedback note.
 
-1.0 is proven when the period ends with all of these true:
+The version is proven when the period ends with all of these true:
 
 - Every session started with `/practice` and reached its first prompt with no workaround.
 - Every solve that was started was ended, and no live solve is more than a day old.
@@ -39,7 +41,10 @@ Nothing yet. The first triage fills this.
 
 Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed, and from the browser test of 2026-11-16. Each waits for evidence from the test period.
 
-- **Explainers built from tested parts.** The trace-first pipeline in `references/explainers.md` is still done by hand, so the five saved pages share no structure and run from 11 KB to 326 KB. Leftovers to clear with it: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the heap page's `reference.py` and `trace.json` in `concepts/heap/` (moved there from an untracked `output/` folder on 2026-11-17).
+- **What 1.1.0 took out of a solve (f0015–f0018).** Stage 1 (restate, predict outputs) is gone and the coach now gives the look-back answers in the last stage. The research behind both (predicting outputs: 53% → 76% correct completion; Polya's look back; generation over reading) is in `docs/research/`, and the one solve under 1.0.1 had its restatement catch a misread goal. At the next triage, read the record for misreads that cost a block and for lessons that didn't survive to the re-solve.
+- **The four hand-built explainers on the spec pipeline.** Arrays & Hashing, Sliding Window, Stack and Binary Search predate `build_explainer.py` and share none of its structure. Leftovers: an empty `concepts/binary-search/trace.json`, a template and `reference.py` in `concepts/arrays-hashing/`, and the old heap page (`heap-explorer.html`, `reference.py`, `trace.json` in `concepts/heap/`), which the built heap page replaced as the pattern's explainer.
+- **Explainers for the three formats** (machine coding, AI-assisted coding, ML coding). f0013 asked for every pattern; these are timed rounds practised in chat, and the app shows no explainer for them. A page on how to run each round would be a different kind of page.
+- **An MCP server for the coach (f0011, f0012).** Discussed 2026-11-17: the panel stays; a local server adds nothing where `coach.py` runs. Revisit as skill + MCP together (ARCHITECTURE.md step 5) once the technique ledger has rows that aren't provisional and he studies in the Claude app.
 - **Predictions on explainer pages reach the notebook.** The learner model lists prediction accuracy as a signal, and nothing records it. No `trace` card exists yet either. The "core idea" box on the Arrays & Hashing page is not remembered through the app, because the sandbox has no storage.
 - **An eval harness for the teaching.** `docs/coach-check.md` is run by hand. Automate it once the eight situations have caught something real.
 - **Self-reported attempts from before the coach.** a0001 (two-sum) counts as an unaided solve on his word alone. Its due re-solve will replace it with an observed one; decide then whether priors need their own mark.
@@ -52,9 +57,7 @@ Seeded from the critique of 2026-11-13 (0.9.4), before any notes existed, and fr
 - **The course layer and testers**: goal intake, a placement diagnostic, a notebook that lives apart from the product's repo, and a skill that doesn't name one learner.
 - **Remove the old Solve tab's draft recovery** from the learning app after 2026-12-10, as its changelog entry says.
 - **A tab title for each view.** It is "DSA Coach" everywhere (f0009).
-- **Cmd+Enter submits the Improve-it form** (f0009).
 - **What "Blind 75 1/8" counts.** It is problems solved unaided, shown beside rows that say "last: solved" (f0009). A wording decision.
-- **The heap page's layout:** the index label under the bottom-left node touches the "Array" caption.
 - **`check_app.py` failed once** with a Playwright error, on its first run after the 1.0.1 scroll change. The next 15 runs passed and the error text wasn't kept. If it fails again, keep the whole output.
 
 ## Declined

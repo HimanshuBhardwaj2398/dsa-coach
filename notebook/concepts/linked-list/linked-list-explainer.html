@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linked List, explained</title>
+<style>/* Built explainer pages: the learning app's palette, light and dark, readable at phone width. */
+:root {
+  --bg: oklch(98.6% 0.003 250); --chrome: oklch(96.4% 0.005 250); --raise: oklch(93.6% 0.007 250);
+  --line: oklch(89.5% 0.008 250); --fg: oklch(24% 0.012 255); --muted: oklch(50% 0.014 255);
+  --accent: oklch(51% 0.13 252); --accent-soft: oklch(93% 0.035 252); --on-accent: oklch(98.5% 0.006 252);
+  --ok: oklch(50% 0.12 152); --ok-soft: oklch(94.5% 0.035 152); --fail: oklch(52% 0.17 27); --fail-soft: oklch(95% 0.03 27);
+  --nudge: oklch(52% 0.11 70); --nudge-soft: oklch(95.5% 0.04 80);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+    --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+    --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+    --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+    --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+  --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+  --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+  --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+  --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+p code, li code, dd code, td code { background: var(--chrome); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; font-weight: 500; padding: 5px 12px; min-height: 32px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--raise); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+input, textarea {
+  font: inherit; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg);
+}
+textarea { width: 100%; resize: vertical; }
+
+.bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); }
+.bar .brand { font-weight: 700; font-size: 13px; color: var(--muted); }
+.bar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.bar nav a { padding: 3px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bar nav a:hover { color: var(--fg); background: var(--raise); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+section { margin: 28px 0; scroll-margin-top: 56px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 18px 0 6px; }
+h2 { font-size: 22px; margin: 0 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.pitch { font-size: 17px; color: var(--muted); margin: 0; }
+ol.questions li, #spot ul li, #traps li, #parts ul li { margin: 6px 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.card dt { font-weight: 600; }
+.card dd { margin: 0; }
+.invariant { margin-top: 12px; border-color: var(--ok); background: var(--ok-soft); }
+
+.choice { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.choice .q { margin: 0 0 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.options button { text-align: left; }
+.options button.right { border-color: var(--ok); background: var(--ok-soft); }
+.options button.wrong { border-color: var(--fail); background: var(--fail-soft); }
+.said { margin: 8px 0 0; }
+.said.right, .mark.right { color: var(--ok); }
+.said.wrong, .mark.wrong { color: var(--fail); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.about { margin: 4px 0 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.where { margin-left: 6px; font-size: 13px; }
+.say { min-height: 1.6em; margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--chrome); border-radius: 0 6px 6px 0; }
+.ask:not(:empty) { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--nudge); border-radius: 8px; background: var(--nudge-soft); }
+.ask .q { margin: 0 0 8px; }
+.ask .fill { display: flex; gap: 6px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.views { display: flex; flex-wrap: wrap; gap: 12px; }
+.view { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.view figcaption { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.v-graph, .v-bars { flex-basis: 100%; }
+
+.cells { display: flex; gap: 3px; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 34px; }
+.cell .idx { font-size: 11px; color: var(--muted); }
+.cell .val { display: block; min-width: 34px; padding: 5px 6px; text-align: center; font-family: var(--mono); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg); white-space: nowrap; }
+.cell .ptr { min-height: 1.3em; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cell.ghost .val { border-style: dashed; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .var { font-family: var(--mono); font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.chips .note { font-size: 12px; }
+table.kv, table.grid { border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+table.kv td, table.grid td, table.grid th { border: 1px solid var(--line); padding: 3px 8px; text-align: center; }
+table.grid th { color: var(--muted); font-weight: 500; background: var(--chrome); }
+
+/* one meaning per class in every view: cur = acting now, win = inside the live range, ok = answer or kept,
+   done = finished or ruled out, front = waiting its turn, bad = rejected */
+.cur .val, .chip.cur, td.cur, tr.cur td { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.win .val, .chip.win, td.win { background: var(--accent-soft); }
+.ok .val, .chip.ok, td.ok, tr.ok td { border-color: var(--ok); background: var(--ok-soft); }
+.done .val, .chip.done, td.done { color: var(--muted); background: var(--chrome); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--muted) 50%, transparent); }
+.front .val, .chip.front, td.front { border-color: var(--nudge); background: var(--nudge-soft); }
+.bad .val, .chip.bad, td.bad { border-color: var(--fail); background: var(--fail-soft); }
+.chg .val, .var.chg, tr.chg td { outline: 2px solid var(--nudge); outline-offset: -1px; }
+
+svg.graph, svg.bars { display: block; max-width: 100%; height: auto; }
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.edge.cur { stroke: var(--accent); stroke-width: 3.5; }
+.edge.ok { stroke: var(--ok); stroke-width: 3.5; }
+.edge.done { stroke-dasharray: 4 4; stroke: var(--muted); }
+.edge.front { stroke: var(--nudge); }
+.arrowhead { fill: var(--muted); }
+.node { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.node.cur { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.node.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.node.done { fill: var(--chrome); stroke: var(--line); }
+.node.front { fill: var(--nudge-soft); stroke: var(--nudge); }
+.node.win { fill: var(--accent-soft); }
+.node.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.nlabel { text-anchor: middle; font: 600 13px var(--mono); fill: var(--fg); }
+.ntag { text-anchor: middle; font: 700 11px system-ui, sans-serif; fill: var(--accent); }
+.elabel { text-anchor: middle; font: 12px var(--mono); fill: var(--muted); }
+.span { fill: var(--raise); stroke: var(--muted); }
+.span.cur { fill: var(--accent-soft); stroke: var(--accent); }
+.span.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.span.done { fill: var(--chrome); stroke: var(--line); }
+.span.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.slabel, .tick { font: 11px var(--mono); fill: var(--muted); }
+.tick { text-anchor: middle; }
+.axis { stroke: var(--muted); }
+
+.side h3 { margin-top: 0; font-size: 13px; color: var(--muted); }
+ol.code { list-style: none; margin: 0; padding: 6px 0; background: var(--chrome); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; overflow-x: auto; }
+ol.code li { display: flex; gap: 8px; padding: 0 10px 0 0; white-space: pre; }
+ol.code li .runs { flex: 0 0 34px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+ol.code li.cur { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+ol.code li.ret { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.scroll { overflow-x: auto; }
+table.history, table.measure { border-collapse: collapse; font-size: 13px; }
+table.history th, table.history td, table.measure th, table.measure td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; font-family: var(--mono); }
+table.history th, table.measure th { font-family: inherit; color: var(--muted); font-weight: 600; }
+
+.variant { padding: 10px 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; }
+.variant h3 { margin-top: 0; }
+.variant .probs { margin-bottom: 0; }
+pre.code { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+body.checking .lesson { display: none; }
+.fields { display: grid; gap: 10px; margin: 8px 0 12px; }
+.fields label { display: grid; gap: 4px; font-weight: 500; }
+.fields input { max-width: 420px; }
+.mark { font-weight: 400; font-size: 14px; }
+.model { padding: 10px 12px; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 0 6px 6px 0; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+  .bar .brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="brand">DSA notebook</span>
+<nav><a href="#spot">Spot it</a><a href="#parts">Parts</a><a href="#trace">Trace</a><a href="#family">Family</a><a href="#count">Count</a><a href="#check">Check</a></nav>
+<button type="button" id="theme" class="ghost" aria-label="Switch light or dark theme">◐</button></header>
+<main>
+<div class="lesson">
+<section class="hero"><h1>Linked List, explained</h1><p class="pitch">A list you can only walk forward. Every technique comes down to rewiring <code>next</code> pointers in a safe order, and to walking with more than one pointer.</p></section>
+
+<section id="spot"><h2>Spot it</h2><p>A linked list gives O(1) splicing at a node you already hold, and no random access: reaching index i costs i steps. So the problems are about <b>pointer order</b>: which <code>next</code> you must save before you overwrite it, and which node you must keep a handle on so nothing becomes unreachable.</p><p>Three moves cover most of them: <b>rewire</b> with <code>prev</code> and <code>curr</code> (reverse, reorder), <b>walk with two speeds or a gap</b> (middle, cycle, n-th from the end), and <b>build behind a dummy head</b> (merge, remove), so the first node is not a special case.</p>
+<h3>Ask yourself</h3><ol class="questions"><li><b>What must stay reachable?</b> Before <code>curr.next = ...</code>, save <code>curr.next</code> if you still need the rest.</li><li><b>Do I need a node before the head?</b> If the head can change or be removed, start from a dummy node.</li><li><b>Would two pointers at different speeds find it?</b> Middle: slow 1, fast 2. Cycle: they meet. n-th from the end: a gap of n.</li><li><b>In what order do the pointer writes happen?</b> Write them down first; most bugs are two lines swapped.</li></ol>
+<h3>Which fits?</h3><p class="muted">Pick what you would reach for. A wrong pick shows the gap; pick again to move on.</p>
+<div id="cases"></div>
+<h3>Looks like it, isn't</h3><ul><li><b>Find the duplicate number in an array of n + 1 values in 1..n.</b> No list in sight, but <code>i → nums[i]</code> is one: Floyd's cycle finding on indices.</li><li><b>Reverse an array.</b> Two pointers swapping from both ends; there are no <code>next</code> pointers to rewire.</li><li><b>Merge k sorted lists.</b> The splice is a linked list move, but choosing the smallest head each time is a heap.</li></ul></section>
+
+<section id="parts"><h2>The parts</h2>
+<div class="cards"><div class="card"><h3>Names</h3><dl><dt><code>prev</code></dt><dd>the head of the part already reversed (None at first)</dd><dt><code>curr</code></dt><dd>the first node not yet reversed</dd><dt><code>nxt</code></dt><dd>a saved handle on <code>curr.next</code>, taken before that pointer is overwritten</dd></dl></div>
+<div class="card"><h3>Your plan card</h3><dl><dt>Start</dt><dd><code>prev = None</code>, <code>curr = head</code>.</dd><dt>Continue</dt><dd>while <code>curr</code>: nodes are left to reverse.</dd><dt>Move</dt><dd>save <code>nxt = curr.next</code>; point <code>curr.next = prev</code>; step <code>prev, curr = curr, nxt</code>.</dd><dt>Stop</dt><dd><code>curr</code> is None; <code>prev</code> is the new head.</dd></dl></div></div>
+<div class="card invariant"><h3>What stays true</h3><p><code>prev</code> heads the reversed part and <code>curr</code> heads the rest. Together they hold every node, and nothing is unreachable.</p></div>
+<h3>Why each move is safe</h3><ul><li><code>nxt = curr.next</code> comes first: once <code>curr.next = prev</code> runs, it is the only handle on the rest of the list.</li><li><code>curr.next = prev</code> adds one node to the front of the reversed part; the rest is still reachable through <code>nxt</code>.</li><li><code>prev, curr = curr, nxt</code> restores the invariant for one more reversed node, so the loop ends after n turns.</li></ul>
+<p><b>Relies on:</b> the order of the three writes. Swap any two and a node becomes unreachable or the list loops.</p></section>
+
+<section id="trace"><h2>Trace it. Predict the decisions.</h2>
+<p class="muted">Step runs the highlighted line. At a decision the stepper waits for your prediction. The numbers beside the code count how often each line has run.</p>
+<div id="stepper"></div></section>
+
+<section id="family"><h2>The family</h2><p>Linked list problems share a short list of moves. Name the move before you write a line.</p><article class='variant'><h3>Rewire with prev and curr</h3><p>The trace above. Reverse in groups of k by reversing k nodes, then reconnecting the group's old head to what follows.</p><p class='probs'><a href='https://leetcode.com/problems/reverse-linked-list/' target='_blank' rel='noopener'>Reverse Linked List</a> <span class='muted'>easy</span> · <a href='https://leetcode.com/problems/reverse-nodes-in-k-group/' target='_blank' rel='noopener'>Reverse Nodes in k-Group</a> <span class='muted'>hard</span></p></article><article class='variant'><h3>Build behind a dummy head</h3><p><code>dummy = tail = ListNode(0)</code>; append to <code>tail</code>; return <code>dummy.next</code>. For k lists, keep their heads in a heap.</p><p class='probs'><a href='https://leetcode.com/problems/merge-two-sorted-lists/' target='_blank' rel='noopener'>Merge Two Sorted Lists</a> <span class='muted'>easy</span> · <a href='https://leetcode.com/problems/add-two-numbers/' target='_blank' rel='noopener'>Add Two Numbers</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/merge-k-sorted-lists/' target='_blank' rel='noopener'>Merge k Sorted Lists</a> <span class='muted'>hard</span></p></article><article class='variant'><h3>Two speeds</h3><p><code>slow</code> moves 1, <code>fast</code> moves 2. They meet inside a cycle; when fast reaches the end, slow is in the middle. Reorder List = find the middle, reverse the second half, weave.</p><p class='probs'><a href='https://leetcode.com/problems/linked-list-cycle/' target='_blank' rel='noopener'>Linked List Cycle</a> <span class='muted'>easy</span> · <a href='https://leetcode.com/problems/find-the-duplicate-number/' target='_blank' rel='noopener'>Find the Duplicate Number</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/reorder-list/' target='_blank' rel='noopener'>Reorder List</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>A gap of n</h3><p>Start the lead n steps ahead of the trailer; move both until the lead ends. Begin at a dummy head so removing the first node works too.</p><p class='probs'><a href='https://leetcode.com/problems/remove-nth-node-from-end-of-list/' target='_blank' rel='noopener'>Remove Nth Node From End of List</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>A map from node to node</h3><p>Copy with random pointers: map each old node to its copy in one pass, wire <code>next</code> and <code>random</code> in a second. LRU: a map to doubly linked nodes.</p><p class='probs'><a href='https://leetcode.com/problems/copy-list-with-random-pointer/' target='_blank' rel='noopener'>Copy List with Random Pointer</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/lru-cache/' target='_blank' rel='noopener'>LRU Cache</a> <span class='muted'>medium</span></p></article></section>
+
+<section id="count"><h2>Count the work</h2>
+<p>Count how often each line runs; the line with the most runs decides the Big-O. Here that is <code>nxt = curr.next</code>.</p>
+<p>Each turn moves one node from the rest to the reversed part, so the loop body runs exactly n times, each line O(1). Doubling n doubles the count.</p>
+<table class="measure"><thead><tr><th>n</th><th>runs (measured)</th><th>bound: n</th><th>vs the row above</th><th>all lines</th></tr></thead><tbody><tr><td>16</td><td>16</td><td>16</td><td></td><td>67</td></tr><tr><td>32</td><td>32</td><td>32</td><td>×2.00</td><td>131</td></tr><tr><td>64</td><td>64</td><td>64</td><td>×2.00</td><td>259</td></tr><tr><td>128</td><td>128</td><td>128</td><td>×2.00</td><td>515</td></tr></tbody></table>
+<p class="muted">Measured by running the reference under Python's tracer on its worst inputs.</p>
+<p><b>Time:</b> O(n) · <b>Extra space:</b> O(1): three pointers. (A recursive reverse uses O(n) stack.)</p></section>
+
+<section id="traps"><h2>Where it breaks</h2><ul><li><b><code>curr.next = prev</code> before saving <code>curr.next</code></b> loses the rest of the list.</li><li><b>Returning <code>head</code></b> returns the old first node, now the last. The new head is <code>prev</code>.</li><li><b><code>fast.next.next</code> without checking <code>fast.next</code></b> crashes on an even-length list. Loop <code>while fast and fast.next</code>.</li><li><b>No dummy head</b> makes removing or replacing the first node a special case.</li></ul></section>
+</div>
+
+<section id="check"><h2>Check it without the visual</h2>
+<p>Hide the lesson, then trace a fresh input and answer the transfer questions from memory. A practice check, not proof you'll remember it.</p>
+<button type="button" id="hide" class="primary">Hide the lesson and try</button>
+<div id="quiz" hidden></div></section>
+</main>
+<script id="data" type="application/json">{"traces":[{"label":"1 → 2 → 3 → 4","about":"Four nodes. The green part grows from the left while the arrows flip, one node per turn.","code":["def reverse_list(head):","    prev, curr = None, head","    while curr:","        nxt = curr.next","        curr.next = prev","        prev, curr = curr, nxt","    return prev"],"steps":[{"line":2,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":2,"cls":""},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"not started","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"},{"id":2,"label":2,"x":2,"y":0,"cls":"","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":2,"cls":""},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1","2","3","4"],"note":"","cls":{}}],"say":"prev = None, curr = node 1."},{"line":4,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"},{"id":2,"label":2,"x":2,"y":0,"cls":"","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":2,"cls":""},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1","2","3","4"],"note":"","cls":{}}],"say":"curr is a node, so another turn.","ask":{"q":"Why must this line run before `curr.next = prev`?","options":["It is faster","After the rewire, curr.next no longer leads to the rest","Python requires it"],"answer":"After the rewire, curr.next no longer leads to the rest","why":"Without nxt, the rest of the list would be unreachable after one rewire."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"},{"id":2,"label":2,"x":2,"y":0,"cls":"","tag":"nxt"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":2,"cls":""},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1","2","3","4"],"note":"","cls":{}}],"say":"Saved nxt = node 2: the only handle on the rest once node 1 is rewired.","ask":{"q":"curr is node 1 and prev is None. After this line, what does node 1 point to?","options":null,"answer":"None","why":"It joins the front of the reversed part. The rest stays reachable only through nxt (node 2)."}},{"line":6,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"},{"id":2,"label":2,"x":2,"y":0,"cls":"","tag":"nxt"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":""},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1"],"note":"","cls":{}}],"say":"Node 1 now points to None. The reversed part grew by one."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"cur","tag":"curr nxt"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["2","3","4"],"note":"","cls":{}}],"say":"Stepped forward: prev = node 1, curr = node 2."},{"line":4,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"cur","tag":"curr nxt"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["2","3","4"],"note":"","cls":{}}],"say":"curr is a node, so another turn."},{"line":5,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"cur","tag":"curr"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":"nxt"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":3,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["2","3","4"],"note":"","cls":{}}],"say":"Saved nxt = node 3: the only handle on the rest once node 2 is rewired.","ask":{"q":"curr is node 2 and prev is node 1. After this line, what does node 2 point to?","options":null,"answer":"1","why":"It joins the front of the reversed part. The rest stays reachable only through nxt (node 3)."}},{"line":6,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"cur","tag":"curr"},{"id":3,"label":3,"x":3,"y":0,"cls":"","tag":"nxt"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":1,"cls":""},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["2","1"],"note":"","cls":{}}],"say":"Node 2 now points to node 1. The reversed part grew by one."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"cur","tag":"curr nxt"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["3","4"],"note":"","cls":{}}],"say":"Stepped forward: prev = node 2, curr = node 3."},{"line":4,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"cur","tag":"curr nxt"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["3","4"],"note":"","cls":{}}],"say":"curr is a node, so another turn."},{"line":5,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"cur","tag":"curr"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":"nxt"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":3,"b":4,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["3","4"],"note":"","cls":{}}],"say":"Saved nxt = node 4: the only handle on the rest once node 3 is rewired.","ask":{"q":"curr is node 3 and prev is node 2. After this line, what does node 3 point to?","options":null,"answer":"2","why":"It joins the front of the reversed part. The rest stays reachable only through nxt (node 4)."}},{"line":6,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"cur","tag":"curr"},{"id":4,"label":4,"x":4,"y":0,"cls":"","tag":"nxt"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":3,"b":2,"cls":""},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["3","2","1"],"note":"","cls":{}}],"say":"Node 3 now points to node 2. The reversed part grew by one."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"cur","tag":"curr nxt"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["4"],"note":"","cls":{}}],"say":"Stepped forward: prev = node 3, curr = node 4."},{"line":4,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"cur","tag":"curr nxt"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["4"],"note":"","cls":{}}],"say":"curr is a node, so another turn."},{"line":5,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":"nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":4,"b":"none-right","cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["4"],"note":"","cls":{}}],"say":"Saved nxt = None: the only handle on the rest once node 4 is rewired."},{"line":6,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":"nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":"prev"},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"},{"a":4,"b":3,"cls":""}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["4","3","2","1"],"note":"","cls":{}}],"say":"Node 4 now points to node 3. The reversed part grew by one."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":4,"b":3,"cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["4","3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Stepped forward: prev = node 4, curr = None."},{"line":7,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":4,"b":3,"cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["4","3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"curr is None: every node is reversed."},{"line":7,"ret":true,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":5,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":""},{"id":4,"label":4,"x":4,"y":0,"cls":"ok","tag":"prev"},{"id":3,"label":3,"x":3,"y":0,"cls":"ok","tag":""},{"id":2,"label":2,"x":2,"y":0,"cls":"ok","tag":""}],"edges":[{"a":1,"b":"none-left","cls":"ok"},{"a":4,"b":3,"cls":"ok"},{"a":3,"b":2,"cls":"ok"},{"a":2,"b":1,"cls":"ok"}],"directed":true,"w":6,"h":1},{"t":"list","name":"reachable from prev","items":["4","3","2","1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Returns <explainer_spec_linked_list.ListNode object at 0x10762c770>."}],"rows":[{"at":5,"cells":["1","1","2 → 3 → 4"]},{"at":9,"cells":["2","2 → 1","3 → 4"]},{"at":13,"cells":["3","3 → 2 → 1","4"]},{"at":17,"cells":["4","4 → 3 → 2 → 1","None"]}],"cols":["turn","prev heads","curr heads"],"result":"<explainer_spec_linked_list.ListNode object at 0x10762c500>"},{"label":"One node","about":"The edge case: one turn, and the single node points at None.","code":["def reverse_list(head):","    prev, curr = None, head","    while curr:","        nxt = curr.next","        curr.next = prev","        prev, curr = curr, nxt","    return prev"],"steps":[{"line":2,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"","tag":""}],"edges":[{"a":1,"b":"none-right","cls":""}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"not started","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-right","cls":""}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1"],"note":"","cls":{}}],"say":"prev = None, curr = node 1."},{"line":4,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":""},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-right","cls":""}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1"],"note":"","cls":{}}],"say":"curr is a node, so another turn.","ask":{"q":"Why must this line run before `curr.next = prev`?","options":["It is faster","After the rewire, curr.next no longer leads to the rest","Python requires it"],"answer":"After the rewire, curr.next no longer leads to the rest","why":"Without nxt, the rest of the list would be unreachable after one rewire."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":"nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-right","cls":""}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1"],"note":"","cls":{}}],"say":"Saved nxt = None: the only handle on the rest once node 1 is rewired.","ask":{"q":"curr is node 1 and prev is None. After this line, what does node 1 point to?","options":null,"answer":"None","why":"It joins the front of the reversed part. The rest stays reachable only through nxt (node None)."}},{"line":6,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":"prev"},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":"nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"cur","tag":"curr"}],"edges":[{"a":1,"b":"none-right","cls":""}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":[],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":["1"],"note":"","cls":{}}],"say":"Node 1 now points to None. The reversed part grew by one."},{"line":3,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"}],"edges":[{"a":1,"b":"none-left","cls":"ok"}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Stepped forward: prev = node 1, curr = None."},{"line":7,"ret":false,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"}],"edges":[{"a":1,"b":"none-left","cls":"ok"}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"curr is None: every node is reversed."},{"line":7,"ret":true,"views":[{"t":"graph","name":"nodes and their next pointers (green: reversed part)","nodes":[{"id":"none-left","label":"∅","x":0,"y":0,"cls":"done","tag":""},{"id":"none-right","label":"∅","x":2,"y":0,"cls":"done","tag":"curr nxt"},{"id":1,"label":1,"x":1,"y":0,"cls":"ok","tag":"prev"}],"edges":[{"a":1,"b":"none-left","cls":"ok"}],"directed":true,"w":3,"h":1},{"t":"list","name":"reachable from prev","items":["1"],"note":"","cls":{}},{"t":"list","name":"reachable from curr","items":[],"note":"","cls":{}}],"say":"Returns <explainer_spec_linked_list.ListNode object at 0x107617bc0>."}],"rows":[{"at":5,"cells":["1","1","None"]}],"cols":["turn","prev heads","curr heads"],"result":"<explainer_spec_linked_list.ListNode object at 0x10762f770>"}],"spot":{"idea":["A linked list gives O(1) splicing at a node you already hold, and no random access: reaching index i costs i steps. So the problems are about **pointer order**: which `next` you must save before you overwrite it, and which node you must keep a handle on so nothing becomes unreachable.","Three moves cover most of them: **rewire** with `prev` and `curr` (reverse, reorder), **walk with two speeds or a gap** (middle, cycle, n-th from the end), and **build behind a dummy head** (merge, remove), so the first node is not a special case."],"questions":[["What must stay reachable?","Before `curr.next = ...`, save `curr.next` if you still need the rest."],["Do I need a node before the head?","If the head can change or be removed, start from a dummy node."],["Would two pointers at different speeds find it?","Middle: slow 1, fast 2. Cycle: they meet. n-th from the end: a gap of n."],["In what order do the pointer writes happen?","Write them down first; most bugs are two lines swapped."]],"cases":[{"text":"Reverse a singly linked list in place.","options":["Rewire with prev and curr","Copy the values into an array, reverse, write back","Recursion is the only way"],"answer":0,"why":"Three pointers, O(1) extra space: save next, point curr back at prev, step both forward."},{"text":"Does the list have a cycle? Use O(1) extra space.","options":["A set of visited nodes","Slow and fast pointers","Count the nodes"],"answer":1,"why":"A set works in O(n) space. With fast moving 2 and slow 1, fast gains one node per step, so inside a cycle it catches slow."},{"text":"Remove the n-th node from the end, in one pass.","options":["Two pointers n apart","Reverse the list first","A hash map from index to node"],"answer":0,"why":"Move the lead n steps ahead, then move both: when the lead reaches the end, the trailer is just before the node to remove."},{"text":"Merge two sorted lists into one sorted list.","options":["A dummy head and a tail pointer","Collect the values and sort them","Fast and slow pointers"],"answer":0,"why":"Append the smaller head to `tail` each step; the dummy means the first append isn't a special case."},{"text":"Design a cache that evicts the least recently used key, with O(1) get and put.","options":["A hash map plus a doubly linked list","A heap of timestamps","A sorted list"],"answer":0,"why":"The map finds a node in O(1); the doubly linked list moves it to the front or drops the tail in O(1)."},{"text":"Return the k-th element of an array.","options":["Walk a linked list k steps","Index the array directly","Fast and slow pointers"],"answer":1,"why":"Arrays give O(1) random access. A linked list only pays off when you splice at nodes you already hold."}],"near_misses":[["Find the duplicate number in an array of n + 1 values in 1..n.","No list in sight, but `i → nums[i]` is one: Floyd's cycle finding on indices."],["Reverse an array.","Two pointers swapping from both ends; there are no `next` pointers to rewire."],["Merge k sorted lists.","The splice is a linked list move, but choosing the smallest head each time is a heap."]]},"check":{"text":"Reverse 5 → 6 → 7 with the same loop. Write the value prev points to after each turn, and the list it returns.","fields":[{"label":"prev after each turn","answer":"5, 6, 7"},{"label":"Returned list","answer":"[7, 6, 5]"}],"questions":[{"q":"Find the middle node in one pass. Where is slow when fast can't take two more steps?","options":["At the start","In the middle: fast covered twice slow's distance","At the end"],"answer":1,"why":"fast moves 2 for slow's 1, so when fast reaches the end, slow has covered half."},{"q":"Remove the n-th node from the end. Why start both pointers at a dummy node before the head?","options":["So removing the first node needs no special case","To save memory","To detect cycles"],"answer":0,"why":"The trailer must stop before the node it removes; when that node is the head, only a dummy comes before it."}],"own":{"prompt":"What has to be true of prev and curr after every turn, and why does the order of the three lines matter?","model":"prev heads the reversed part and curr heads the rest, and together they hold every node. Saving curr.next first keeps the rest reachable; pointing curr.next at prev moves one node into the reversed part; stepping both forward restores the invariant. Swap the first two lines and the rest of the list is lost."}}}</script>
+<script>"use strict";
+// The stepper and the checks of a built explainer page; scripts/build_explainer.py inlines this file.
+// Everything shown comes from the JSON in #data, recorded by running the spec's Python. The page keeps its state in
+// memory only (the learning app serves it sandboxed, where storage throws), and nothing takes focus on load.
+const DATA = JSON.parse(document.getElementById("data").textContent);
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else if (k.startsWith("on")) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  node.append(...kids.filter((x) => x !== null && x !== undefined && x !== false));
+  return node;
+}
+// Answers compare as tokens: "(0, 5) (0, 4)", "(0,5),(0,4)" and "[0, 5, 0, 4]" are the same answer.
+const norm = (s) => String(s).toLowerCase().replace(/[\s'"()[\]{},;]+/g, ",").replace(/^,+|,+$/g, "");
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text = "") {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+// --- theme ---------------------------------------------------------------------------------------------------------
+document.getElementById("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// --- multiple choice: the recognition cases and the transfer questions ---------------------------------------------
+function choice(item, record) {
+  const box = el("div", {class: "choice"}, el("p", {class: "q", text: item.text || item.q}));
+  const options = el("div", {class: "options"});
+  const said = el("p", {class: "said", role: "status"});
+  let first = true;
+  item.options.forEach((label, i) => {
+    options.append(el("button", {type: "button", text: label, onclick: (e) => {
+      const right = i === item.answer;
+      e.target.classList.add(right ? "right" : "wrong");
+      said.textContent = (right ? "Yes. " : "Not this one. ") + (right ? item.why : (item.miss?.[i] || "Look for what the method relies on, and try again."));
+      said.className = "said " + (right ? "right" : "wrong");
+      if (first && record) record(right);
+      first = false;
+      if (right) options.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    }}));
+  });
+  box.append(options, said);
+  return box;
+}
+(function cases() {
+  const host = document.getElementById("cases");
+  const score = el("p", {class: "muted", role: "status"});
+  let tried = 0, right = 0;
+  const record = (ok) => {
+    tried += 1; right += ok ? 1 : 0;
+    score.textContent = `First pick right: ${right} of ${tried}` + (tried === DATA.spot.cases.length ? ` (all ${tried} cases).` : ".");
+  };
+  DATA.spot.cases.forEach((c) => host.append(choice(c, record)));
+  host.append(score);
+})();
+
+// --- views: pure functions of one step's state ----------------------------------------------------------------------
+function changed(view, prev) {  // indexes or names whose value differs from the same view one step back
+  if (!prev || prev.t !== view.t || prev.name !== view.name) return new Set();
+  const out = new Set();
+  if (view.t === "array") view.items.forEach((x, i) => { if (prev.items[i] !== x) out.add(String(i)); });
+  if (view.t === "vars") view.items.forEach(([k, v]) => { const p = prev.items.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  if (view.t === "map") view.entries.forEach(([k, v]) => { const p = prev.entries.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  return out;
+}
+const VIEWS = {
+  array(v, chg) {
+    const row = el("div", {class: "cells"});
+    v.items.forEach((x, i) => {
+      const ptrs = Object.entries(v.ptr).filter(([, j]) => j === i).map(([k]) => k).join(" ");
+      row.append(el("div", {class: `cell ${v.cls[i] || ""} ${chg.has(String(i)) ? "chg" : ""}`},
+        el("span", {class: "idx", text: v.labels ? v.labels[i] : String(i)}), el("span", {class: "val", text: x}),
+        el("span", {class: "ptr", text: ptrs})));
+    });
+    const past = Object.entries(v.ptr).filter(([, j]) => j >= v.items.length || j < 0);
+    if (past.length) row.append(el("div", {class: "cell ghost"}, el("span", {class: "idx", text: String(v.items.length)}),
+      el("span", {class: "val", text: "·"}), el("span", {class: "ptr", text: past.map(([k]) => k).join(" ")})));
+    return row;
+  },
+  list(v) {
+    const row = el("div", {class: "chips"});
+    if (!v.items.length) row.append(el("span", {class: "muted", text: "empty"}));
+    v.items.forEach((x, i) => row.append(el("span", {class: `chip ${v.cls[i] || ""}`, text: x})));
+    if (v.note) row.append(el("span", {class: "muted note", text: v.note}));
+    return row;
+  },
+  map(v, chg) {
+    const t = el("table", {class: "kv"});
+    if (!v.entries.length) t.append(el("tr", {}, el("td", {class: "muted", text: "empty"})));
+    v.entries.forEach(([k, x]) => t.append(el("tr", {class: `${k === v.hl ? "cur" : ""} ${chg.has(k) ? "chg" : ""}`},
+      el("td", {text: k}), el("td", {text: x}))));
+    return t;
+  },
+  vars(v, chg) {
+    const row = el("div", {class: "chips"});
+    v.items.forEach(([k, x]) => row.append(el("span", {class: `var ${chg.has(k) ? "chg" : ""}`}, el("b", {text: k}), " = ", x)));
+    return row;
+  },
+  grid(v) {
+    const t = el("table", {class: "grid"});
+    if (v.colh) t.append(el("tr", {}, v.rowh ? el("th") : null, ...v.colh.map((h) => el("th", {text: String(h)}))));
+    v.cells.forEach((row, r) => t.append(el("tr", {}, v.rowh ? el("th", {text: String(v.rowh[r])}) : null,
+      ...row.map((x, c) => el("td", {class: v.cls[`${r},${c}`] || "", text: x})))));
+    return t;
+  },
+  graph(v) {
+    const U = 64, R = 17, pad = 30;
+    const [vw, vh] = [(v.w - 1) * U + 2 * pad, (v.h - 1) * U + 2 * pad + 14];  // drawn at natural size, never wider than its box
+    const s = svg("svg", {viewBox: `${-pad} ${-pad} ${vw} ${vh}`, width: vw, height: vh, class: "graph", role: "img"});
+    const at = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+    if (v.directed) {
+      const marker = svg("marker", {id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "9", markerHeight: "9",
+        markerUnits: "userSpaceOnUse", orient: "auto-start-reverse"});
+      marker.append(svg("path", {d: "M0,0 L10,5 L0,10 z", class: "arrowhead"}));
+      const defs = svg("defs");
+      defs.append(marker);
+      s.append(defs);
+    }
+    for (const e of v.edges) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) continue;
+      const [x1, y1, x2, y2] = [a.x * U, a.y * U, b.x * U, b.y * U];
+      const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const [ux, uy] = [(x2 - x1) / d, (y2 - y1) / d];
+      s.append(svg("line", {x1: x1 + ux * R, y1: y1 + uy * R, x2: x2 - ux * (R + 2), y2: y2 - uy * (R + 2),
+        class: `edge ${e.cls || ""}`, ...(v.directed ? {"marker-end": "url(#arrow)"} : {})}));
+      if (e.label !== undefined && e.label !== "") {
+        s.append(svg("text", {x: (x1 + x2) / 2 - uy * 10, y: (y1 + y2) / 2 + ux * 10 + 4, class: "elabel"}, String(e.label)));
+      }
+    }
+    for (const n of v.nodes) {
+      const wide = Math.max(2 * R, 8 * String(n.label).length + 12);  // a long label gets a pill, not a circle
+      s.append(wide > 2 * R
+        ? svg("rect", {x: n.x * U - wide / 2, y: n.y * U - R, width: wide, height: 2 * R, rx: R, class: `node ${n.cls || ""}`})
+        : svg("circle", {cx: n.x * U, cy: n.y * U, r: R, class: `node ${n.cls || ""}`}));
+      s.append(svg("text", {x: n.x * U, y: n.y * U + 4, class: "nlabel"}, String(n.label)));
+      if (n.tag) s.append(svg("text", {x: n.x * U, y: n.y * U + R + 13, class: "ntag"}, String(n.tag)));
+    }
+    return s;
+  },
+  bars(v) {
+    const W = 320, rowH = 22, span = Math.max(1, v.hi - v.lo);
+    const s = svg("svg", {viewBox: `0 0 ${W + 20} ${v.spans.length * rowH + 26}`, width: W + 20, height: v.spans.length * rowH + 26, class: "bars", role: "img"});
+    const x = (t) => 10 + ((t - v.lo) / span) * W;
+    v.spans.forEach(([a, b, label, cls], i) => {
+      s.append(svg("rect", {x: x(a), y: i * rowH + 4, width: Math.max(3, x(b) - x(a)), height: rowH - 8, rx: 3, class: `span ${cls || ""}`}));
+      const text = label || `[${a}, ${b}]`, room = 7 * text.length;  // right of the bar, else left of it, else inside
+      const [tx, anchor] = x(b) + 4 + room <= W + 20 ? [x(b) + 4, "start"] : x(a) - 4 - room >= 0 ? [x(a) - 4, "end"] : [(x(a) + x(b)) / 2, "middle"];
+      s.append(svg("text", {x: tx, y: i * rowH + rowH / 2 + 4, class: "slabel", "text-anchor": anchor}, text));
+    });
+    const axis = v.spans.length * rowH + 8;
+    s.append(svg("line", {x1: x(v.lo), y1: axis, x2: x(v.hi), y2: axis, class: "axis"}));
+    for (let t = v.lo; t <= v.hi; t += Math.max(1, Math.ceil(span / 10))) {
+      s.append(svg("text", {x: x(t), y: axis + 14, class: "tick"}, String(t)));
+    }
+    return s;
+  },
+  text(v) { return el("p", {text: v.text}); },
+};
+function drawViews(step, prev) {
+  const box = el("div", {class: "views"});
+  step.views.forEach((v, i) => {
+    const before = prev?.views[i];
+    box.append(el("figure", {class: `view v-${v.t}`}, v.name ? el("figcaption", {text: v.name}) : null, VIEWS[v.t](v, changed(v, before))));
+  });
+  return box;
+}
+
+// --- the stepper ------------------------------------------------------------------------------------------------------
+(function stepper() {
+  const host = document.getElementById("stepper");
+  const states = DATA.traces.map(() => ({k: 0, answers: {}}));
+  let current = 0, timer = null;
+  const picker = el("div", {class: "picker", role: "group", "aria-label": "Input"});
+  DATA.traces.forEach((t, i) => picker.append(el("button", {type: "button", text: t.label, onclick: () => { stop(); current = i; draw(); }})));
+  const about = el("p", {class: "about"});
+  const back = el("button", {type: "button", text: "Back", onclick: () => go(-1)});
+  const step = el("button", {type: "button", class: "primary", text: "Step", onclick: () => go(1)});
+  const play = el("button", {type: "button", text: "Play", onclick: () => (timer ? stop() : start())});
+  const reset = el("button", {type: "button", text: "Reset", onclick: () => { stop(); states[current] = {k: 0, answers: {}}; draw(); }});
+  const end = el("button", {type: "button", text: "End", onclick: () => { stop(); while (canStep()) S().k += 1; draw(); }});
+  const where = el("span", {class: "muted where"});
+  const say = el("p", {class: "say", "aria-live": "polite"});
+  const ask = el("div", {class: "ask"});
+  const stage = el("div", {class: "stage"});
+  const code = el("ol", {class: "code"});
+  const table = el("table", {class: "history"});
+  const record = el("p", {class: "muted"});
+  host.append(picker, about, el("div", {class: "controls"}, back, step, play, reset, end, where), say, ask,
+    el("div", {class: "split"}, stage, el("div", {class: "side"}, el("h3", {text: "Python · how often each line has run"}), code)),
+    el("h3", {text: "History"}), el("div", {class: "scroll"}, table), record);
+  if (DATA.traces.length < 2) picker.hidden = true;
+
+  const T = () => DATA.traces[current];
+  const S = () => states[current];
+  const pending = () => T().steps[S().k].ask && !S().answers[S().k];
+  const canStep = () => S().k < T().steps.length - 1 && !pending();
+  function go(d) {
+    if (d > 0 && !canStep()) return;
+    S().k = Math.max(0, Math.min(T().steps.length - 1, S().k + d));
+    draw();
+  }
+  function start() {
+    play.textContent = "Pause";
+    timer = setInterval(() => { if (canStep()) go(1); else stop(); }, 650);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    play.textContent = "Play";
+  }
+  function drawAsk(s, k) {
+    ask.replaceChildren();
+    if (!s.ask) return;
+    const a = s.ask, given = S().answers[k];
+    ask.append(el("p", {class: "q"}, el("b", {text: "Predict: "}), a.q));
+    const reveal = (value) => {
+      S().answers[k] = {value, right: norm(value) === norm(a.answer)};
+      draw();
+    };
+    if (!given) {
+      if (a.options) {
+        ask.append(el("div", {class: "options"}, ...a.options.map((o) => el("button", {type: "button", text: String(o), onclick: () => reveal(String(o))}))));
+      } else {
+        const input = el("input", {type: "text", "aria-label": "Your prediction", autocomplete: "off"});
+        const form = el("form", {class: "fill", onsubmit: (e) => { e.preventDefault(); if (input.value.trim()) reveal(input.value.trim()); }},
+          input, el("button", {type: "submit", text: "Check"}));
+        ask.append(form);
+      }
+      return;
+    }
+    ask.append(el("p", {class: `said ${given.right ? "right" : "wrong"}`},
+      given.right ? `You said ${given.value}. Right.` : `You said ${given.value}. It was ${a.answer}.`, a.why ? " " + a.why : ""));
+  }
+  function draw() {
+    const t = T(), k = S().k, s = t.steps[k];
+    picker.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === current)));
+    about.textContent = t.about;
+    back.disabled = k === 0;
+    step.disabled = !canStep();
+    end.disabled = !canStep();
+    where.textContent = `Step ${k + 1} of ${t.steps.length}` + (pending() ? " · predict to go on" : "");
+    say.textContent = s.say || "";
+    drawAsk(s, k);
+    stage.replaceChildren(drawViews(s, t.steps[k - 1]));
+    const runs = {};
+    for (let i = 0; i < k; i++) if (!t.steps[i].ret) runs[t.steps[i].line] = (runs[t.steps[i].line] || 0) + 1;
+    code.replaceChildren(...t.code.map((line, i) => el("li", {class: i + 1 === s.line ? (s.ret ? "cur ret" : "cur") : ""},
+      el("span", {class: "runs", text: runs[i + 1] ? String(runs[i + 1]) : ""}), el("code", {text: line || " "}))));
+    table.replaceChildren(el("tr", {}, ...t.cols.map((c) => el("th", {text: c}))),
+      ...t.rows.filter((r) => r.at <= k).map((r) => el("tr", {}, ...r.cells.map((c) => el("td", {text: c})))));
+    if (!t.rows.some((r) => r.at <= k)) table.append(el("tr", {}, el("td", {class: "muted", colspan: String(t.cols.length || 1), text: "Rows appear as you step."})));
+    const given = Object.values(S().answers);
+    record.textContent = given.length ? `Predictions on this input: ${given.filter((g) => g.right).length} of ${given.length} right.` : "";
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || document.body.classList.contains("checking")) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > innerHeight) return;  // only while the stepper is on screen
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(-1); }
+  });
+  draw();
+})();
+
+// --- the check with the lesson hidden -----------------------------------------------------------------------------------
+(function check() {
+  const c = DATA.check, quiz = document.getElementById("quiz"), hide = document.getElementById("hide");
+  const inputs = c.fields.map((f) => el("input", {type: "text", autocomplete: "off", "aria-label": f.label}));
+  const marks = c.fields.map(() => el("span", {class: "mark", role: "status"}));
+  const fields = el("div", {class: "fields"}, ...c.fields.map((f, i) => el("label", {}, f.label, inputs[i], marks[i])));
+  const checkBtn = el("button", {type: "button", class: "primary", text: "Check my trace", onclick: () => {
+    c.fields.forEach((f, i) => {
+      const ok = norm(inputs[i].value) === norm(f.answer);
+      marks[i].textContent = ok ? "Right." : `It was ${f.answer}.`;
+      marks[i].className = "mark " + (ok ? "right" : "wrong");
+    });
+  }});
+  const own = el("textarea", {rows: "4", "aria-label": "In your own words"});
+  const model = el("p", {class: "model", hidden: ""}, c.own.model);
+  quiz.append(el("p", {class: "muted", text: "The traces, code, plan card and history are hidden. Work on paper if you like."}),
+    el("h3", {text: "Trace a fresh input"}), el("p", {text: c.text}), fields, checkBtn,
+    el("h3", {text: "Transfer"}), ...c.questions.map((q) => choice(q)),
+    el("h3", {text: "In your own words"}), el("p", {text: c.own.prompt}), own,
+    el("button", {type: "button", text: "Compare with the reasoning", onclick: () => { model.hidden = false; }}), model,
+    el("p", {}, el("button", {type: "button", class: "ghost", text: "Return to the lesson", onclick: () => {
+      document.body.classList.remove("checking"); quiz.hidden = true; hide.hidden = false;
+    }})));
+  hide.onclick = () => {
+    document.body.classList.add("checking");
+    quiz.hidden = false;
+    hide.hidden = true;
+    document.getElementById("check").scrollIntoView({block: "start"});
+  };
+})();
+</script>
+</body>
+</html>

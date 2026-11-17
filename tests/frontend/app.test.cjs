@@ -59,3 +59,10 @@ test('feedback goes into the prompt as he typed it', () => {
   const p = `({key: 'stack', name: 'Stack', explainer: 'concepts/stack/stack-derived.html'})`;
   assert.match(run(`explainerPrompt(${p}, 'show "two equal" heights')`), /My feedback: "show "two equal" heights"\. Log it/);
 });
+
+test('a stage answer becomes a message for the coach chat, as he typed it', () => {
+  const run = load();
+  const live = `({stage: 1, stage_name: 'Find an approach', title: 'Two Sum'})`;
+  assert.equal(run(`answerPrompt(${live}, 'all pairs, then a "seen" map')`),
+    'My answer for stage 1 (Find an approach) on Two Sum:\n\nall pairs, then a "seen" map');
+});

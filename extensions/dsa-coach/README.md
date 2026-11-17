@@ -2,11 +2,11 @@
 
 A Chrome/Edge extension that keeps your DSA Coach progress and theory in a side panel beside LeetCode, or any other page. The panel shows the local learning app:
 
-- **Today:** the live solve (stage, hint rung, focus block), the re-solves due, and what's next
+- **Today:** the live solve (stage, hint rung, focus block) with a box for your answer to the current stage, the re-solves due, and what's next
 - **Map:** all 22 patterns with their status
 - **Learn:** a pattern's cues, invariant, template, resources, problems and saved explainer
 
-The panel is read-only. You code on LeetCode, and you talk to the coach in Claude Code, which can look at your LeetCode tab itself. The extension reads no page and has no access to LeetCode or any other site: its only permissions are the side panel, its own storage, and your local server.
+The panel writes nothing. You code on LeetCode, and you talk to the coach in Claude Code, which can look at your LeetCode tab itself. To answer a stage without leaving LeetCode, type in the box on Today and choose **Copy for the coach** (or ⌘Enter): it copies your answer as a message, and you paste it into the coach chat. The extension reads no page and has no access to LeetCode or any other site: its only permissions are the side panel, its own storage, and your local server.
 
 ## Install once
 

@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two Pointers, explained</title>
+<style>/* Built explainer pages: the learning app's palette, light and dark, readable at phone width. */
+:root {
+  --bg: oklch(98.6% 0.003 250); --chrome: oklch(96.4% 0.005 250); --raise: oklch(93.6% 0.007 250);
+  --line: oklch(89.5% 0.008 250); --fg: oklch(24% 0.012 255); --muted: oklch(50% 0.014 255);
+  --accent: oklch(51% 0.13 252); --accent-soft: oklch(93% 0.035 252); --on-accent: oklch(98.5% 0.006 252);
+  --ok: oklch(50% 0.12 152); --ok-soft: oklch(94.5% 0.035 152); --fail: oklch(52% 0.17 27); --fail-soft: oklch(95% 0.03 27);
+  --nudge: oklch(52% 0.11 70); --nudge-soft: oklch(95.5% 0.04 80);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+    --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+    --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+    --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+    --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+  --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+  --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+  --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+  --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+p code, li code, dd code, td code { background: var(--chrome); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; font-weight: 500; padding: 5px 12px; min-height: 32px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--raise); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+input, textarea {
+  font: inherit; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg);
+}
+textarea { width: 100%; resize: vertical; }
+
+.bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); }
+.bar .brand { font-weight: 700; font-size: 13px; color: var(--muted); }
+.bar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.bar nav a { padding: 3px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bar nav a:hover { color: var(--fg); background: var(--raise); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+section { margin: 28px 0; scroll-margin-top: 56px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 18px 0 6px; }
+h2 { font-size: 22px; margin: 0 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.pitch { font-size: 17px; color: var(--muted); margin: 0; }
+ol.questions li, #spot ul li, #traps li, #parts ul li { margin: 6px 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.card dt { font-weight: 600; }
+.card dd { margin: 0; }
+.invariant { margin-top: 12px; border-color: var(--ok); background: var(--ok-soft); }
+
+.choice { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.choice .q { margin: 0 0 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.options button { text-align: left; }
+.options button.right { border-color: var(--ok); background: var(--ok-soft); }
+.options button.wrong { border-color: var(--fail); background: var(--fail-soft); }
+.said { margin: 8px 0 0; }
+.said.right, .mark.right { color: var(--ok); }
+.said.wrong, .mark.wrong { color: var(--fail); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.about { margin: 4px 0 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.where { margin-left: 6px; font-size: 13px; }
+.say { min-height: 1.6em; margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--chrome); border-radius: 0 6px 6px 0; }
+.ask:not(:empty) { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--nudge); border-radius: 8px; background: var(--nudge-soft); }
+.ask .q { margin: 0 0 8px; }
+.ask .fill { display: flex; gap: 6px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.views { display: flex; flex-wrap: wrap; gap: 12px; }
+.view { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.view figcaption { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.v-graph, .v-bars { flex-basis: 100%; }
+
+.cells { display: flex; gap: 3px; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 34px; }
+.cell .idx { font-size: 11px; color: var(--muted); }
+.cell .val { display: block; min-width: 34px; padding: 5px 6px; text-align: center; font-family: var(--mono); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg); white-space: nowrap; }
+.cell .ptr { min-height: 1.3em; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cell.ghost .val { border-style: dashed; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .var { font-family: var(--mono); font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.chips .note { font-size: 12px; }
+table.kv, table.grid { border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+table.kv td, table.grid td, table.grid th { border: 1px solid var(--line); padding: 3px 8px; text-align: center; }
+table.grid th { color: var(--muted); font-weight: 500; background: var(--chrome); }
+
+/* one meaning per class in every view: cur = acting now, win = inside the live range, ok = answer or kept,
+   done = finished or ruled out, front = waiting its turn, bad = rejected */
+.cur .val, .chip.cur, td.cur, tr.cur td { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.win .val, .chip.win, td.win { background: var(--accent-soft); }
+.ok .val, .chip.ok, td.ok, tr.ok td { border-color: var(--ok); background: var(--ok-soft); }
+.done .val, .chip.done, td.done { color: var(--muted); background: var(--chrome); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--muted) 50%, transparent); }
+.front .val, .chip.front, td.front { border-color: var(--nudge); background: var(--nudge-soft); }
+.bad .val, .chip.bad, td.bad { border-color: var(--fail); background: var(--fail-soft); }
+.chg .val, .var.chg, tr.chg td { outline: 2px solid var(--nudge); outline-offset: -1px; }
+
+svg.graph, svg.bars { display: block; max-width: 100%; height: auto; }
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.edge.cur { stroke: var(--accent); stroke-width: 3.5; }
+.edge.ok { stroke: var(--ok); stroke-width: 3.5; }
+.edge.done { stroke-dasharray: 4 4; stroke: var(--muted); }
+.edge.front { stroke: var(--nudge); }
+.arrowhead { fill: var(--muted); }
+.node { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.node.cur { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.node.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.node.done { fill: var(--chrome); stroke: var(--line); }
+.node.front { fill: var(--nudge-soft); stroke: var(--nudge); }
+.node.win { fill: var(--accent-soft); }
+.node.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.nlabel { text-anchor: middle; font: 600 13px var(--mono); fill: var(--fg); }
+.ntag { text-anchor: middle; font: 700 11px system-ui, sans-serif; fill: var(--accent); }
+.elabel { text-anchor: middle; font: 12px var(--mono); fill: var(--muted); }
+.span { fill: var(--raise); stroke: var(--muted); }
+.span.cur { fill: var(--accent-soft); stroke: var(--accent); }
+.span.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.span.done { fill: var(--chrome); stroke: var(--line); }
+.span.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.slabel, .tick { font: 11px var(--mono); fill: var(--muted); }
+.tick { text-anchor: middle; }
+.axis { stroke: var(--muted); }
+
+.side h3 { margin-top: 0; font-size: 13px; color: var(--muted); }
+ol.code { list-style: none; margin: 0; padding: 6px 0; background: var(--chrome); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; overflow-x: auto; }
+ol.code li { display: flex; gap: 8px; padding: 0 10px 0 0; white-space: pre; }
+ol.code li .runs { flex: 0 0 34px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+ol.code li.cur { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+ol.code li.ret { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.scroll { overflow-x: auto; }
+table.history, table.measure { border-collapse: collapse; font-size: 13px; }
+table.history th, table.history td, table.measure th, table.measure td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; font-family: var(--mono); }
+table.history th, table.measure th { font-family: inherit; color: var(--muted); font-weight: 600; }
+
+.variant { padding: 10px 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; }
+.variant h3 { margin-top: 0; }
+.variant .probs { margin-bottom: 0; }
+pre.code { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+body.checking .lesson { display: none; }
+.fields { display: grid; gap: 10px; margin: 8px 0 12px; }
+.fields label { display: grid; gap: 4px; font-weight: 500; }
+.fields input { max-width: 420px; }
+.mark { font-weight: 400; font-size: 14px; }
+.model { padding: 10px 12px; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 0 6px 6px 0; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+  .bar .brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="brand">DSA notebook</span>
+<nav><a href="#spot">Spot it</a><a href="#parts">Parts</a><a href="#trace">Trace</a><a href="#family">Family</a><a href="#count">Count</a><a href="#check">Check</a></nav>
+<button type="button" id="theme" class="ghost" aria-label="Switch light or dark theme">◐</button></header>
+<main>
+<div class="lesson">
+<section class="hero"><h1>Two Pointers, explained</h1><p class="pitch">Two indices close in from both ends. Each comparison proves that every pair using one of them is finished, so the n² pairs take at most n − 1 steps.</p></section>
+
+<section id="spot"><h2>Spot it</h2><p>Reach for two pointers when the candidates are <b>pairs</b> and one comparison can rule out every pair that uses one element. Sorted order gives that proof for sums, mirror symmetry gives it for palindromes, and the shorter wall gives it for container area.</p><p>Draw the candidates as the upper triangle of an n × n grid: cell (i, j) is the pair i &lt; j. Brute force reads every cell. Two pointers stand on one cell and, with one comparison, grey out a whole row or column.</p>
+<h3>Ask yourself</h3><ol class="questions"><li><b>What are the candidates?</b> Pairs (i, j) with i &lt; j, or a pair inside a triple once one index is fixed.</li><li><b>What does one comparison prove?</b> If the sum is too small, the left element with any partner up to <code>r</code> is smaller still.</li><li><b>Which element is finished?</b> Move that pointer, and only that one.</li><li><b>What must I keep?</b> Usually just <code>l</code>, <code>r</code> and the best so far: O(1) extra space.</li></ol>
+<h3>Which fits?</h3><p class="muted">Pick what you would reach for. A wrong pick shows the gap; pick again to move on.</p>
+<div id="cases"></div>
+<h3>Looks like it, isn't</h3><ul><li><b>Pair sum on an unsorted array.</b> No order, so no proof: use a hash map, or sort first when the indices don't matter (n log n).</li><li><b>Subarray sum equals k, with negative numbers.</b> Contiguous ranges and negatives: neither end can be ruled out. Prefix sums with a hash map.</li><li><b>Count the pairs with sum below a target.</b> Still two pointers, but when <code>nums[l] + nums[r] &lt; target</code> all r − l pairs (l, l+1..r) count at once.</li></ul></section>
+
+<section id="parts"><h2>The parts</h2>
+<div class="cards"><div class="card"><h3>Names</h3><dl><dt><code>l</code></dt><dd>the smallest index still in play</dd><dt><code>r</code></dt><dd>the largest index still in play</dd><dt><code>s</code></dt><dd><code>nums[l] + nums[r]</code>, the one pair being checked</dd></dl></div>
+<div class="card"><h3>Your plan card</h3><dl><dt>Start</dt><dd><code>l = 0</code>, <code>r = n - 1</code>: every pair is in play.</dd><dt>Continue</dt><dd>while <code>l &lt; r</code>: at least one pair is left.</dd><dt>Move</dt><dd><code>s &lt; target</code>: <code>l += 1</code>. <code>s &gt; target</code>: <code>r -= 1</code>. Equal: return the pair.</dd><dt>Stop</dt><dd><code>l</code> meets <code>r</code>: no pair is left, so there is none.</dd></dl></div></div>
+<div class="card invariant"><h3>What stays true</h3><p>Any pair that sums to the target lies inside [l..r]. Every pair with an index outside has been ruled out.</p></div>
+<h3>Why each move is safe</h3><ul><li>If <code>s &lt; target</code>: for every j ≤ r, <code>nums[l] + nums[j] ≤ nums[l] + nums[r] &lt; target</code>, so no answer uses index l. Drop it: <code>l += 1</code>.</li><li>If <code>s &gt; target</code>: for every i ≥ l, <code>nums[i] + nums[r] ≥ s &gt; target</code>, so no answer uses index r. Drop it: <code>r -= 1</code>.</li><li>Progress: <code>r - l</code> shrinks by one every turn, so the loop ends.</li></ul>
+<p><b>Relies on:</b> ascending order. On an unsorted array the first bullet is false: one small sum proves nothing about other pairs.</p></section>
+
+<section id="trace"><h2>Trace it. Predict the decisions.</h2>
+<p class="muted">Step runs the highlighted line. At a decision the stepper waits for your prediction. The numbers beside the code count how often each line has run.</p>
+<div id="stepper"></div></section>
+
+<section id="family"><h2>The family</h2><p>Opposite-end pointers are one member of a family. Every member makes the same move: one comparison proves an element is finished.</p><article class='variant'><h3>Pair with a target, sorted input</h3><p>The trace above. LeetCode wants 1-based indices: return <code>[l + 1, r + 1]</code>.</p><p class='probs'><a href='https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/' target='_blank' rel='noopener'>Two Sum II - Input Array Is Sorted</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Fix one, pair the rest</h3><p>Sort, fix <code>nums[i]</code>, then run the pair search on the part to its right for <code>-nums[i]</code>. Skip a fixed value equal to the one before it, and after a find move both pointers past equal values, so no triple repeats.</p><p>n fixed values × at most n pair steps: O(n²), which beats the n³ of all triples.</p><p class='probs'><a href='https://leetcode.com/problems/3sum/' target='_blank' rel='noopener'>3Sum</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Move the limiting side</h3><p>Area is <code>min(h[l], h[r]) * (r - l)</code>. The shorter wall caps every pair it makes with anything inside, and those pairs are narrower, so the shorter wall is finished: move it.</p><p>Trapping Rain Water uses the same idea on running maxima: the side with the lower maximum already knows its water level.</p><p class='probs'><a href='https://leetcode.com/problems/container-with-most-water/' target='_blank' rel='noopener'>Container With Most Water</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/trapping-rain-water/' target='_blank' rel='noopener'>Trapping Rain Water</a> <span class='muted'>hard</span></p></article><article class='variant'><h3>Mirror check</h3><p>Compare <code>s[l]</code> and <code>s[r]</code> and move both inward; skip characters the problem ignores before comparing.</p><p class='probs'><a href='https://leetcode.com/problems/valid-palindrome/' target='_blank' rel='noopener'>Valid Palindrome</a> <span class='muted'>easy</span></p></article></section>
+
+<section id="count"><h2>Count the work</h2>
+<p>Count how often each line runs; the line with the most runs decides the Big-O. Here that is <code>s = nums[l] + nums[r]</code>.</p>
+<p>Each turn drops one index from [l..r], which starts with n indices, so the sum line runs at most n − 1 times. The worst input never finds a pair. Doubling n doubles the count: linear.</p>
+<table class="measure"><thead><tr><th>n</th><th>runs (measured)</th><th>bound: n − 1</th><th>vs the row above</th><th>all lines</th></tr></thead><tbody><tr><td>16</td><td>15</td><td>15</td><td></td><td>78</td></tr><tr><td>32</td><td>31</td><td>31</td><td>×2.07</td><td>158</td></tr><tr><td>64</td><td>63</td><td>63</td><td>×2.03</td><td>318</td></tr><tr><td>128</td><td>127</td><td>127</td><td>×2.02</td><td>638</td></tr></tbody></table>
+<p class="muted">Measured by running the reference under Python's tracer on its worst inputs.</p>
+<p><b>Time:</b> O(n) · <b>Extra space:</b> O(1): two indices and a sum.</p></section>
+
+<section id="traps"><h2>Where it breaks</h2><ul><li><b><code>while l &lt;= r</code></b> lets l equal r, pairing an element with itself.</li><li><b>Moving both pointers after a miss</b> skips pairs nothing has ruled out. Only the finished side moves.</li><li><b>Running it on unsorted input</b> breaks the proof. Sort first and lose the original indices, or use a hash map.</li><li><b>3Sum without skipping equal values</b> returns the same triple more than once.</li></ul></section>
+</div>
+
+<section id="check"><h2>Check it without the visual</h2>
+<p>Hide the lesson, then trace a fresh input and answer the transfer questions from memory. A practice check, not proof you'll remember it.</p>
+<button type="button" id="hide" class="primary">Hide the lesson and try</button>
+<div id="quiz" hidden></div></section>
+</main>
+<script id="data" type="application/json">{"traces":[{"label":"[1, 3, 4, 6, 8, 11], target 10","about":"Six sorted numbers and a target of 10. Watch which row or column each comparison greys out.","code":["def pair_with_sum(nums, target):","    l, r = 0, len(nums) - 1","    while l < r:","        s = nums[l] + nums[r]","        if s == target:","            return [l, r]","        if s < target:","            l += 1","        else:","            r -= 1","    return []"],"steps":[{"line":2,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["target","10"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":5},"cls":{"0":"cur","5":"cur"}},{"t":"vars","items":[["target","10"],["s","None"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"","0,5":"cur","1,2":"","1,3":"","1,4":"","1,5":"","2,3":"","2,4":"","2,5":"","3,4":"","3,5":"","4,5":""}}],"say":"l = 0 · r = 5"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":5},"cls":{"0":"cur","5":"cur"}},{"t":"vars","items":[["target","10"],["s","None"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"","0,5":"cur","1,2":"","1,3":"","1,4":"","1,5":"","2,3":"","2,4":"","2,5":"","3,4":"","3,5":"","4,5":""}}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":5},"cls":{"0":"cur","5":"cur"}},{"t":"vars","items":[["target","10"],["s","12"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"","0,5":"cur","1,2":"","1,3":"","1,4":"","1,5":"","2,3":"","2,4":"","2,5":"","3,4":"","3,5":"","4,5":""}}],"say":"s = 12","ask":{"q":"s = 12, target = 10. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"r moves left","why":"12 > 10: every pair using index 5 is at least 12, so index 5 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":5},"cls":{"0":"cur","5":"cur"}},{"t":"vars","items":[["target","10"],["s","12"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"","0,5":"cur","1,2":"","1,3":"","1,4":"","1,5":"","2,3":"","2,4":"","2,5":"","3,4":"","3,5":"","4,5":""}}],"say":""},{"line":10,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":5},"cls":{"0":"cur","5":"cur"}},{"t":"vars","items":[["target","10"],["s","12"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"","0,5":"cur","1,2":"","1,3":"","1,4":"","1,5":"","2,3":"","2,4":"","2,5":"","3,4":"","3,5":"","4,5":""}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":4},"cls":{"5":"done","0":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","12"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"cur","0,5":"done","1,2":"","1,3":"","1,4":"","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"r: 5 → 4"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":4},"cls":{"5":"done","0":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","12"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"cur","0,5":"done","1,2":"","1,3":"","1,4":"","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"","ask":{"q":"l = 0, r = 4. What is s?","options":null,"answer":"9","why":""}},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":4},"cls":{"5":"done","0":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"cur","0,5":"done","1,2":"","1,3":"","1,4":"","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"s: 12 → 9","ask":{"q":"s = 9, target = 10. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"l moves right","why":"9 < 10: every pair using index 0 is at most 9, so index 0 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":4},"cls":{"5":"done","0":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"cur","0,5":"done","1,2":"","1,3":"","1,4":"","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":""},{"line":8,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":0,"r":4},"cls":{"5":"done","0":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"","0,2":"","0,3":"","0,4":"cur","0,5":"done","1,2":"","1,3":"","1,4":"","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":4},"cls":{"0":"done","5":"done","1":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"","1,4":"cur","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"l: 0 → 1"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":4},"cls":{"0":"done","5":"done","1":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"","1,4":"cur","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"","ask":{"q":"l = 1, r = 4. What is s?","options":null,"answer":"11","why":""}},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":4},"cls":{"0":"done","5":"done","1":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"","1,4":"cur","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":"s: 9 → 11","ask":{"q":"s = 11, target = 10. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"r moves left","why":"11 > 10: every pair using index 4 is at least 11, so index 4 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":4},"cls":{"0":"done","5":"done","1":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"","1,4":"cur","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":""},{"line":10,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":4},"cls":{"0":"done","5":"done","1":"cur","4":"cur"}},{"t":"vars","items":[["target","10"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"","1,4":"cur","1,5":"done","2,3":"","2,4":"","2,5":"done","3,4":"","3,5":"done","4,5":"done"}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":3},"cls":{"0":"done","4":"done","5":"done","1":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"cur","1,4":"done","1,5":"done","2,3":"","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":"r: 4 → 3"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":3},"cls":{"0":"done","4":"done","5":"done","1":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"cur","1,4":"done","1,5":"done","2,3":"","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":3},"cls":{"0":"done","4":"done","5":"done","1":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"cur","1,4":"done","1,5":"done","2,3":"","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":"s: 11 → 9","ask":{"q":"s = 9, target = 10. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"l moves right","why":"9 < 10: every pair using index 1 is at most 9, so index 1 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":3},"cls":{"0":"done","4":"done","5":"done","1":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"cur","1,4":"done","1,5":"done","2,3":"","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":""},{"line":8,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":1,"r":3},"cls":{"0":"done","4":"done","5":"done","1":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"","1,3":"cur","1,4":"done","1,5":"done","2,3":"","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":2,"r":3},"cls":{"0":"done","1":"done","4":"done","5":"done","2":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"done","1,3":"done","1,4":"done","1,5":"done","2,3":"cur","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":"l: 1 → 2"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":2,"r":3},"cls":{"0":"done","1":"done","4":"done","5":"done","2":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","9"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"done","1,3":"done","1,4":"done","1,5":"done","2,3":"cur","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":2,"r":3},"cls":{"0":"done","1":"done","4":"done","5":"done","2":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","10"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"done","1,3":"done","1,4":"done","1,5":"done","2,3":"cur","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":"s: 9 → 10"},{"line":6,"ret":false,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":2,"r":3},"cls":{"0":"done","1":"done","4":"done","5":"done","2":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","10"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"done","1,3":"done","1,4":"done","1,5":"done","2,3":"cur","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":""},{"line":6,"ret":true,"views":[{"t":"array","name":"nums","items":["1","3","4","6","8","11"],"labels":null,"ptr":{"l":2,"r":3},"cls":{"0":"done","1":"done","4":"done","5":"done","2":"cur","3":"cur"}},{"t":"vars","items":[["target","10"],["s","10"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","4","5","7","9","12"],["","","7","9","11","14"],["","","","10","12","15"],["","","","","14","17"],["","","","","","19"],["","","","","",""]],"rowh":[0,1,2,3,4,5],"colh":[0,1,2,3,4,5],"cls":{"0,1":"done","0,2":"done","0,3":"done","0,4":"done","0,5":"done","1,2":"done","1,3":"done","1,4":"done","1,5":"done","2,3":"cur","2,4":"done","2,5":"done","3,4":"done","3,5":"done","4,5":"done"}}],"say":"Returns [2, 3]."}],"rows":[{"at":4,"cells":["0","5","1 + 11 = 12","too big: r -= 1"]},{"at":9,"cells":["0","4","1 + 8 = 9","too small: l += 1"]},{"at":14,"cells":["1","4","3 + 8 = 11","too big: r -= 1"]},{"at":19,"cells":["1","3","3 + 6 = 9","too small: l += 1"]},{"at":24,"cells":["2","3","4 + 6 = 10","found"]}],"cols":["l","r","nums[l] + nums[r]","so"],"result":"[2, 3]"},{"label":"No pair: [2, 5, 9], target 4","about":"Every sum is too big, so r walks left until no pair is left.","code":["def pair_with_sum(nums, target):","    l, r = 0, len(nums) - 1","    while l < r:","        s = nums[l] + nums[r]","        if s == target:","            return [l, r]","        if s < target:","            l += 1","        else:","            r -= 1","    return []"],"steps":[{"line":2,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["target","4"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":2},"cls":{"0":"cur","2":"cur"}},{"t":"vars","items":[["target","4"],["s","None"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"","0,2":"cur","1,2":""}}],"say":"l = 0 · r = 2"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":2},"cls":{"0":"cur","2":"cur"}},{"t":"vars","items":[["target","4"],["s","None"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"","0,2":"cur","1,2":""}}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":2},"cls":{"0":"cur","2":"cur"}},{"t":"vars","items":[["target","4"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"","0,2":"cur","1,2":""}}],"say":"s = 11","ask":{"q":"s = 11, target = 4. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"r moves left","why":"11 > 4: every pair using index 2 is at least 11, so index 2 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":2},"cls":{"0":"cur","2":"cur"}},{"t":"vars","items":[["target","4"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"","0,2":"cur","1,2":""}}],"say":""},{"line":10,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":2},"cls":{"0":"cur","2":"cur"}},{"t":"vars","items":[["target","4"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"","0,2":"cur","1,2":""}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":1},"cls":{"2":"done","0":"cur","1":"cur"}},{"t":"vars","items":[["target","4"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"cur","0,2":"done","1,2":"done"}}],"say":"r: 2 → 1"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":1},"cls":{"2":"done","0":"cur","1":"cur"}},{"t":"vars","items":[["target","4"],["s","11"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"cur","0,2":"done","1,2":"done"}}],"say":"","ask":{"q":"l = 0, r = 1. What is s?","options":null,"answer":"7","why":""}},{"line":5,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":1},"cls":{"2":"done","0":"cur","1":"cur"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"cur","0,2":"done","1,2":"done"}}],"say":"s: 11 → 7","ask":{"q":"s = 7, target = 4. What happens next?","options":["return the pair","l moves right","r moves left"],"answer":"r moves left","why":"7 > 4: every pair using index 1 is at least 7, so index 1 is finished."}},{"line":7,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":1},"cls":{"2":"done","0":"cur","1":"cur"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"cur","0,2":"done","1,2":"done"}}],"say":""},{"line":10,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":1},"cls":{"2":"done","0":"cur","1":"cur"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"cur","0,2":"done","1,2":"done"}}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":0},"cls":{"1":"done","2":"done"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"done","0,2":"done","1,2":"done"}}],"say":"r: 1 → 0"},{"line":11,"ret":false,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":0},"cls":{"1":"done","2":"done"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"done","0,2":"done","1,2":"done"}}],"say":""},{"line":11,"ret":true,"views":[{"t":"array","name":"nums","items":["2","5","9"],"labels":null,"ptr":{"l":0,"r":0},"cls":{"1":"done","2":"done"}},{"t":"vars","items":[["target","4"],["s","7"]]},{"t":"grid","name":"every pair (i, j): its sum; grey = ruled out","cells":[["","7","11"],["","","14"],["","",""]],"rowh":[0,1,2],"colh":[0,1,2],"cls":{"0,1":"done","0,2":"done","1,2":"done"}}],"say":"Returns []."}],"rows":[{"at":4,"cells":["0","2","2 + 9 = 11","too big: r -= 1"]},{"at":9,"cells":["0","1","2 + 5 = 7","too big: r -= 1"]}],"cols":["l","r","nums[l] + nums[r]","so"],"result":"[]"}],"spot":{"idea":["Reach for two pointers when the candidates are **pairs** and one comparison can rule out every pair that uses one element. Sorted order gives that proof for sums, mirror symmetry gives it for palindromes, and the shorter wall gives it for container area.","Draw the candidates as the upper triangle of an n × n grid: cell (i, j) is the pair i < j. Brute force reads every cell. Two pointers stand on one cell and, with one comparison, grey out a whole row or column."],"questions":[["What are the candidates?","Pairs (i, j) with i < j, or a pair inside a triple once one index is fixed."],["What does one comparison prove?","If the sum is too small, the left element with any partner up to `r` is smaller still."],["Which element is finished?","Move that pointer, and only that one."],["What must I keep?","Usually just `l`, `r` and the best so far: O(1) extra space."]],"cases":[{"text":"A sorted array; return the indices of two numbers that add up to a target, using O(1) extra space.","options":["Two pointers from both ends","A hash map of values seen","A sliding window"],"answer":0,"why":"Sorted, a pair, a target: a sum that is too small finishes the left element. A hash map also works, but takes O(n) space."},{"text":"An unsorted array; return the original indices of two numbers that add up to a target.","options":["Two pointers from both ends","A hash map of values seen","Binary search"],"answer":1,"why":"Without order, a comparison rules nothing out, and sorting would scramble the indices. Remember what you have seen instead."},{"text":"The longest substring without a repeated character.","options":["Two pointers from both ends","A window whose two ends both move right","Binary search"],"answer":1,"why":"The candidates are contiguous ranges and the test is about what is inside one: a sliding window."},{"text":"Heights of vertical lines; pick two that, with the x-axis, hold the most water.","options":["Two pointers from both ends","A monotonic stack","Dynamic programming"],"answer":0,"why":"Area is capped by the shorter wall. Pairing it with anything closer is narrower and no taller, so the shorter wall is finished."},{"text":"Is this string a palindrome once non-letters are ignored?","options":["Two pointers from both ends","A hash map of counts","A stack"],"answer":0,"why":"Mirror positions are compared pairwise; once a pair matches, neither character is needed again."},{"text":"Remove duplicates from a sorted array in place and return the new length.","options":["Two pointers from both ends","A read pointer and a write pointer, both moving right","A hash set"],"answer":1,"why":"One pointer reads every item; the other marks where the next kept item goes. Same direction, different speeds."}],"near_misses":[["Pair sum on an unsorted array.","No order, so no proof: use a hash map, or sort first when the indices don't matter (n log n)."],["Subarray sum equals k, with negative numbers.","Contiguous ranges and negatives: neither end can be ruled out. Prefix sums with a hash map."],["Count the pairs with sum below a target.","Still two pointers, but when `nums[l] + nums[r] < target` all r − l pairs (l, l+1..r) count at once."]]},"check":{"text":"Run the same loop on nums = [2, 4, 5, 7, 9, 12] with target = 13. Write the pairs (l, r) it checks, in order, and what it returns.","fields":[{"label":"Pairs (l, r) checked, in order","answer":"(0, 5), (0, 4), (1, 4)"},{"label":"Return value","answer":"[1, 4]"}],"questions":[{"q":"An unsorted list of 10⁵ numbers; you need any two values that sum to k (the values, not their indices). What keeps two pointers correct?","options":["Run the loop as it is","Sort first (n log n), then run the loop","Move both pointers every turn"],"answer":1,"why":"The safe-move proof needs order, and sorting buys it for n log n. When the original indices matter, a hash map is O(n)."},{"q":"Container With Most Water: heights[l] = 3 and heights[r] = 8. Which pointer moves?","options":["r, because 8 is bigger","l: every pair of the 3 with anything inside is narrower and no taller","Both"],"answer":1,"why":"The 3 caps the height of every pair it is in, and moving r inward only narrows them. The 3 is finished."}],"own":{"prompt":"When does one comparison let you discard a whole row of pairs, and what does that rely on?","model":"Two pointers fit when the candidates are pairs and one comparison proves an element is finished. With sorted values, a sum that is too small means the left element pairs with nothing bigger than nums[r], so every pair using it is too small too: drop it. That needs order (or symmetry, or a limiting side). Each move drops one index, so the n² pairs take at most n − 1 steps."}}}</script>
+<script>"use strict";
+// The stepper and the checks of a built explainer page; scripts/build_explainer.py inlines this file.
+// Everything shown comes from the JSON in #data, recorded by running the spec's Python. The page keeps its state in
+// memory only (the learning app serves it sandboxed, where storage throws), and nothing takes focus on load.
+const DATA = JSON.parse(document.getElementById("data").textContent);
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else if (k.startsWith("on")) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  node.append(...kids.filter((x) => x !== null && x !== undefined && x !== false));
+  return node;
+}
+// Answers compare as tokens: "(0, 5) (0, 4)", "(0,5),(0,4)" and "[0, 5, 0, 4]" are the same answer.
+const norm = (s) => String(s).toLowerCase().replace(/[\s'"()[\]{},;]+/g, ",").replace(/^,+|,+$/g, "");
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text = "") {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+// --- theme ---------------------------------------------------------------------------------------------------------
+document.getElementById("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// --- multiple choice: the recognition cases and the transfer questions ---------------------------------------------
+function choice(item, record) {
+  const box = el("div", {class: "choice"}, el("p", {class: "q", text: item.text || item.q}));
+  const options = el("div", {class: "options"});
+  const said = el("p", {class: "said", role: "status"});
+  let first = true;
+  item.options.forEach((label, i) => {
+    options.append(el("button", {type: "button", text: label, onclick: (e) => {
+      const right = i === item.answer;
+      e.target.classList.add(right ? "right" : "wrong");
+      said.textContent = (right ? "Yes. " : "Not this one. ") + (right ? item.why : (item.miss?.[i] || "Look for what the method relies on, and try again."));
+      said.className = "said " + (right ? "right" : "wrong");
+      if (first && record) record(right);
+      first = false;
+      if (right) options.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    }}));
+  });
+  box.append(options, said);
+  return box;
+}
+(function cases() {
+  const host = document.getElementById("cases");
+  const score = el("p", {class: "muted", role: "status"});
+  let tried = 0, right = 0;
+  const record = (ok) => {
+    tried += 1; right += ok ? 1 : 0;
+    score.textContent = `First pick right: ${right} of ${tried}` + (tried === DATA.spot.cases.length ? ` (all ${tried} cases).` : ".");
+  };
+  DATA.spot.cases.forEach((c) => host.append(choice(c, record)));
+  host.append(score);
+})();
+
+// --- views: pure functions of one step's state ----------------------------------------------------------------------
+function changed(view, prev) {  // indexes or names whose value differs from the same view one step back
+  if (!prev || prev.t !== view.t || prev.name !== view.name) return new Set();
+  const out = new Set();
+  if (view.t === "array") view.items.forEach((x, i) => { if (prev.items[i] !== x) out.add(String(i)); });
+  if (view.t === "vars") view.items.forEach(([k, v]) => { const p = prev.items.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  if (view.t === "map") view.entries.forEach(([k, v]) => { const p = prev.entries.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  return out;
+}
+const VIEWS = {
+  array(v, chg) {
+    const row = el("div", {class: "cells"});
+    v.items.forEach((x, i) => {
+      const ptrs = Object.entries(v.ptr).filter(([, j]) => j === i).map(([k]) => k).join(" ");
+      row.append(el("div", {class: `cell ${v.cls[i] || ""} ${chg.has(String(i)) ? "chg" : ""}`},
+        el("span", {class: "idx", text: v.labels ? v.labels[i] : String(i)}), el("span", {class: "val", text: x}),
+        el("span", {class: "ptr", text: ptrs})));
+    });
+    const past = Object.entries(v.ptr).filter(([, j]) => j >= v.items.length || j < 0);
+    if (past.length) row.append(el("div", {class: "cell ghost"}, el("span", {class: "idx", text: String(v.items.length)}),
+      el("span", {class: "val", text: "·"}), el("span", {class: "ptr", text: past.map(([k]) => k).join(" ")})));
+    return row;
+  },
+  list(v) {
+    const row = el("div", {class: "chips"});
+    if (!v.items.length) row.append(el("span", {class: "muted", text: "empty"}));
+    v.items.forEach((x, i) => row.append(el("span", {class: `chip ${v.cls[i] || ""}`, text: x})));
+    if (v.note) row.append(el("span", {class: "muted note", text: v.note}));
+    return row;
+  },
+  map(v, chg) {
+    const t = el("table", {class: "kv"});
+    if (!v.entries.length) t.append(el("tr", {}, el("td", {class: "muted", text: "empty"})));
+    v.entries.forEach(([k, x]) => t.append(el("tr", {class: `${k === v.hl ? "cur" : ""} ${chg.has(k) ? "chg" : ""}`},
+      el("td", {text: k}), el("td", {text: x}))));
+    return t;
+  },
+  vars(v, chg) {
+    const row = el("div", {class: "chips"});
+    v.items.forEach(([k, x]) => row.append(el("span", {class: `var ${chg.has(k) ? "chg" : ""}`}, el("b", {text: k}), " = ", x)));
+    return row;
+  },
+  grid(v) {
+    const t = el("table", {class: "grid"});
+    if (v.colh) t.append(el("tr", {}, v.rowh ? el("th") : null, ...v.colh.map((h) => el("th", {text: String(h)}))));
+    v.cells.forEach((row, r) => t.append(el("tr", {}, v.rowh ? el("th", {text: String(v.rowh[r])}) : null,
+      ...row.map((x, c) => el("td", {class: v.cls[`${r},${c}`] || "", text: x})))));
+    return t;
+  },
+  graph(v) {
+    const U = 64, R = 17, pad = 30;
+    const [vw, vh] = [(v.w - 1) * U + 2 * pad, (v.h - 1) * U + 2 * pad + 14];  // drawn at natural size, never wider than its box
+    const s = svg("svg", {viewBox: `${-pad} ${-pad} ${vw} ${vh}`, width: vw, height: vh, class: "graph", role: "img"});
+    const at = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+    if (v.directed) {
+      const marker = svg("marker", {id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "9", markerHeight: "9",
+        markerUnits: "userSpaceOnUse", orient: "auto-start-reverse"});
+      marker.append(svg("path", {d: "M0,0 L10,5 L0,10 z", class: "arrowhead"}));
+      const defs = svg("defs");
+      defs.append(marker);
+      s.append(defs);
+    }
+    for (const e of v.edges) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) continue;
+      const [x1, y1, x2, y2] = [a.x * U, a.y * U, b.x * U, b.y * U];
+      const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const [ux, uy] = [(x2 - x1) / d, (y2 - y1) / d];
+      s.append(svg("line", {x1: x1 + ux * R, y1: y1 + uy * R, x2: x2 - ux * (R + 2), y2: y2 - uy * (R + 2),
+        class: `edge ${e.cls || ""}`, ...(v.directed ? {"marker-end": "url(#arrow)"} : {})}));
+      if (e.label !== undefined && e.label !== "") {
+        s.append(svg("text", {x: (x1 + x2) / 2 - uy * 10, y: (y1 + y2) / 2 + ux * 10 + 4, class: "elabel"}, String(e.label)));
+      }
+    }
+    for (const n of v.nodes) {
+      const wide = Math.max(2 * R, 8 * String(n.label).length + 12);  // a long label gets a pill, not a circle
+      s.append(wide > 2 * R
+        ? svg("rect", {x: n.x * U - wide / 2, y: n.y * U - R, width: wide, height: 2 * R, rx: R, class: `node ${n.cls || ""}`})
+        : svg("circle", {cx: n.x * U, cy: n.y * U, r: R, class: `node ${n.cls || ""}`}));
+      s.append(svg("text", {x: n.x * U, y: n.y * U + 4, class: "nlabel"}, String(n.label)));
+      if (n.tag) s.append(svg("text", {x: n.x * U, y: n.y * U + R + 13, class: "ntag"}, String(n.tag)));
+    }
+    return s;
+  },
+  bars(v) {
+    const W = 320, rowH = 22, span = Math.max(1, v.hi - v.lo);
+    const s = svg("svg", {viewBox: `0 0 ${W + 20} ${v.spans.length * rowH + 26}`, width: W + 20, height: v.spans.length * rowH + 26, class: "bars", role: "img"});
+    const x = (t) => 10 + ((t - v.lo) / span) * W;
+    v.spans.forEach(([a, b, label, cls], i) => {
+      s.append(svg("rect", {x: x(a), y: i * rowH + 4, width: Math.max(3, x(b) - x(a)), height: rowH - 8, rx: 3, class: `span ${cls || ""}`}));
+      const text = label || `[${a}, ${b}]`, room = 7 * text.length;  // right of the bar, else left of it, else inside
+      const [tx, anchor] = x(b) + 4 + room <= W + 20 ? [x(b) + 4, "start"] : x(a) - 4 - room >= 0 ? [x(a) - 4, "end"] : [(x(a) + x(b)) / 2, "middle"];
+      s.append(svg("text", {x: tx, y: i * rowH + rowH / 2 + 4, class: "slabel", "text-anchor": anchor}, text));
+    });
+    const axis = v.spans.length * rowH + 8;
+    s.append(svg("line", {x1: x(v.lo), y1: axis, x2: x(v.hi), y2: axis, class: "axis"}));
+    for (let t = v.lo; t <= v.hi; t += Math.max(1, Math.ceil(span / 10))) {
+      s.append(svg("text", {x: x(t), y: axis + 14, class: "tick"}, String(t)));
+    }
+    return s;
+  },
+  text(v) { return el("p", {text: v.text}); },
+};
+function drawViews(step, prev) {
+  const box = el("div", {class: "views"});
+  step.views.forEach((v, i) => {
+    const before = prev?.views[i];
+    box.append(el("figure", {class: `view v-${v.t}`}, v.name ? el("figcaption", {text: v.name}) : null, VIEWS[v.t](v, changed(v, before))));
+  });
+  return box;
+}
+
+// --- the stepper ------------------------------------------------------------------------------------------------------
+(function stepper() {
+  const host = document.getElementById("stepper");
+  const states = DATA.traces.map(() => ({k: 0, answers: {}}));
+  let current = 0, timer = null;
+  const picker = el("div", {class: "picker", role: "group", "aria-label": "Input"});
+  DATA.traces.forEach((t, i) => picker.append(el("button", {type: "button", text: t.label, onclick: () => { stop(); current = i; draw(); }})));
+  const about = el("p", {class: "about"});
+  const back = el("button", {type: "button", text: "Back", onclick: () => go(-1)});
+  const step = el("button", {type: "button", class: "primary", text: "Step", onclick: () => go(1)});
+  const play = el("button", {type: "button", text: "Play", onclick: () => (timer ? stop() : start())});
+  const reset = el("button", {type: "button", text: "Reset", onclick: () => { stop(); states[current] = {k: 0, answers: {}}; draw(); }});
+  const end = el("button", {type: "button", text: "End", onclick: () => { stop(); while (canStep()) S().k += 1; draw(); }});
+  const where = el("span", {class: "muted where"});
+  const say = el("p", {class: "say", "aria-live": "polite"});
+  const ask = el("div", {class: "ask"});
+  const stage = el("div", {class: "stage"});
+  const code = el("ol", {class: "code"});
+  const table = el("table", {class: "history"});
+  const record = el("p", {class: "muted"});
+  host.append(picker, about, el("div", {class: "controls"}, back, step, play, reset, end, where), say, ask,
+    el("div", {class: "split"}, stage, el("div", {class: "side"}, el("h3", {text: "Python · how often each line has run"}), code)),
+    el("h3", {text: "History"}), el("div", {class: "scroll"}, table), record);
+  if (DATA.traces.length < 2) picker.hidden = true;
+
+  const T = () => DATA.traces[current];
+  const S = () => states[current];
+  const pending = () => T().steps[S().k].ask && !S().answers[S().k];
+  const canStep = () => S().k < T().steps.length - 1 && !pending();
+  function go(d) {
+    if (d > 0 && !canStep()) return;
+    S().k = Math.max(0, Math.min(T().steps.length - 1, S().k + d));
+    draw();
+  }
+  function start() {
+    play.textContent = "Pause";
+    timer = setInterval(() => { if (canStep()) go(1); else stop(); }, 650);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    play.textContent = "Play";
+  }
+  function drawAsk(s, k) {
+    ask.replaceChildren();
+    if (!s.ask) return;
+    const a = s.ask, given = S().answers[k];
+    ask.append(el("p", {class: "q"}, el("b", {text: "Predict: "}), a.q));
+    const reveal = (value) => {
+      S().answers[k] = {value, right: norm(value) === norm(a.answer)};
+      draw();
+    };
+    if (!given) {
+      if (a.options) {
+        ask.append(el("div", {class: "options"}, ...a.options.map((o) => el("button", {type: "button", text: String(o), onclick: () => reveal(String(o))}))));
+      } else {
+        const input = el("input", {type: "text", "aria-label": "Your prediction", autocomplete: "off"});
+        const form = el("form", {class: "fill", onsubmit: (e) => { e.preventDefault(); if (input.value.trim()) reveal(input.value.trim()); }},
+          input, el("button", {type: "submit", text: "Check"}));
+        ask.append(form);
+      }
+      return;
+    }
+    ask.append(el("p", {class: `said ${given.right ? "right" : "wrong"}`},
+      given.right ? `You said ${given.value}. Right.` : `You said ${given.value}. It was ${a.answer}.`, a.why ? " " + a.why : ""));
+  }
+  function draw() {
+    const t = T(), k = S().k, s = t.steps[k];
+    picker.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === current)));
+    about.textContent = t.about;
+    back.disabled = k === 0;
+    step.disabled = !canStep();
+    end.disabled = !canStep();
+    where.textContent = `Step ${k + 1} of ${t.steps.length}` + (pending() ? " · predict to go on" : "");
+    say.textContent = s.say || "";
+    drawAsk(s, k);
+    stage.replaceChildren(drawViews(s, t.steps[k - 1]));
+    const runs = {};
+    for (let i = 0; i < k; i++) if (!t.steps[i].ret) runs[t.steps[i].line] = (runs[t.steps[i].line] || 0) + 1;
+    code.replaceChildren(...t.code.map((line, i) => el("li", {class: i + 1 === s.line ? (s.ret ? "cur ret" : "cur") : ""},
+      el("span", {class: "runs", text: runs[i + 1] ? String(runs[i + 1]) : ""}), el("code", {text: line || " "}))));
+    table.replaceChildren(el("tr", {}, ...t.cols.map((c) => el("th", {text: c}))),
+      ...t.rows.filter((r) => r.at <= k).map((r) => el("tr", {}, ...r.cells.map((c) => el("td", {text: c})))));
+    if (!t.rows.some((r) => r.at <= k)) table.append(el("tr", {}, el("td", {class: "muted", colspan: String(t.cols.length || 1), text: "Rows appear as you step."})));
+    const given = Object.values(S().answers);
+    record.textContent = given.length ? `Predictions on this input: ${given.filter((g) => g.right).length} of ${given.length} right.` : "";
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || document.body.classList.contains("checking")) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > innerHeight) return;  // only while the stepper is on screen
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(-1); }
+  });
+  draw();
+})();
+
+// --- the check with the lesson hidden -----------------------------------------------------------------------------------
+(function check() {
+  const c = DATA.check, quiz = document.getElementById("quiz"), hide = document.getElementById("hide");
+  const inputs = c.fields.map((f) => el("input", {type: "text", autocomplete: "off", "aria-label": f.label}));
+  const marks = c.fields.map(() => el("span", {class: "mark", role: "status"}));
+  const fields = el("div", {class: "fields"}, ...c.fields.map((f, i) => el("label", {}, f.label, inputs[i], marks[i])));
+  const checkBtn = el("button", {type: "button", class: "primary", text: "Check my trace", onclick: () => {
+    c.fields.forEach((f, i) => {
+      const ok = norm(inputs[i].value) === norm(f.answer);
+      marks[i].textContent = ok ? "Right." : `It was ${f.answer}.`;
+      marks[i].className = "mark " + (ok ? "right" : "wrong");
+    });
+  }});
+  const own = el("textarea", {rows: "4", "aria-label": "In your own words"});
+  const model = el("p", {class: "model", hidden: ""}, c.own.model);
+  quiz.append(el("p", {class: "muted", text: "The traces, code, plan card and history are hidden. Work on paper if you like."}),
+    el("h3", {text: "Trace a fresh input"}), el("p", {text: c.text}), fields, checkBtn,
+    el("h3", {text: "Transfer"}), ...c.questions.map((q) => choice(q)),
+    el("h3", {text: "In your own words"}), el("p", {text: c.own.prompt}), own,
+    el("button", {type: "button", text: "Compare with the reasoning", onclick: () => { model.hidden = false; }}), model,
+    el("p", {}, el("button", {type: "button", class: "ghost", text: "Return to the lesson", onclick: () => {
+      document.body.classList.remove("checking"); quiz.hidden = true; hide.hidden = false;
+    }})));
+  hide.onclick = () => {
+    document.body.classList.add("checking");
+    quiz.hidden = false;
+    hide.hidden = true;
+    document.getElementById("check").scrollIntoView({block: "start"});
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tries, explained</title>
+<style>/* Built explainer pages: the learning app's palette, light and dark, readable at phone width. */
+:root {
+  --bg: oklch(98.6% 0.003 250); --chrome: oklch(96.4% 0.005 250); --raise: oklch(93.6% 0.007 250);
+  --line: oklch(89.5% 0.008 250); --fg: oklch(24% 0.012 255); --muted: oklch(50% 0.014 255);
+  --accent: oklch(51% 0.13 252); --accent-soft: oklch(93% 0.035 252); --on-accent: oklch(98.5% 0.006 252);
+  --ok: oklch(50% 0.12 152); --ok-soft: oklch(94.5% 0.035 152); --fail: oklch(52% 0.17 27); --fail-soft: oklch(95% 0.03 27);
+  --nudge: oklch(52% 0.11 70); --nudge-soft: oklch(95.5% 0.04 80);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+    --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+    --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+    --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+    --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+  --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+  --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+  --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+  --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+p code, li code, dd code, td code { background: var(--chrome); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; font-weight: 500; padding: 5px 12px; min-height: 32px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--raise); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+input, textarea {
+  font: inherit; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg);
+}
+textarea { width: 100%; resize: vertical; }
+
+.bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); }
+.bar .brand { font-weight: 700; font-size: 13px; color: var(--muted); }
+.bar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.bar nav a { padding: 3px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bar nav a:hover { color: var(--fg); background: var(--raise); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+section { margin: 28px 0; scroll-margin-top: 56px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 18px 0 6px; }
+h2 { font-size: 22px; margin: 0 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.pitch { font-size: 17px; color: var(--muted); margin: 0; }
+ol.questions li, #spot ul li, #traps li, #parts ul li { margin: 6px 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.card dt { font-weight: 600; }
+.card dd { margin: 0; }
+.invariant { margin-top: 12px; border-color: var(--ok); background: var(--ok-soft); }
+
+.choice { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.choice .q { margin: 0 0 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.options button { text-align: left; }
+.options button.right { border-color: var(--ok); background: var(--ok-soft); }
+.options button.wrong { border-color: var(--fail); background: var(--fail-soft); }
+.said { margin: 8px 0 0; }
+.said.right, .mark.right { color: var(--ok); }
+.said.wrong, .mark.wrong { color: var(--fail); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.about { margin: 4px 0 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.where { margin-left: 6px; font-size: 13px; }
+.say { min-height: 1.6em; margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--chrome); border-radius: 0 6px 6px 0; }
+.ask:not(:empty) { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--nudge); border-radius: 8px; background: var(--nudge-soft); }
+.ask .q { margin: 0 0 8px; }
+.ask .fill { display: flex; gap: 6px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.views { display: flex; flex-wrap: wrap; gap: 12px; }
+.view { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.view figcaption { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.v-graph, .v-bars { flex-basis: 100%; }
+
+.cells { display: flex; gap: 3px; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 34px; }
+.cell .idx { font-size: 11px; color: var(--muted); }
+.cell .val { display: block; min-width: 34px; padding: 5px 6px; text-align: center; font-family: var(--mono); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg); white-space: nowrap; }
+.cell .ptr { min-height: 1.3em; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cell.ghost .val { border-style: dashed; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .var { font-family: var(--mono); font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.chips .note { font-size: 12px; }
+table.kv, table.grid { border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+table.kv td, table.grid td, table.grid th { border: 1px solid var(--line); padding: 3px 8px; text-align: center; }
+table.grid th { color: var(--muted); font-weight: 500; background: var(--chrome); }
+
+/* one meaning per class in every view: cur = acting now, win = inside the live range, ok = answer or kept,
+   done = finished or ruled out, front = waiting its turn, bad = rejected */
+.cur .val, .chip.cur, td.cur, tr.cur td { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.win .val, .chip.win, td.win { background: var(--accent-soft); }
+.ok .val, .chip.ok, td.ok, tr.ok td { border-color: var(--ok); background: var(--ok-soft); }
+.done .val, .chip.done, td.done { color: var(--muted); background: var(--chrome); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--muted) 50%, transparent); }
+.front .val, .chip.front, td.front { border-color: var(--nudge); background: var(--nudge-soft); }
+.bad .val, .chip.bad, td.bad { border-color: var(--fail); background: var(--fail-soft); }
+.chg .val, .var.chg, tr.chg td { outline: 2px solid var(--nudge); outline-offset: -1px; }
+
+svg.graph, svg.bars { display: block; max-width: 100%; height: auto; }
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.edge.cur { stroke: var(--accent); stroke-width: 3.5; }
+.edge.ok { stroke: var(--ok); stroke-width: 3.5; }
+.edge.done { stroke-dasharray: 4 4; stroke: var(--muted); }
+.edge.front { stroke: var(--nudge); }
+.arrowhead { fill: var(--muted); }
+.node { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.node.cur { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.node.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.node.done { fill: var(--chrome); stroke: var(--line); }
+.node.front { fill: var(--nudge-soft); stroke: var(--nudge); }
+.node.win { fill: var(--accent-soft); }
+.node.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.nlabel { text-anchor: middle; font: 600 13px var(--mono); fill: var(--fg); }
+.ntag { text-anchor: middle; font: 700 11px system-ui, sans-serif; fill: var(--accent); }
+.elabel { text-anchor: middle; font: 12px var(--mono); fill: var(--muted); }
+.span { fill: var(--raise); stroke: var(--muted); }
+.span.cur { fill: var(--accent-soft); stroke: var(--accent); }
+.span.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.span.done { fill: var(--chrome); stroke: var(--line); }
+.span.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.slabel, .tick { font: 11px var(--mono); fill: var(--muted); }
+.tick { text-anchor: middle; }
+.axis { stroke: var(--muted); }
+
+.side h3 { margin-top: 0; font-size: 13px; color: var(--muted); }
+ol.code { list-style: none; margin: 0; padding: 6px 0; background: var(--chrome); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; overflow-x: auto; }
+ol.code li { display: flex; gap: 8px; padding: 0 10px 0 0; white-space: pre; }
+ol.code li .runs { flex: 0 0 34px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+ol.code li.cur { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+ol.code li.ret { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.scroll { overflow-x: auto; }
+table.history, table.measure { border-collapse: collapse; font-size: 13px; }
+table.history th, table.history td, table.measure th, table.measure td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; font-family: var(--mono); }
+table.history th, table.measure th { font-family: inherit; color: var(--muted); font-weight: 600; }
+
+.variant { padding: 10px 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; }
+.variant h3 { margin-top: 0; }
+.variant .probs { margin-bottom: 0; }
+pre.code { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+body.checking .lesson { display: none; }
+.fields { display: grid; gap: 10px; margin: 8px 0 12px; }
+.fields label { display: grid; gap: 4px; font-weight: 500; }
+.fields input { max-width: 420px; }
+.mark { font-weight: 400; font-size: 14px; }
+.model { padding: 10px 12px; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 0 6px 6px 0; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+  .bar .brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="brand">DSA notebook</span>
+<nav><a href="#spot">Spot it</a><a href="#parts">Parts</a><a href="#trace">Trace</a><a href="#family">Family</a><a href="#count">Count</a><a href="#check">Check</a></nav>
+<button type="button" id="theme" class="ghost" aria-label="Switch light or dark theme">◐</button></header>
+<main>
+<div class="lesson">
+<section class="hero"><h1>Tries, explained</h1><p class="pitch">A tree of characters where every node is a prefix. Words that share a beginning share a path, so a prefix lookup costs the length of the prefix, however many words are stored.</p></section>
+
+<section id="spot"><h2>Spot it</h2><p>A trie (prefix tree) stores words letter by letter: the root is the empty prefix, each edge adds one character, and a marker says where a whole word ends. Looking up a word or a prefix walks one edge per character: O(L), independent of how many words there are.</p><p>Reach for it when the questions are about <b>prefixes</b> (autocomplete, "does any word start with..."), when a <b>wildcard</b> must try several letters, or when <b>many words</b> are searched at once, as on a letter grid, so a dead prefix stops every word that shares it. For plain membership, a hash set is simpler.</p>
+<h3>Ask yourself</h3><ol class="questions"><li><b>Are the questions about prefixes?</b> Starts-with, autocomplete, the shortest root of a word.</li><li><b>Do many words share work?</b> Searching all of them on one grid: walk the trie and the grid together.</li><li><b>Is there a wildcard?</b> At a <code>.</code>, try every child: DFS through the trie.</li><li><b>What marks a whole word?</b> An end flag, so that 'car' isn't found just because 'cart' is stored.</li></ol>
+<h3>Which fits?</h3><p class="muted">Pick what you would reach for. A wrong pick shows the gap; pick again to move on.</p>
+<div id="cases"></div>
+<h3>Looks like it, isn't</h3><ul><li><b>Exact membership only.</b> A hash set: same O(L) per lookup, far less memory.</li><li><b>Substring search in one long text.</b> A trie of prefixes doesn't help; KMP, rolling hashes or a suffix structure do.</li><li><b>Anagram groups.</b> Order of letters doesn't matter: hash the sorted word or the letter counts.</li></ul></section>
+
+<section id="parts"><h2>The parts</h2>
+<div class="cards"><div class="card"><h3>Names</h3><dl><dt><code>root</code></dt><dd>the empty prefix: a dict from a first letter to a child node</dd><dt><code>node</code></dt><dd>the prefix read so far; its keys are the letters that can come next</dd><dt><code>&quot;$&quot;</code></dt><dd>the end marker: a whole word ends at this node</dd></dl></div>
+<div class="card"><h3>Your plan card</h3><dl><dt>Insert</dt><dd>from the root, follow each letter, creating a node when it's missing; mark the last node with <code>$</code>.</dd><dt>Search</dt><dd>follow each letter; a missing letter means no such word or prefix.</dd><dt>Word or prefix?</dt><dd>at the end, a word needs <code>$</code>; a prefix needs only to have got there.</dd><dt>Cost</dt><dd>one step per character: O(L) for a word of length L.</dd></dl></div></div>
+<div class="card invariant"><h3>What stays true</h3><p>Every node stands for the prefix spelled on the path from the root to it, and it carries <code>$</code> exactly when that prefix is an inserted word.</p></div>
+<h3>Why each move is safe</h3><ul><li>Two words share the nodes of their common prefix and no more, so inserting one never changes another's path.</li><li><code>setdefault(ch, {})</code> reuses an existing child, so the same prefix is never stored twice.</li><li>A search that falls off the trie at letter i proves no stored word starts with those i + 1 letters.</li></ul>
+<p><b>Relies on:</b> a small alphabet per node and shared prefixes. With few shared prefixes, a trie is mostly overhead compared with a hash set.</p></section>
+
+<section id="trace"><h2>Trace it. Predict the decisions.</h2>
+<p class="muted">Step runs the highlighted line. At a decision the stepper waits for your prediction. The numbers beside the code count how often each line has run.</p>
+<div id="stepper"></div></section>
+
+<section id="family"><h2>The family</h2><p>The trie is the same in every member; what changes is how it is walked.</p><article class='variant'><h3>Insert, search, starts-with</h3><p>The traces above. <code>startsWith</code> is search without the end-marker check.</p><p class='probs'><a href='https://leetcode.com/problems/implement-trie-prefix-tree/' target='_blank' rel='noopener'>Implement Trie (Prefix Tree)</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Wildcards: branch at '.'</h3><p>A DFS over (node, index): a letter follows one child, a '.' tries every child. Shared prefixes are explored once.</p><pre class='code'>def match(node, word, i):
+    if i == len(word):
+        return &quot;$&quot; in node
+    if word[i] == &quot;.&quot;:
+        return any(match(child, word, i + 1) for ch, child in node.items() if ch != &quot;$&quot;)
+    return word[i] in node and match(node[word[i]], word, i + 1)</pre><p class='probs'><a href='https://leetcode.com/problems/design-add-and-search-words-data-structure/' target='_blank' rel='noopener'>Design Add and Search Words Data Structure</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Many words at once on a grid</h3><p>Backtrack on the grid while walking the trie: a cell whose letter isn't a child prunes every word with that prefix. Remove a word's end marker once found, so it is reported once.</p><p class='probs'><a href='https://leetcode.com/problems/word-search-ii/' target='_blank' rel='noopener'>Word Search II</a> <span class='muted'>hard</span></p></article></section>
+
+<section id="count"><h2>Count the work</h2>
+<p>Count how often each line runs; the line with the most runs decides the Big-O. Here that is <code>node = node.setdefault(ch, {})</code>.</p>
+<p>The inner line runs once per character inserted, so its runs are the total length of the words, and each run is one dict operation. A search runs it at most once per character of the query: O(L), whether the trie holds ten words or a million.</p>
+<table class="measure"><thead><tr><th>words of 5 letters</th><th>runs (measured)</th><th>bound: 5n (n words of 5 letters: their total length)</th><th>vs the row above</th><th>all lines</th></tr></thead><tbody><tr><td>16</td><td>80</td><td>80</td><td></td><td>227</td></tr><tr><td>32</td><td>160</td><td>160</td><td>×2.00</td><td>451</td></tr><tr><td>64</td><td>320</td><td>320</td><td>×2.00</td><td>899</td></tr><tr><td>128</td><td>640</td><td>640</td><td>×2.00</td><td>1795</td></tr></tbody></table>
+<p class="muted">Measured by running the reference under Python's tracer on its worst inputs.</p>
+<p><b>Time:</b> O(total length) to build; O(L) per query. · <b>Extra space:</b> O(total length) at most, less when words share prefixes.</p></section>
+
+<section id="traps"><h2>Where it breaks</h2><ul><li><b>No end marker</b> reports 'car' as stored when only 'cart' is.</li><li><b>A mutable default for children (<code>children={}</code>)</b> makes every node share one dict.</li><li><b>Word Search II without pruning found words</b> reports a word once per path and keeps searching dead branches.</li><li><b>A trie for exact membership only</b> costs memory and code for what a set does.</li></ul></section>
+</div>
+
+<section id="check"><h2>Check it without the visual</h2>
+<p>Hide the lesson, then trace a fresh input and answer the transfer questions from memory. A practice check, not proof you'll remember it.</p>
+<button type="button" id="hide" class="primary">Hide the lesson and try</button>
+<div id="quiz" hidden></div></section>
+</main>
+<script id="data" type="application/json">{"traces":[{"label":"Insert car, cart, cat, dog, do","about":"Watch 'cart' reuse all of 'car', and 'do' add no node at all: only an end marker.","code":["def build_trie(words):","    root = {}","    for word in words:","        node = root","        for ch in word:","            node = node.setdefault(ch, {})","        node[\"$\"] = True","    return root"],"steps":[{"line":2,"ret":false,"views":[{"t":"list","name":"words","items":["car","cart","cat","dog","do"],"note":"","cls":{}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"root","label":"·","x":0,"y":0,"cls":"","tag":""}],"edges":[],"directed":false,"w":1,"h":1},{"t":"vars","items":[["word","None"],["ch","None"],["prefix so far","None"]]}],"say":"root = {}"},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"root","label":"·","x":0,"y":0,"cls":"","tag":""}],"edges":[],"directed":false,"w":1,"h":1},{"t":"vars","items":[["word","'car'"],["ch","None"],["prefix so far","None"]]}],"say":"word = 'car'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"root","label":"·","x":0,"y":0,"cls":"cur","tag":""}],"edges":[],"directed":false,"w":1,"h":1},{"t":"vars","items":[["word","'car'"],["ch","None"],["prefix so far","''"]]}],"say":"node = {}"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"root","label":"·","x":0,"y":0,"cls":"cur","tag":""}],"edges":[],"directed":false,"w":1,"h":1},{"t":"vars","items":[["word","'car'"],["ch","'c'"],["prefix so far","''"]]}],"say":"ch = 'c'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"c","label":"c","x":0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"}],"directed":false,"w":1,"h":2},{"t":"vars","items":[["word","'car'"],["ch","'c'"],["prefix so far","'c'"]]}],"say":"'c' after '': created a new node."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"c","label":"c","x":0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"}],"directed":false,"w":1,"h":2},{"t":"vars","items":[["word","'car'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"ch: 'c' → 'a'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"ca","label":"a","x":0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"}],"directed":false,"w":1,"h":3},{"t":"vars","items":[["word","'car'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"'a' after 'c': created a new node."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"ca","label":"a","x":0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"}],"directed":false,"w":1,"h":3},{"t":"vars","items":[["word","'car'"],["ch","'r'"],["prefix so far","'ca'"]]}],"say":"ch: 'a' → 'r'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":""},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'car'"],["ch","'r'"],["prefix so far","'car'"]]}],"say":"'r' after 'ca': created a new node."},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":""},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'car'"],["ch","'r'"],["prefix so far","'car'"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'car'"],["ch","'r'"],["prefix so far","'car'"]]}],"say":"Marked the end of 'car'."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'r'"],["prefix so far","'car'"]]}],"say":"word: 'car' → 'cart'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'r'"],["prefix so far","''"]]}],"say":"node changed"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'c'"],["prefix so far","''"]]}],"say":"ch: 'r' → 'c'","ask":{"q":"Inserting 'cart': does the prefix 'c' already have a node?","options":["yes: reuse it","no: create it"],"answer":"yes: reuse it","why":"Words share the nodes of their common prefix."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'c'"],["prefix so far","'c'"]]}],"say":"'c' after '': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"ch: 'c' → 'a'","ask":{"q":"Inserting 'cart': does the prefix 'ca' already have a node?","options":["yes: reuse it","no: create it"],"answer":"yes: reuse it","why":"Words share the nodes of their common prefix."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"'a' after 'c': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'r'"],["prefix so far","'ca'"]]}],"say":"ch: 'a' → 'r'","ask":{"q":"Inserting 'cart': does the prefix 'car' already have a node?","options":["yes: reuse it","no: create it"],"answer":"yes: reuse it","why":"Words share the nodes of their common prefix."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'r'"],["prefix so far","'car'"]]}],"say":"'r' after 'ca': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"car","label":"r","x":0,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"}],"directed":false,"w":1,"h":4},{"t":"vars","items":[["word","'cart'"],["ch","'t'"],["prefix so far","'car'"]]}],"say":"ch: 'r' → 't'","ask":{"q":"Inserting 'cart': does the prefix 'cart' already have a node?","options":["yes: reuse it","no: create it"],"answer":"no: create it","why":"Words share the nodes of their common prefix."}},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"cur","tag":""},{"id":"car","label":"r","x":0.0,"y":3,"cls":"win","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"},{"a":"car","b":"cart","cls":"cur"}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cart'"],["ch","'t'"],["prefix so far","'cart'"]]}],"say":"'t' after 'car': created a new node."},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"cur","tag":""},{"id":"car","label":"r","x":0.0,"y":3,"cls":"win","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"},{"a":"car","b":"cart","cls":"cur"}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cart'"],["ch","'t'"],["prefix so far","'cart'"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"cur","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"win","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"},{"a":"car","b":"cart","cls":"cur"}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cart'"],["ch","'t'"],["prefix so far","'cart'"]]}],"say":"Marked the end of 'cart'."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"cur","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"win","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":"cur"},{"a":"car","b":"cart","cls":"cur"}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","'cart'"]]}],"say":"word: 'cart' → 'cat'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","''"]]}],"say":"node changed"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'c'"],["prefix so far","''"]]}],"say":"ch: 't' → 'c'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'c'"],["prefix so far","'c'"]]}],"say":"'c' after '': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"ch: 'c' → 'a'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"'a' after 'c': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.0,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.0,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":1,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","'ca'"]]}],"say":"ch: 'a' → 't'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"cur","tag":""},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":"cur"},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","'cat'"]]}],"say":"'t' after 'ca': created a new node."},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"cur","tag":""},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":"cur"},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","'cat'"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":"cur"},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'cat'"],["ch","'t'"],["prefix so far","'cat'"]]}],"say":"Marked the end of 'cat'."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"cur","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"win","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":"cur"},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'t'"],["prefix so far","'cat'"]]}],"say":"word: 'cat' → 'dog'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'t'"],["prefix so far","''"]]}],"say":"node changed"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":0.5,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":2,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'d'"],["prefix so far","''"]]}],"say":"ch: 't' → 'd'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"d","label":"d","x":2,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'d'"],["prefix so far","'d'"]]}],"say":"'d' after '': created a new node."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"d","label":"d","x":2,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'o'"],["prefix so far","'d'"]]}],"say":"ch: 'd' → 'o'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"do","label":"o","x":2,"y":2,"cls":"cur","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":"'o' after 'd': created a new node."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"do","label":"o","x":2,"y":2,"cls":"cur","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'g'"],["prefix so far","'do'"]]}],"say":"ch: 'o' → 'g'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"cur","tag":""},{"id":"do","label":"o","x":2.0,"y":2,"cls":"win","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'g'"],["prefix so far","'dog'"]]}],"say":"'g' after 'do': created a new node."},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"cur","tag":""},{"id":"do","label":"o","x":2.0,"y":2,"cls":"win","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'g'"],["prefix so far","'dog'"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"cur","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"win","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'dog'"],["ch","'g'"],["prefix so far","'dog'"]]}],"say":"Marked the end of 'dog'."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"cur","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"win","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":"cur"},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'g'"],["prefix so far","'dog'"]]}],"say":"word: 'dog' → 'do'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'g'"],["prefix so far","''"]]}],"say":"node changed"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'d'"],["prefix so far","''"]]}],"say":"ch: 'g' → 'd'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'d'"],["prefix so far","'d'"]]}],"say":"'d' after '': the node exists already: shared with an earlier word."},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"cur","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'d'"]]}],"say":"ch: 'd' → 'o'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"cur","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":"'o' after 'd': the node exists already: shared with an earlier word."},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"cur","tag":""},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"cur","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":"Marked the end of 'do'."},{"line":8,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"cur","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":""},{"line":8,"ret":true,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"cur","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"win","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":"cur"},{"a":"d","b":"do","cls":"cur"},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'do'"],["ch","'o'"],["prefix so far","'do'"]]}],"say":"Returns {'c': {'a': {'r': {'$': True, 't': {'$': True}}, 't': {'$...."}],"rows":[{"at":11,"cells":["car","3","4"]},{"at":23,"cells":["cart","1","5"]},{"at":33,"cells":["cat","1","6"]},{"at":43,"cells":["dog","3","9"]},{"at":51,"cells":["do","0","9"]}],"cols":["word","new nodes","nodes in all"],"result":"{'c': {'a': {'r': {'$': True, 't': {'$': True}}, 't': {'$..."},{"label":"Search 'ca' (a prefix, not a word)","about":"Both letters are found, but no word ends at 'ca'.","code":["def search(root, word):","    node = root","    for ch in word:","        if ch not in node:","            return False","        node = node[ch]","    return \"$\" in node"],"steps":[{"line":2,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","None"],["prefix so far","None"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","None"],["prefix so far","''"]]}],"say":"node = {'c': {'a': {'r': {'$': True, 't': {'$': True}}, 't': {'$..."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'c'"],["prefix so far","''"]]}],"say":"ch = 'c'"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'c'"],["prefix so far","''"]]}],"say":"'c' is a child here: follow it."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'c'"],["prefix so far","'c'"]]}],"say":"node changed"},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"ch: 'c' → 'a'"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"'a' is a child here: follow it."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"node changed"},{"line":7,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"","ask":{"q":"Every letter of 'ca' was found. Is it a stored word?","options":["yes","no: only a prefix"],"answer":"no: only a prefix","why":"Reaching the node proves the prefix exists; the end marker decides whether a word ends there."}},{"line":7,"ret":true,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'ca'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"Returns False."}],"rows":[{"at":3,"cells":["c","found","c"]},{"at":6,"cells":["a","found","ca"]}],"cols":["letter","here?","prefix reached"],"result":"False"},{"label":"Search 'cab' (falls off)","about":"'ca' exists, but no word continues with 'b'.","code":["def search(root, word):","    node = root","    for ch in word:","        if ch not in node:","            return False","        node = node[ch]","    return \"$\" in node"],"steps":[{"line":2,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","None"],["prefix so far","None"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","None"],["prefix so far","''"]]}],"say":"node = {'c': {'a': {'r': {'$': True, 't': {'$': True}}, 't': {'$..."},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'c'"],["prefix so far","''"]]}],"say":"ch = 'c'"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"cur","tag":""}],"edges":[{"a":"root","b":"c","cls":""},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'c'"],["prefix so far","''"]]}],"say":"'c' is a child here: follow it."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'c'"],["prefix so far","'c'"]]}],"say":"node changed"},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"ch: 'c' → 'a'"},{"line":6,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"cur","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":""},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'a'"],["prefix so far","'c'"]]}],"say":"'a' is a child here: follow it."},{"line":3,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'a'"],["prefix so far","'ca'"]]}],"say":"node changed"},{"line":4,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'b'"],["prefix so far","'ca'"]]}],"say":"ch: 'a' → 'b'"},{"line":5,"ret":false,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'b'"],["prefix so far","'ca'"]]}],"say":"No 'b' here: the word isn't stored."},{"line":5,"ret":true,"views":[{"t":"graph","name":"trie (blue: current node, light: the path to it, green: a word ends here)","nodes":[{"id":"cart","label":"t","x":0,"y":4,"cls":"ok","tag":"end"},{"id":"car","label":"r","x":0.0,"y":3,"cls":"ok","tag":"end"},{"id":"cat","label":"t","x":1,"y":3,"cls":"ok","tag":"end"},{"id":"ca","label":"a","x":0.5,"y":2,"cls":"cur","tag":""},{"id":"c","label":"c","x":0.5,"y":1,"cls":"win","tag":""},{"id":"dog","label":"g","x":2,"y":3,"cls":"ok","tag":"end"},{"id":"do","label":"o","x":2.0,"y":2,"cls":"ok","tag":"end"},{"id":"d","label":"d","x":2.0,"y":1,"cls":"","tag":""},{"id":"root","label":"·","x":1.25,"y":0,"cls":"win","tag":""}],"edges":[{"a":"root","b":"c","cls":"cur"},{"a":"root","b":"d","cls":""},{"a":"d","b":"do","cls":""},{"a":"do","b":"dog","cls":""},{"a":"c","b":"ca","cls":"cur"},{"a":"ca","b":"car","cls":""},{"a":"ca","b":"cat","cls":""},{"a":"car","b":"cart","cls":""}],"directed":false,"w":3,"h":5},{"t":"vars","items":[["word","'cab'"],["ch","'b'"],["prefix so far","'ca'"]]}],"say":"Returns False."}],"rows":[{"at":3,"cells":["c","found","c"]},{"at":6,"cells":["a","found","ca"]},{"at":9,"cells":["b","missing","ca"]}],"cols":["letter","here?","prefix reached"],"result":"False"}],"spot":{"idea":["A trie (prefix tree) stores words letter by letter: the root is the empty prefix, each edge adds one character, and a marker says where a whole word ends. Looking up a word or a prefix walks one edge per character: O(L), independent of how many words there are.","Reach for it when the questions are about **prefixes** (autocomplete, \"does any word start with...\"), when a **wildcard** must try several letters, or when **many words** are searched at once, as on a letter grid, so a dead prefix stops every word that shares it. For plain membership, a hash set is simpler."],"questions":[["Are the questions about prefixes?","Starts-with, autocomplete, the shortest root of a word."],["Do many words share work?","Searching all of them on one grid: walk the trie and the grid together."],["Is there a wildcard?","At a `.`, try every child: DFS through the trie."],["What marks a whole word?","An end flag, so that 'car' isn't found just because 'cart' is stored."]],"cases":[{"text":"Implement insert, search and startsWith for a dictionary.","options":["A trie","A hash set only","A sorted list"],"answer":0,"why":"startsWith on a hash set means checking every word. A trie answers it by walking the prefix."},{"text":"Find every dictionary word that appears on a grid of letters.","options":["A trie of the words plus backtracking on the grid","Backtracking per word","BFS from every cell"],"answer":0,"why":"One walk of the grid follows the trie; a prefix that isn't in the trie stops all words with it at once."},{"text":"Is this word in the list? (One query type: exact membership.)","options":["A trie","A hash set","Binary search on unsorted words"],"answer":1,"why":"Exact membership is what a hash set does in O(L), with far less code and memory."},{"text":"Search words where '.' matches any letter.","options":["A trie, branching at each '.'","A regular expression over every word","A heap"],"answer":0,"why":"Letters follow one edge; a '.' tries each child. Prefixes shared by many words are explored once."},{"text":"Top 3 search suggestions as each letter is typed.","options":["A trie (or a sorted list with binary search)","A hash map of full words","Union-find"],"answer":0,"why":"Each typed letter moves one node deeper; the suggestions are the words under that node."},{"text":"The longest common prefix of a list of words.","options":["A trie, or compare the words column by column","A heap","BFS"],"answer":0,"why":"Walk down while exactly one child exists and no word ends. Comparing column by column does the same with no extra structure."}],"near_misses":[["Exact membership only.","A hash set: same O(L) per lookup, far less memory."],["Substring search in one long text.","A trie of prefixes doesn't help; KMP, rolling hashes or a suffix structure do."],["Anagram groups.","Order of letters doesn't matter: hash the sorted word or the letter counts."]]},"check":{"text":"Insert ['to', 'tea', 'ten', 'i'] with build_trie. How many nodes does the trie have, counting the root, and how many new nodes does 'ten' add?","fields":[{"label":"Nodes in all, with the root","answer":"7"},{"label":"New nodes added by 'ten'","answer":"1"}],"questions":[{"q":"You only ever ask whether a whole word is in a list of 10⁵ words. Trie or set?","options":["A trie: it's O(L)","A set: also O(L) per lookup, far less memory and code","A sorted list"],"answer":1,"why":"A trie earns its memory only when prefixes matter."},{"q":"Word Search II with 10⁴ words on a 12 × 12 grid. Why build a trie of the words first?","options":["To sort the words","One grid walk serves every word, and a dead prefix stops all words with it","Tries use less memory"],"answer":1,"why":"Searching each word separately repeats the same grid walks for shared prefixes."}],"own":{"prompt":"What does each node of a trie stand for, and when is a trie worth it over a hash set?","model":"Each node stands for the prefix spelled from the root to it; words that share a beginning share those nodes, and an end marker says where a whole word stops. Any lookup walks one edge per character, O(L), no matter how many words are stored. That pays off when the questions are about prefixes, wildcards, or many words searched together; for plain membership a hash set does the same job more simply."}}}</script>
+<script>"use strict";
+// The stepper and the checks of a built explainer page; scripts/build_explainer.py inlines this file.
+// Everything shown comes from the JSON in #data, recorded by running the spec's Python. The page keeps its state in
+// memory only (the learning app serves it sandboxed, where storage throws), and nothing takes focus on load.
+const DATA = JSON.parse(document.getElementById("data").textContent);
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else if (k.startsWith("on")) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  node.append(...kids.filter((x) => x !== null && x !== undefined && x !== false));
+  return node;
+}
+// Answers compare as tokens: "(0, 5) (0, 4)", "(0,5),(0,4)" and "[0, 5, 0, 4]" are the same answer.
+const norm = (s) => String(s).toLowerCase().replace(/[\s'"()[\]{},;]+/g, ",").replace(/^,+|,+$/g, "");
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text = "") {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+// --- theme ---------------------------------------------------------------------------------------------------------
+document.getElementById("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// --- multiple choice: the recognition cases and the transfer questions ---------------------------------------------
+function choice(item, record) {
+  const box = el("div", {class: "choice"}, el("p", {class: "q", text: item.text || item.q}));
+  const options = el("div", {class: "options"});
+  const said = el("p", {class: "said", role: "status"});
+  let first = true;
+  item.options.forEach((label, i) => {
+    options.append(el("button", {type: "button", text: label, onclick: (e) => {
+      const right = i === item.answer;
+      e.target.classList.add(right ? "right" : "wrong");
+      said.textContent = (right ? "Yes. " : "Not this one. ") + (right ? item.why : (item.miss?.[i] || "Look for what the method relies on, and try again."));
+      said.className = "said " + (right ? "right" : "wrong");
+      if (first && record) record(right);
+      first = false;
+      if (right) options.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    }}));
+  });
+  box.append(options, said);
+  return box;
+}
+(function cases() {
+  const host = document.getElementById("cases");
+  const score = el("p", {class: "muted", role: "status"});
+  let tried = 0, right = 0;
+  const record = (ok) => {
+    tried += 1; right += ok ? 1 : 0;
+    score.textContent = `First pick right: ${right} of ${tried}` + (tried === DATA.spot.cases.length ? ` (all ${tried} cases).` : ".");
+  };
+  DATA.spot.cases.forEach((c) => host.append(choice(c, record)));
+  host.append(score);
+})();
+
+// --- views: pure functions of one step's state ----------------------------------------------------------------------
+function changed(view, prev) {  // indexes or names whose value differs from the same view one step back
+  if (!prev || prev.t !== view.t || prev.name !== view.name) return new Set();
+  const out = new Set();
+  if (view.t === "array") view.items.forEach((x, i) => { if (prev.items[i] !== x) out.add(String(i)); });
+  if (view.t === "vars") view.items.forEach(([k, v]) => { const p = prev.items.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  if (view.t === "map") view.entries.forEach(([k, v]) => { const p = prev.entries.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  return out;
+}
+const VIEWS = {
+  array(v, chg) {
+    const row = el("div", {class: "cells"});
+    v.items.forEach((x, i) => {
+      const ptrs = Object.entries(v.ptr).filter(([, j]) => j === i).map(([k]) => k).join(" ");
+      row.append(el("div", {class: `cell ${v.cls[i] || ""} ${chg.has(String(i)) ? "chg" : ""}`},
+        el("span", {class: "idx", text: v.labels ? v.labels[i] : String(i)}), el("span", {class: "val", text: x}),
+        el("span", {class: "ptr", text: ptrs})));
+    });
+    const past = Object.entries(v.ptr).filter(([, j]) => j >= v.items.length || j < 0);
+    if (past.length) row.append(el("div", {class: "cell ghost"}, el("span", {class: "idx", text: String(v.items.length)}),
+      el("span", {class: "val", text: "·"}), el("span", {class: "ptr", text: past.map(([k]) => k).join(" ")})));
+    return row;
+  },
+  list(v) {
+    const row = el("div", {class: "chips"});
+    if (!v.items.length) row.append(el("span", {class: "muted", text: "empty"}));
+    v.items.forEach((x, i) => row.append(el("span", {class: `chip ${v.cls[i] || ""}`, text: x})));
+    if (v.note) row.append(el("span", {class: "muted note", text: v.note}));
+    return row;
+  },
+  map(v, chg) {
+    const t = el("table", {class: "kv"});
+    if (!v.entries.length) t.append(el("tr", {}, el("td", {class: "muted", text: "empty"})));
+    v.entries.forEach(([k, x]) => t.append(el("tr", {class: `${k === v.hl ? "cur" : ""} ${chg.has(k) ? "chg" : ""}`},
+      el("td", {text: k}), el("td", {text: x}))));
+    return t;
+  },
+  vars(v, chg) {
+    const row = el("div", {class: "chips"});
+    v.items.forEach(([k, x]) => row.append(el("span", {class: `var ${chg.has(k) ? "chg" : ""}`}, el("b", {text: k}), " = ", x)));
+    return row;
+  },
+  grid(v) {
+    const t = el("table", {class: "grid"});
+    if (v.colh) t.append(el("tr", {}, v.rowh ? el("th") : null, ...v.colh.map((h) => el("th", {text: String(h)}))));
+    v.cells.forEach((row, r) => t.append(el("tr", {}, v.rowh ? el("th", {text: String(v.rowh[r])}) : null,
+      ...row.map((x, c) => el("td", {class: v.cls[`${r},${c}`] || "", text: x})))));
+    return t;
+  },
+  graph(v) {
+    const U = 64, R = 17, pad = 30;
+    const [vw, vh] = [(v.w - 1) * U + 2 * pad, (v.h - 1) * U + 2 * pad + 14];  // drawn at natural size, never wider than its box
+    const s = svg("svg", {viewBox: `${-pad} ${-pad} ${vw} ${vh}`, width: vw, height: vh, class: "graph", role: "img"});
+    const at = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+    if (v.directed) {
+      const marker = svg("marker", {id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "9", markerHeight: "9",
+        markerUnits: "userSpaceOnUse", orient: "auto-start-reverse"});
+      marker.append(svg("path", {d: "M0,0 L10,5 L0,10 z", class: "arrowhead"}));
+      const defs = svg("defs");
+      defs.append(marker);
+      s.append(defs);
+    }
+    for (const e of v.edges) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) continue;
+      const [x1, y1, x2, y2] = [a.x * U, a.y * U, b.x * U, b.y * U];
+      const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const [ux, uy] = [(x2 - x1) / d, (y2 - y1) / d];
+      s.append(svg("line", {x1: x1 + ux * R, y1: y1 + uy * R, x2: x2 - ux * (R + 2), y2: y2 - uy * (R + 2),
+        class: `edge ${e.cls || ""}`, ...(v.directed ? {"marker-end": "url(#arrow)"} : {})}));
+      if (e.label !== undefined && e.label !== "") {
+        s.append(svg("text", {x: (x1 + x2) / 2 - uy * 10, y: (y1 + y2) / 2 + ux * 10 + 4, class: "elabel"}, String(e.label)));
+      }
+    }
+    for (const n of v.nodes) {
+      const wide = Math.max(2 * R, 8 * String(n.label).length + 12);  // a long label gets a pill, not a circle
+      s.append(wide > 2 * R
+        ? svg("rect", {x: n.x * U - wide / 2, y: n.y * U - R, width: wide, height: 2 * R, rx: R, class: `node ${n.cls || ""}`})
+        : svg("circle", {cx: n.x * U, cy: n.y * U, r: R, class: `node ${n.cls || ""}`}));
+      s.append(svg("text", {x: n.x * U, y: n.y * U + 4, class: "nlabel"}, String(n.label)));
+      if (n.tag) s.append(svg("text", {x: n.x * U, y: n.y * U + R + 13, class: "ntag"}, String(n.tag)));
+    }
+    return s;
+  },
+  bars(v) {
+    const W = 320, rowH = 22, span = Math.max(1, v.hi - v.lo);
+    const s = svg("svg", {viewBox: `0 0 ${W + 20} ${v.spans.length * rowH + 26}`, width: W + 20, height: v.spans.length * rowH + 26, class: "bars", role: "img"});
+    const x = (t) => 10 + ((t - v.lo) / span) * W;
+    v.spans.forEach(([a, b, label, cls], i) => {
+      s.append(svg("rect", {x: x(a), y: i * rowH + 4, width: Math.max(3, x(b) - x(a)), height: rowH - 8, rx: 3, class: `span ${cls || ""}`}));
+      const text = label || `[${a}, ${b}]`, room = 7 * text.length;  // right of the bar, else left of it, else inside
+      const [tx, anchor] = x(b) + 4 + room <= W + 20 ? [x(b) + 4, "start"] : x(a) - 4 - room >= 0 ? [x(a) - 4, "end"] : [(x(a) + x(b)) / 2, "middle"];
+      s.append(svg("text", {x: tx, y: i * rowH + rowH / 2 + 4, class: "slabel", "text-anchor": anchor}, text));
+    });
+    const axis = v.spans.length * rowH + 8;
+    s.append(svg("line", {x1: x(v.lo), y1: axis, x2: x(v.hi), y2: axis, class: "axis"}));
+    for (let t = v.lo; t <= v.hi; t += Math.max(1, Math.ceil(span / 10))) {
+      s.append(svg("text", {x: x(t), y: axis + 14, class: "tick"}, String(t)));
+    }
+    return s;
+  },
+  text(v) { return el("p", {text: v.text}); },
+};
+function drawViews(step, prev) {
+  const box = el("div", {class: "views"});
+  step.views.forEach((v, i) => {
+    const before = prev?.views[i];
+    box.append(el("figure", {class: `view v-${v.t}`}, v.name ? el("figcaption", {text: v.name}) : null, VIEWS[v.t](v, changed(v, before))));
+  });
+  return box;
+}
+
+// --- the stepper ------------------------------------------------------------------------------------------------------
+(function stepper() {
+  const host = document.getElementById("stepper");
+  const states = DATA.traces.map(() => ({k: 0, answers: {}}));
+  let current = 0, timer = null;
+  const picker = el("div", {class: "picker", role: "group", "aria-label": "Input"});
+  DATA.traces.forEach((t, i) => picker.append(el("button", {type: "button", text: t.label, onclick: () => { stop(); current = i; draw(); }})));
+  const about = el("p", {class: "about"});
+  const back = el("button", {type: "button", text: "Back", onclick: () => go(-1)});
+  const step = el("button", {type: "button", class: "primary", text: "Step", onclick: () => go(1)});
+  const play = el("button", {type: "button", text: "Play", onclick: () => (timer ? stop() : start())});
+  const reset = el("button", {type: "button", text: "Reset", onclick: () => { stop(); states[current] = {k: 0, answers: {}}; draw(); }});
+  const end = el("button", {type: "button", text: "End", onclick: () => { stop(); while (canStep()) S().k += 1; draw(); }});
+  const where = el("span", {class: "muted where"});
+  const say = el("p", {class: "say", "aria-live": "polite"});
+  const ask = el("div", {class: "ask"});
+  const stage = el("div", {class: "stage"});
+  const code = el("ol", {class: "code"});
+  const table = el("table", {class: "history"});
+  const record = el("p", {class: "muted"});
+  host.append(picker, about, el("div", {class: "controls"}, back, step, play, reset, end, where), say, ask,
+    el("div", {class: "split"}, stage, el("div", {class: "side"}, el("h3", {text: "Python · how often each line has run"}), code)),
+    el("h3", {text: "History"}), el("div", {class: "scroll"}, table), record);
+  if (DATA.traces.length < 2) picker.hidden = true;
+
+  const T = () => DATA.traces[current];
+  const S = () => states[current];
+  const pending = () => T().steps[S().k].ask && !S().answers[S().k];
+  const canStep = () => S().k < T().steps.length - 1 && !pending();
+  function go(d) {
+    if (d > 0 && !canStep()) return;
+    S().k = Math.max(0, Math.min(T().steps.length - 1, S().k + d));
+    draw();
+  }
+  function start() {
+    play.textContent = "Pause";
+    timer = setInterval(() => { if (canStep()) go(1); else stop(); }, 650);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    play.textContent = "Play";
+  }
+  function drawAsk(s, k) {
+    ask.replaceChildren();
+    if (!s.ask) return;
+    const a = s.ask, given = S().answers[k];
+    ask.append(el("p", {class: "q"}, el("b", {text: "Predict: "}), a.q));
+    const reveal = (value) => {
+      S().answers[k] = {value, right: norm(value) === norm(a.answer)};
+      draw();
+    };
+    if (!given) {
+      if (a.options) {
+        ask.append(el("div", {class: "options"}, ...a.options.map((o) => el("button", {type: "button", text: String(o), onclick: () => reveal(String(o))}))));
+      } else {
+        const input = el("input", {type: "text", "aria-label": "Your prediction", autocomplete: "off"});
+        const form = el("form", {class: "fill", onsubmit: (e) => { e.preventDefault(); if (input.value.trim()) reveal(input.value.trim()); }},
+          input, el("button", {type: "submit", text: "Check"}));
+        ask.append(form);
+      }
+      return;
+    }
+    ask.append(el("p", {class: `said ${given.right ? "right" : "wrong"}`},
+      given.right ? `You said ${given.value}. Right.` : `You said ${given.value}. It was ${a.answer}.`, a.why ? " " + a.why : ""));
+  }
+  function draw() {
+    const t = T(), k = S().k, s = t.steps[k];
+    picker.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === current)));
+    about.textContent = t.about;
+    back.disabled = k === 0;
+    step.disabled = !canStep();
+    end.disabled = !canStep();
+    where.textContent = `Step ${k + 1} of ${t.steps.length}` + (pending() ? " · predict to go on" : "");
+    say.textContent = s.say || "";
+    drawAsk(s, k);
+    stage.replaceChildren(drawViews(s, t.steps[k - 1]));
+    const runs = {};
+    for (let i = 0; i < k; i++) if (!t.steps[i].ret) runs[t.steps[i].line] = (runs[t.steps[i].line] || 0) + 1;
+    code.replaceChildren(...t.code.map((line, i) => el("li", {class: i + 1 === s.line ? (s.ret ? "cur ret" : "cur") : ""},
+      el("span", {class: "runs", text: runs[i + 1] ? String(runs[i + 1]) : ""}), el("code", {text: line || " "}))));
+    table.replaceChildren(el("tr", {}, ...t.cols.map((c) => el("th", {text: c}))),
+      ...t.rows.filter((r) => r.at <= k).map((r) => el("tr", {}, ...r.cells.map((c) => el("td", {text: c})))));
+    if (!t.rows.some((r) => r.at <= k)) table.append(el("tr", {}, el("td", {class: "muted", colspan: String(t.cols.length || 1), text: "Rows appear as you step."})));
+    const given = Object.values(S().answers);
+    record.textContent = given.length ? `Predictions on this input: ${given.filter((g) => g.right).length} of ${given.length} right.` : "";
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || document.body.classList.contains("checking")) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > innerHeight) return;  // only while the stepper is on screen
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(-1); }
+  });
+  draw();
+})();
+
+// --- the check with the lesson hidden -----------------------------------------------------------------------------------
+(function check() {
+  const c = DATA.check, quiz = document.getElementById("quiz"), hide = document.getElementById("hide");
+  const inputs = c.fields.map((f) => el("input", {type: "text", autocomplete: "off", "aria-label": f.label}));
+  const marks = c.fields.map(() => el("span", {class: "mark", role: "status"}));
+  const fields = el("div", {class: "fields"}, ...c.fields.map((f, i) => el("label", {}, f.label, inputs[i], marks[i])));
+  const checkBtn = el("button", {type: "button", class: "primary", text: "Check my trace", onclick: () => {
+    c.fields.forEach((f, i) => {
+      const ok = norm(inputs[i].value) === norm(f.answer);
+      marks[i].textContent = ok ? "Right." : `It was ${f.answer}.`;
+      marks[i].className = "mark " + (ok ? "right" : "wrong");
+    });
+  }});
+  const own = el("textarea", {rows: "4", "aria-label": "In your own words"});
+  const model = el("p", {class: "model", hidden: ""}, c.own.model);
+  quiz.append(el("p", {class: "muted", text: "The traces, code, plan card and history are hidden. Work on paper if you like."}),
+    el("h3", {text: "Trace a fresh input"}), el("p", {text: c.text}), fields, checkBtn,
+    el("h3", {text: "Transfer"}), ...c.questions.map((q) => choice(q)),
+    el("h3", {text: "In your own words"}), el("p", {text: c.own.prompt}), own,
+    el("button", {type: "button", text: "Compare with the reasoning", onclick: () => { model.hidden = false; }}), model,
+    el("p", {}, el("button", {type: "button", class: "ghost", text: "Return to the lesson", onclick: () => {
+      document.body.classList.remove("checking"); quiz.hidden = true; hide.hidden = false;
+    }})));
+  hide.onclick = () => {
+    document.body.classList.add("checking");
+    quiz.hidden = false;
+    hide.hidden = true;
+    document.getElementById("check").scrollIntoView({block: "start"});
+  };
+})();
+</script>
+</body>
+</html>

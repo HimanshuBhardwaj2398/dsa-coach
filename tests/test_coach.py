@@ -643,19 +643,19 @@ class CoachTest(unittest.TestCase):
         self.run_cli("solve", "note", "--stage", "3", "--text", "all pairs, O(n^2)", now="10:21")
         self.run_cli("solve", "end", "--outcome", "solved", now="10:30")
         text = (self.root / "problems" / "two-sum" / "notes.md").read_text()
-        self.assertIn(f"## Stage notes\n\n### 2026-11-01 ({first})\n\n- **1. Understand:** - return i != j", text)
-        self.assertIn(f"- **2. Find an approach:** seen maps value -> index\n  for every j < i\n\n"
-                      f"### 2026-11-01 ({second})\n\n- **3. Build it:** all pairs, O(n^2)\n\n## Lessons\n", text)
+        self.assertIn(f"## Stage notes\n\n### 2026-11-01 ({first})\n\n- **1. Find an approach:** - return i != j", text)
+        self.assertIn(f"- **2. Build it:** seen maps value -> index\n  for every j < i\n\n"
+                      f"### 2026-11-01 ({second})\n\n- **3. Check and finish:** all pairs, O(n^2)\n\n## Lessons\n", text)
         self.assertNotIn("first draft", text)
         self.assertEqual(text.count("## Stage notes"), 1)
         self.assertGreater(text.index("complement lookup"), text.index("## Lessons\n"))
 
-    def test_solve_has_four_stages(self):
+    def test_solve_has_three_stages_and_starts_at_find_an_approach(self):
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
-        self.assertIn("stage 1/4 Understand", self.run_cli("solve", "show", now="10:01").stdout)
-        self.run_cli("solve", "stage", "4", now="10:02")
-        self.assertNotEqual(self.run_cli("solve", "stage", "5", ok=False).returncode, 0)
-        self.assertNotEqual(self.run_cli("solve", "note", "--stage", "5", "--text", "x", ok=False).returncode, 0)
+        self.assertIn("stage 1/3 Find an approach", self.run_cli("solve", "show", now="10:01").stdout)
+        self.run_cli("solve", "stage", "3", now="10:02")
+        self.assertNotEqual(self.run_cli("solve", "stage", "4", ok=False).returncode, 0)
+        self.assertNotEqual(self.run_cli("solve", "note", "--stage", "4", "--text", "x", ok=False).returncode, 0)
 
     def test_solve_end_records_its_session_and_a_retry_logs_once(self):
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
@@ -671,7 +671,7 @@ class CoachTest(unittest.TestCase):
         self.assertIsNone(self.live())
         self.assertEqual(len(self.attempts()), 1)
         notes = (self.root / "problems/two-sum/notes.md").read_text()
-        self.assertEqual(notes.count("- **1. Understand:** pairs"), 1)
+        self.assertEqual(notes.count("- **1. Find an approach:** pairs"), 1)
 
     def test_solve_blank_note_clears_the_stage_and_writes_nothing(self):
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
@@ -721,7 +721,7 @@ class CoachTest(unittest.TestCase):
         self.assertEqual(set(view["due"]), {"resolves", "today", "cards", "drafts", "inbox"})
         self.run_cli("solve", "start", "--problem", "two-sum", now="10:00")
         live = json.loads(self.run_cli("map", "--json", now="10:05").stdout)["live"]
-        self.assertEqual((live["problem"], live["stage_name"], live["block"]["elapsed"]), ("two-sum", "Understand", 5))
+        self.assertEqual((live["problem"], live["stage_name"], live["block"]["elapsed"]), ("two-sum", "Find an approach", 5))
 
     def test_map_names_the_due_resolves_and_says_how_many_are_todays(self):
         for slug in ("two-sum", "valid-anagram", "contains-duplicate", "group-anagrams"):

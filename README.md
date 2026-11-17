@@ -42,7 +42,7 @@ Claude Code is the one platform proven in real sessions. The others are set up a
 
 ## How a solve works
 
-You read and code on LeetCode. The coach in Claude Code runs the four stages, gives hints one rung at a time and logs the attempt; it looks at your LeetCode tab with a browser tool when it can, or asks you to paste your code. Nothing in this repo reads or scrapes LeetCode.
+You read and code on LeetCode. The coach in Claude Code runs the three stages, gives hints one rung at a time and logs the attempt; it looks at your LeetCode tab with a browser tool when it can, or asks you to paste your code. Nothing in this repo reads or scrapes LeetCode.
 
 ## The coach pane (Claude Code)
 
@@ -61,7 +61,7 @@ Install it once, at the Claude Code prompt in this folder:
 
 ## The learning app and the browser panel
 
-`python3 app/server.py` opens a read-only page: **Today** (the live solve, what's due, what's next), the **Map** of all 22 patterns, and each pattern's **Learn** page with cues, invariant, template, resources, problems and its saved explainer. To show the same page beside LeetCode, install the [browser extension](extensions/dsa-coach/README.md).
+`python3 app/server.py` opens a read-only page: **Today** (the live solve with a box to type your stage answer and copy it for the coach chat, what's due, what's next), the **Map** of all 22 patterns, and each pattern's **Learn** page with cues, invariant, template, resources, problems and its saved explainer. To show the same page beside LeetCode, install the [browser extension](extensions/dsa-coach/README.md).
 
 ## Everyday commands
 
@@ -110,7 +110,7 @@ Notes are triaged between versions into [plans/backlog.md](plans/backlog.md): wh
 ## Changing the skill
 
 1. Edit files in `skills/dsa-coach/`.
-2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`. After saving or changing an explainer, also `python3 tests/browser/check_explainers.py`. After changing how the coach teaches, also run [docs/coach-check.md](docs/coach-check.md) by hand.
+2. Run `python3 -m unittest discover -s tests`, `node --test tests/frontend/*.test.cjs` and `coach.py validate`. After changing the app or extension, also `python3 tests/browser/check_app.py`. After saving or changing an explainer, rebuild it from its spec (`python3 skills/dsa-coach/scripts/build_explainer.py notebook/concepts/<slug>/spec.py`) and run `python3 tests/browser/check_explainers.py`. After changing how the coach teaches, also run [docs/coach-check.md](docs/coach-check.md) by hand.
 3. Bump the version in two places: `metadata.version` in SKILL.md and `SKILL_VERSION` in coach.py.
 4. `coach.py package`, then re-upload `dist/dsa-coach.zip` wherever you uploaded it (Claude web, Cowork). Claude Code and Codex use the folder directly.
 

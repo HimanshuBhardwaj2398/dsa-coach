@@ -53,7 +53,7 @@ The attempt in progress: its stage, hint rung and focus blocks, until it ends an
 _Avoid_: session, current solve, solve session
 
 **Stage**:
-One of the four steps of the solve protocol: Understand, Find an approach, Build it, Check and finish.
+One of the three steps of the solve protocol: Find an approach, Build it, Check and finish. Understand was the first until 1.1.0.
 _Avoid_: step, phase (a phase belongs to the plan)
 
 **Hint ladder**:
@@ -155,7 +155,7 @@ A short plan he writes before coding: the pattern, what to remember, what stays 
 _Avoid_: outline, approach note
 
 **Explainer**:
-An interactive page that walks through an algorithm step by step, with predictions for him to make.
+An interactive page that teaches a pattern: how to spot it, its parts, a step-through of real Python with predictions for him to make, its family of problems, the counted work, and a check with the page hidden. Most are built from a **spec** (`concepts/<slug>/spec.py`).
 _Avoid_: artifact, visualization, animation, page
 
 **Mock**:
