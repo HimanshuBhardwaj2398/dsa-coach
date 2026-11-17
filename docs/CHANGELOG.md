@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.1.0 · 2026-11-18 · Every open note, built
+
+Test period 1 began on 2026-11-17 with one session on 1.0.1. He then chose to build every open feedback note (f0010–f0018) at once, without waiting for a triage, so the period ended there and test period 2 runs on this version (`plans/backlog.md`). Two of the changes go against `docs/research/`; both are written down there and in the backlog, so the next triage can check them against the record.
+
+**A solve starts at Find an approach** (f0015, f0016, f0017)
+- **Three stages: Find an approach, Build it, Check and finish.** He reads the problem and its examples on LeetCode, so the coach no longer asks him to restate it or predict the examples' outputs. `coach.py` (`STAGES`), the pane and their tests have three stages; `solve start` begins at stage 1, Find an approach.
+- What the old stage 1 caught is still covered without it. His first method shows a misread, and the coach points him to that line of the statement (SKILL.md, stage 1). The edge case the page doesn't show is traced in stage 3.
+- Against the research: predicting outputs raised correct completion from 53% to 76% in a CS1 study, and in the one solve under 1.0.1 the restatement caught him solving LC 153's goal. `references/protocol.md` and `learning-principles.md` say so.
+
+**The look back asks for no writing** (f0018)
+- In Check and finish he traces an edge case, runs the tests and states the complexity. For why it works and the lesson (and, on a first medium or hard, one more question), the coach gives one-line pointers. He answers in a few words or says he knows, and the coach gives the answer in a line. The lesson logged is the one they agreed on.
+- Against the research: generating the reason beats reading it. This is the second item to watch at the next triage.
+
+**A box for stage answers in the side panel** (f0014)
+- During a solve, Today has "Your answer · stage N" under the live solve. **Copy for the coach** (or ⌘/Ctrl+Enter) copies it as a message for the coach chat: "My answer for stage 1 (Find an approach) on …". The app still writes nothing. The typed text survives a visit to the Map and a return to the tab. If the clipboard is blocked, the message opens in the handoff panel to copy by hand.
+- ⌘/Ctrl+Enter also submits the Improve-it form (f0009, from the Later list).
+
+**Every algorithm pattern has an explainer, and each teaches the pattern** (f0010, f0013)
+- **`scripts/build_explainer.py`** builds a page from a spec, `notebook/concepts/<slug>/spec.py`. It traces the reference Python line by line with `sys.settrace` and checks it against brute force on 100–600 generated inputs. It asserts the spec's invariant at every step, and asserts that the measured run counts stay under the stated bound at four sizes. It then inlines one shared stepper (`assets/explainer/`). The views are an array, a list, a map, variables, a grid, a graph and intervals. Each page also has the code with live run counts, predictions at decision points, a history table and a check with the lesson hidden. Every state, prediction answer, check answer and count on a page comes from running the spec; the recognition and transfer questions are written by hand.
+- **Each page teaches the pattern, as Binary Search v2 did:** spot it (questions to ask, six recognition cases with near misses), the parts and plan card with why each move is safe, two or three traced inputs, the family of variants with their NeetCode problems, the work counted, where it breaks, and the hidden check.
+- **15 pages built and registered (x0006–x0020):** Two Pointers, Prefix Sums, Linked List, Trees, Heap / Priority Queue (replacing the push/pop explorer as heap's explainer), Backtracking, Graphs, Tries, Intervals, Greedy, 1-D DP, 2-D DP, Advanced Graphs, Math & Geometry and Bit Manipulation. With the four hand-built pages, all 19 algorithm patterns have one. The three formats (machine coding, AI-assisted, ML coding) are practised in chat and have none (backlog, Later).
+- `references/explainers.md` says what a page teaches and how to build one from a spec. Learn and explain modes open the saved page.
+
+Not built: f0011 and f0012 (an MCP server) ended in "revisit later" when they were discussed. They are in the backlog's Later list.
+
+Tests: `tests/test_explainers.py` (the recorder counts an inlined comprehension once; every spec builds, with its oracle, invariant and count checks), `test_solve_has_three_stages_and_starts_at_find_an_approach`, a frontend test for the stage-answer message, and the answer box in `check_app.py`. 87 Python tests, 10 frontend tests, 7 pane tests; `check_explainers.py`: 19 explainers open cleanly; `check_app.py` passes.
+
+Coach check: not run. This release changes how a solve is taught (situations 2, 4 and 6 are updated for three stages), and the check needs a fresh interactive session. Run it before test period 2's first study session.
+
 ## 1.0.1 · 2026-11-16 · What the browser test found
 
 On 2026-11-16 the learning app was driven in a browser against a copy of the real notebook. This release fixes what that found: feedback notes f0001 to f0009. No attempt had been logged under 1.0.0, so test period 1 runs on this version.

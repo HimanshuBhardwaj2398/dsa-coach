@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict
 
-SKILL_VERSION = "1.0.1"
+SKILL_VERSION = "1.1.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ASSETS = SKILL_DIR / "assets"
 WORKSPACE = SKILL_DIR.parent.parent  # <workspace>/skills/dsa-coach
@@ -71,8 +71,7 @@ LISTS = ("blind75", "nc150", "roadmap")  # problems.json: the two lists, or a ca
 BLOCK = 3  # a pattern's first problems stay together (worked, faded, solo); after that, new problems mix
 LIVE = Path("sessions") / "current.json"  # the solve in progress, kept by `coach.py solve`
 STAGES = [  # the solve protocol in SKILL.md: (stage, Polya phase). The pane repeats the names.
-    ("Understand", "Understand"),
-    ("Find an approach", "Devise a plan"),
+    ("Find an approach", "Devise a plan"),  # he reads the problem on LeetCode; Understand isn't a stage (1.1.0)
     ("Build it", "Carry out the plan"),
     ("Check and finish", "Look back"),
 ]

@@ -27,7 +27,7 @@ const live = (labeled: boolean, paused = 0) =>
     labeled,
     difficulty: 'easy',
     url: 'https://leetcode.com/problems/two-sum/',
-    stage: 2,
+    stage: 1,
     rung: 2,
     block_minutes: 15,
     blocks: [{ start: '2026-11-05T10:00:00+05:30', end: null, paused }],
@@ -74,7 +74,7 @@ test('an unlabeled solve shows its stage, timer and rung but never its pattern',
   for (const surface of ['vscode', 'terminal'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ type: 'Text', text: /Arrays|arrays-hashing/ })).toBeUndefined()
-    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 2/4 · Find an approach')
+    expect((await ui.find({ type: 'Text', text: /^Stage/ }))?.text).toBe('Stage 1/3 · Find an approach')
     expect((await ui.find({ type: 'Text', text: /^Block/ }))?.text).toBe('Block 1 · 7 of 15 min')
     expect((await ui.find({ type: 'Text', text: /^Hints/ }))?.text).toBe('Hints used: 2/7')
     await ui.unmount()

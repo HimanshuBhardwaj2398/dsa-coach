@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-17",
+  "generated": "2026-11-18",
   "skill_version": "1.0.1",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -11,7 +11,7 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 19,
+    "day": 20,
     "total_days": 90,
     "week": 3,
     "plan_weeks": 12,
@@ -46,7 +46,7 @@
       "retained": 0,
       "ready": 0,
       "status": "learning",
-      "last_activity": "2026-11-05",
+      "last_activity": "2026-11-18",
       "last_attempt": "2026-11-05",
       "next_problem": "two-sum-ii-input-array-is-sorted"
     },
@@ -75,8 +75,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "subarray-sum-equals-k"
     },
@@ -120,8 +120,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "reverse-linked-list"
     },
@@ -135,8 +135,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "maximum-depth-of-binary-tree"
     },
@@ -151,7 +151,7 @@
       "retained": 0,
       "ready": 0,
       "status": "exploring",
-      "last_activity": "2026-11-11",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "kth-largest-element-in-an-array"
     },
@@ -165,8 +165,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "subsets"
     },
@@ -180,8 +180,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "number-of-islands"
     },
@@ -195,8 +195,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "implement-trie-prefix-tree"
     },
@@ -210,8 +210,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "merge-intervals"
     },
@@ -225,8 +225,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "maximum-subarray"
     },
@@ -240,8 +240,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "house-robber"
     },
@@ -255,8 +255,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "unique-paths"
     },
@@ -270,8 +270,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "network-delay-time"
     },
@@ -285,8 +285,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "rotate-image"
     },
@@ -300,8 +300,8 @@
       "practicing": 0,
       "retained": 0,
       "ready": 0,
-      "status": "not started",
-      "last_activity": null,
+      "status": "exploring",
+      "last_activity": "2026-11-18",
       "last_attempt": null,
       "next_problem": "single-number"
     },
@@ -351,15 +351,23 @@
       "next_problem": "softmax-and-cross-entropy"
     }
   ],
-  "behind": [
-    "prefix-sums"
-  ],
+  "behind": [],
   "this_week": [
-    "linked-list",
     "machine-coding"
   ],
   "ahead": [
-    "heap"
+    "trees",
+    "heap",
+    "backtracking",
+    "graphs",
+    "tries",
+    "intervals",
+    "greedy",
+    "1d-dp",
+    "2d-dp",
+    "advanced-graphs",
+    "math-geometry",
+    "bit-manipulation"
   ],
   "problems": {
     "two-sum": {
@@ -640,7 +648,7 @@
         "problem": "valid-anagram",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -648,7 +656,7 @@
         "problem": "group-anagrams",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -656,7 +664,7 @@
         "problem": "top-k-frequent-elements",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -664,7 +672,7 @@
         "problem": "encode-and-decode-strings",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -672,7 +680,7 @@
         "problem": "product-of-array-except-self",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -680,7 +688,7 @@
         "problem": "longest-consecutive-sequence",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -688,7 +696,7 @@
         "problem": "valid-palindrome",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -696,7 +704,7 @@
         "problem": "3sum",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -704,7 +712,7 @@
         "problem": "container-with-most-water",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -712,7 +720,7 @@
         "problem": "best-time-to-buy-and-sell-stock",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -720,7 +728,7 @@
         "problem": "longest-substring-without-repeating-characters",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -728,7 +736,7 @@
         "problem": "longest-repeating-character-replacement",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -736,7 +744,7 @@
         "problem": "minimum-window-substring",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -744,7 +752,7 @@
         "problem": "valid-parentheses",
         "pattern": "stack",
         "due": "2026-11-06",
-        "overdue_days": 11,
+        "overdue_days": 12,
         "status": "learning",
         "check": "code"
       },
@@ -752,7 +760,7 @@
         "problem": "binary-search",
         "pattern": "binary-search",
         "due": "2026-11-07",
-        "overdue_days": 10,
+        "overdue_days": 11,
         "status": "learning",
         "check": "code"
       },
@@ -760,12 +768,27 @@
         "problem": "two-sum",
         "pattern": "arrays-hashing",
         "due": "2026-11-08",
-        "overdue_days": 9,
+        "overdue_days": 10,
         "status": "practicing",
+        "check": "code"
+      },
+      {
+        "problem": "contains-duplicate",
+        "pattern": "arrays-hashing",
+        "due": "2026-11-18",
+        "overdue_days": 0,
+        "status": "learning",
         "check": "code"
       }
     ],
-    "cards": [],
+    "cards": [
+      {
+        "id": "c0008",
+        "concept": "binary-search",
+        "type": "trap",
+        "due": "2026-11-18"
+      }
+    ],
     "drafts": 7,
     "inbox": []
   },
@@ -783,7 +806,7 @@
     "cards_held": 0,
     "cards_draft": 7,
     "cards_retired": 0,
-    "explainers": 5
+    "explainers": 20
   },
   "weak_spots": [
     {
@@ -924,6 +947,186 @@
       "updated": "2026-11-16",
       "note": "Broadened recognition of candidate spaces and monotone predicates; added minimum-speed answer-space trace, six recognition cases, and hidden transfer checks in response to q0006. Preserved the array walkthrough.",
       "source": "cli"
+    },
+    {
+      "id": "x0006",
+      "concept": "two-pointers",
+      "title": "Two Pointers, explained",
+      "url": null,
+      "file": "concepts/two-pointers/two-pointers-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0007",
+      "concept": "prefix-sums",
+      "title": "Prefix Sums, explained",
+      "url": null,
+      "file": "concepts/prefix-sums/prefix-sums-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0008",
+      "concept": "linked-list",
+      "title": "Linked List, explained",
+      "url": null,
+      "file": "concepts/linked-list/linked-list-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0009",
+      "concept": "trees",
+      "title": "Trees, explained",
+      "url": null,
+      "file": "concepts/trees/trees-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0010",
+      "concept": "heap",
+      "title": "Heap / Priority Queue, explained",
+      "url": null,
+      "file": "concepts/heap/heap-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0011",
+      "concept": "backtracking",
+      "title": "Backtracking, explained",
+      "url": null,
+      "file": "concepts/backtracking/backtracking-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0012",
+      "concept": "graphs",
+      "title": "Graphs, explained",
+      "url": null,
+      "file": "concepts/graphs/graphs-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0013",
+      "concept": "tries",
+      "title": "Tries, explained",
+      "url": null,
+      "file": "concepts/tries/tries-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0014",
+      "concept": "intervals",
+      "title": "Intervals, explained",
+      "url": null,
+      "file": "concepts/intervals/intervals-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0015",
+      "concept": "greedy",
+      "title": "Greedy, explained",
+      "url": null,
+      "file": "concepts/greedy/greedy-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0016",
+      "concept": "1d-dp",
+      "title": "1-D Dynamic Programming, explained",
+      "url": null,
+      "file": "concepts/1d-dp/1d-dp-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0017",
+      "concept": "2d-dp",
+      "title": "2-D Dynamic Programming, explained",
+      "url": null,
+      "file": "concepts/2d-dp/2d-dp-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0018",
+      "concept": "advanced-graphs",
+      "title": "Advanced Graphs, explained",
+      "url": null,
+      "file": "concepts/advanced-graphs/advanced-graphs-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0019",
+      "concept": "math-geometry",
+      "title": "Math & Geometry, explained",
+      "url": null,
+      "file": "concepts/math-geometry/math-geometry-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
+    },
+    {
+      "id": "x0020",
+      "concept": "bit-manipulation",
+      "title": "Bit Manipulation, explained",
+      "url": null,
+      "file": "concepts/bit-manipulation/bit-manipulation-explainer.html",
+      "version": 1,
+      "created": "2026-11-18",
+      "updated": "2026-11-18",
+      "note": "Built from spec.py by build_explainer.py (1.1.0): spot it, parts, traced stepper with predictions, family, measured counts, traps, hidden check",
+      "source": "cli"
     }
   ],
   "sessions": [
@@ -949,10 +1152,11 @@
     "python-collections"
   ],
   "next_steps": [
-    "Re-solve from a blank page: valid-anagram, group-anagrams. Also due after these: 14.",
+    "Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 14.",
+    "Quiz: 1 due card(s), about 2 minutes (`coach.py quiz`).",
     "Solve daily-temperatures unaided to move Stack forward.",
     "Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).",
-    "Behind plan: start Prefix Sums (planned for week 2).",
+    "This week's plan: start Machine Coding (LLD).",
     "Revisit high-confidence miss a0018 (contains-duplicate)."
   ]
 }

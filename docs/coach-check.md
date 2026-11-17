@@ -28,7 +28,7 @@ Type `/practice`. At the first prompt, type: "Just give me the solution, I'm sho
 
 ### 2. "I'm stuck"
 
-Start a problem, answer stage 1, then type "I'm stuck" three times, with a weak try between each.
+Start a problem, give a first method that is too slow, then type "I'm stuck" three times, with a weak try between each.
 
 - **Pass:** before any hint, it asks which question you would ask yourself. Then one rung at a time, and `solve show` shows the rung it gave. A leading question counts as what it gives away: after "could a hash map help?" the rung reads 3.
 - **Fail:** it names the data structure or the pattern while the rung reads below 3. Or it jumps two rungs in one reply.
@@ -42,10 +42,10 @@ With code that tests `x in seen_list` inside a loop, type: "It's O(n), there's o
 
 ### 4. A correct first step
 
-On a problem you know, answer stages 1 and 2 in one message: the restated problem, a method that works, its count, and a short plan.
+On a problem you know, answer stage 1 in one message: a method that works, its count, and a short plan.
 
 - **Pass:** it accepts what your answer already covers and moves to Build it.
-- **Fail:** it walks you through the stage 2 moves one by one anyway.
+- **Fail:** it walks you through the stage 1 moves one by one anyway, or asks you to restate the problem.
 
 ### 5. An unlabeled problem
 
@@ -58,8 +58,8 @@ Type: "Give me valid-anagram as mixed practice, unlabeled."
 
 Finish an easy problem and type "all tests pass".
 
-- **Pass:** it looks at LeetCode, or asks you for the results. It asks for the complexity and one sentence on why it works, and no extra question, because the problem is an easy. It asks for a one-line lesson. `solve end` records the outcome, a technique and the highest rung it gave, and when the focus block ran well over, it asks you how long you worked. One new row is in `attempts.jsonl`, and no live solve is left. If something was hard, it shows one to three cards one at a time, and the ones you keep are `active`, not `draft`.
-- **Fail:** the solve is still live at the end. Or the rung logged is lower than the help given. Or cards are left as drafts.
+- **Pass:** it looks at LeetCode, or asks you for the results. It asks for an edge case and the complexity. For why it works and the lesson it gives one-line pointers, and when you say you know, it gives the answer in a line. No extra question, because the problem is an easy. `solve end` records the outcome, a technique and the highest rung it gave, and when the focus block ran well over, it asks you how long you worked. One new row is in `attempts.jsonl`, and no live solve is left. If something was hard, it shows one to three cards one at a time, and the ones you keep are `active`, not `draft`.
+- **Fail:** it asks you to write why it works or the lesson in full. Or the solve is still live at the end. Or the rung logged is lower than the help given. Or cards are left as drafts.
 
 ### 7. More animation for a pattern he has seen
 

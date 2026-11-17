@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intervals, explained</title>
+<style>/* Built explainer pages: the learning app's palette, light and dark, readable at phone width. */
+:root {
+  --bg: oklch(98.6% 0.003 250); --chrome: oklch(96.4% 0.005 250); --raise: oklch(93.6% 0.007 250);
+  --line: oklch(89.5% 0.008 250); --fg: oklch(24% 0.012 255); --muted: oklch(50% 0.014 255);
+  --accent: oklch(51% 0.13 252); --accent-soft: oklch(93% 0.035 252); --on-accent: oklch(98.5% 0.006 252);
+  --ok: oklch(50% 0.12 152); --ok-soft: oklch(94.5% 0.035 152); --fail: oklch(52% 0.17 27); --fail-soft: oklch(95% 0.03 27);
+  --nudge: oklch(52% 0.11 70); --nudge-soft: oklch(95.5% 0.04 80);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+    --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+    --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+    --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+    --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+  --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+  --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+  --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+  --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+p code, li code, dd code, td code { background: var(--chrome); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; font-weight: 500; padding: 5px 12px; min-height: 32px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--raise); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+input, textarea {
+  font: inherit; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg);
+}
+textarea { width: 100%; resize: vertical; }
+
+.bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); }
+.bar .brand { font-weight: 700; font-size: 13px; color: var(--muted); }
+.bar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.bar nav a { padding: 3px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bar nav a:hover { color: var(--fg); background: var(--raise); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+section { margin: 28px 0; scroll-margin-top: 56px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 18px 0 6px; }
+h2 { font-size: 22px; margin: 0 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.pitch { font-size: 17px; color: var(--muted); margin: 0; }
+ol.questions li, #spot ul li, #traps li, #parts ul li { margin: 6px 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.card dt { font-weight: 600; }
+.card dd { margin: 0; }
+.invariant { margin-top: 12px; border-color: var(--ok); background: var(--ok-soft); }
+
+.choice { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.choice .q { margin: 0 0 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.options button { text-align: left; }
+.options button.right { border-color: var(--ok); background: var(--ok-soft); }
+.options button.wrong { border-color: var(--fail); background: var(--fail-soft); }
+.said { margin: 8px 0 0; }
+.said.right, .mark.right { color: var(--ok); }
+.said.wrong, .mark.wrong { color: var(--fail); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.about { margin: 4px 0 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.where { margin-left: 6px; font-size: 13px; }
+.say { min-height: 1.6em; margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--chrome); border-radius: 0 6px 6px 0; }
+.ask:not(:empty) { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--nudge); border-radius: 8px; background: var(--nudge-soft); }
+.ask .q { margin: 0 0 8px; }
+.ask .fill { display: flex; gap: 6px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.views { display: flex; flex-wrap: wrap; gap: 12px; }
+.view { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.view figcaption { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.v-graph, .v-bars { flex-basis: 100%; }
+
+.cells { display: flex; gap: 3px; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 34px; }
+.cell .idx { font-size: 11px; color: var(--muted); }
+.cell .val { display: block; min-width: 34px; padding: 5px 6px; text-align: center; font-family: var(--mono); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg); white-space: nowrap; }
+.cell .ptr { min-height: 1.3em; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cell.ghost .val { border-style: dashed; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .var { font-family: var(--mono); font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.chips .note { font-size: 12px; }
+table.kv, table.grid { border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+table.kv td, table.grid td, table.grid th { border: 1px solid var(--line); padding: 3px 8px; text-align: center; }
+table.grid th { color: var(--muted); font-weight: 500; background: var(--chrome); }
+
+/* one meaning per class in every view: cur = acting now, win = inside the live range, ok = answer or kept,
+   done = finished or ruled out, front = waiting its turn, bad = rejected */
+.cur .val, .chip.cur, td.cur, tr.cur td { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.win .val, .chip.win, td.win { background: var(--accent-soft); }
+.ok .val, .chip.ok, td.ok, tr.ok td { border-color: var(--ok); background: var(--ok-soft); }
+.done .val, .chip.done, td.done { color: var(--muted); background: var(--chrome); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--muted) 50%, transparent); }
+.front .val, .chip.front, td.front { border-color: var(--nudge); background: var(--nudge-soft); }
+.bad .val, .chip.bad, td.bad { border-color: var(--fail); background: var(--fail-soft); }
+.chg .val, .var.chg, tr.chg td { outline: 2px solid var(--nudge); outline-offset: -1px; }
+
+svg.graph, svg.bars { display: block; max-width: 100%; height: auto; }
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.edge.cur { stroke: var(--accent); stroke-width: 3.5; }
+.edge.ok { stroke: var(--ok); stroke-width: 3.5; }
+.edge.done { stroke-dasharray: 4 4; stroke: var(--muted); }
+.edge.front { stroke: var(--nudge); }
+.arrowhead { fill: var(--muted); }
+.node { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.node.cur { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.node.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.node.done { fill: var(--chrome); stroke: var(--line); }
+.node.front { fill: var(--nudge-soft); stroke: var(--nudge); }
+.node.win { fill: var(--accent-soft); }
+.node.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.nlabel { text-anchor: middle; font: 600 13px var(--mono); fill: var(--fg); }
+.ntag { text-anchor: middle; font: 700 11px system-ui, sans-serif; fill: var(--accent); }
+.elabel { text-anchor: middle; font: 12px var(--mono); fill: var(--muted); }
+.span { fill: var(--raise); stroke: var(--muted); }
+.span.cur { fill: var(--accent-soft); stroke: var(--accent); }
+.span.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.span.done { fill: var(--chrome); stroke: var(--line); }
+.span.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.slabel, .tick { font: 11px var(--mono); fill: var(--muted); }
+.tick { text-anchor: middle; }
+.axis { stroke: var(--muted); }
+
+.side h3 { margin-top: 0; font-size: 13px; color: var(--muted); }
+ol.code { list-style: none; margin: 0; padding: 6px 0; background: var(--chrome); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; overflow-x: auto; }
+ol.code li { display: flex; gap: 8px; padding: 0 10px 0 0; white-space: pre; }
+ol.code li .runs { flex: 0 0 34px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+ol.code li.cur { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+ol.code li.ret { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.scroll { overflow-x: auto; }
+table.history, table.measure { border-collapse: collapse; font-size: 13px; }
+table.history th, table.history td, table.measure th, table.measure td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; font-family: var(--mono); }
+table.history th, table.measure th { font-family: inherit; color: var(--muted); font-weight: 600; }
+
+.variant { padding: 10px 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; }
+.variant h3 { margin-top: 0; }
+.variant .probs { margin-bottom: 0; }
+pre.code { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+body.checking .lesson { display: none; }
+.fields { display: grid; gap: 10px; margin: 8px 0 12px; }
+.fields label { display: grid; gap: 4px; font-weight: 500; }
+.fields input { max-width: 420px; }
+.mark { font-weight: 400; font-size: 14px; }
+.model { padding: 10px 12px; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 0 6px 6px 0; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+  .bar .brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="brand">DSA notebook</span>
+<nav><a href="#spot">Spot it</a><a href="#parts">Parts</a><a href="#trace">Trace</a><a href="#family">Family</a><a href="#count">Count</a><a href="#check">Check</a></nav>
+<button type="button" id="theme" class="ghost" aria-label="Switch light or dark theme">◐</button></header>
+<main>
+<div class="lesson">
+<section class="hero"><h1>Intervals, explained</h1><p class="pitch">Sort the intervals, then sweep once. After sorting by start, an interval can only overlap the ones just before it, so one comparison with the last kept interval decides each step.</p></section>
+
+<section id="spot"><h2>Spot it</h2><p>Interval problems (meetings, ranges, bookings, balloons) ask how intervals <b>overlap</b>. Unsorted, any interval might overlap any other: n² pairs. <b>Sorted by start</b>, an interval that doesn't overlap the last merged one can't overlap anything earlier either, so one sweep with one comparison per interval is enough.</p><p>What you sort by depends on the question. <b>By start</b> to merge or insert. <b>By end</b> to keep the most non-overlapping intervals (the one that ends first leaves the most room: a greedy exchange argument). For <b>how many at once</b>, sort the starts and keep a min-heap of end times, or sweep +1/−1 events.</p>
+<h3>Ask yourself</h3><ol class="questions"><li><b>When do two intervals overlap?</b> <code>a.start &lt;= b.end and b.start &lt;= a.end</code>. Check whether touching ends count.</li><li><b>What should they be sorted by?</b> Start for merging; end for keeping the most; both event lists for counting.</li><li><b>Whom do I compare with?</b> The last kept interval, not the previous one in the input.</li><li><b>Do I need how many overlap at a moment?</b> A heap of end times, or a sweep of +1 at starts and −1 at ends.</li></ol>
+<h3>Which fits?</h3><p class="muted">Pick what you would reach for. A wrong pick shows the gap; pick again to move on.</p>
+<div id="cases"></div>
+<h3>Looks like it, isn't</h3><ul><li><b>Range sum queries.</b> Ranges over an array: prefix sums, not interval sweeps.</li><li><b>Activities with weights (maximize total weight).</b> Sorting by end isn't enough: weighted interval scheduling is DP with binary search.</li><li><b>Overlapping windows of a string.</b> Sliding window: the window moves over the input, it isn't an input interval.</li></ul></section>
+
+<section id="parts"><h2>The parts</h2>
+<div class="cards"><div class="card"><h3>Names</h3><dl><dt><code>intervals</code></dt><dd>sorted by start, so starts never decrease</dd><dt><code>merged</code></dt><dd>the answer so far: sorted and non-overlapping</dd><dt><code>merged[-1]</code></dt><dd>the last merged interval, the only one a new interval can overlap</dd></dl></div>
+<div class="card"><h3>Your plan card</h3><dl><dt>Sort</dt><dd>by start.</dd><dt>Each interval</dt><dd>if it starts at or before <code>merged[-1]</code>'s end, extend that end to <code>max(end, ...)</code>.</dd><dt>Otherwise</dt><dd>it starts after everything kept so far: append it.</dd><dt>Stop</dt><dd>after the last interval; <code>merged</code> is the answer.</dd></dl></div></div>
+<div class="card invariant"><h3>What stays true</h3><p>merged is sorted and non-overlapping, and it covers exactly the intervals processed so far.</p></div>
+<h3>Why each move is safe</h3><ul><li>Every earlier merged interval ends before <code>merged[-1]</code> starts, and the new interval starts at or after <code>merged[-1]</code>'s start. So if it doesn't reach <code>merged[-1]</code>, it reaches nothing earlier.</li><li>When it overlaps, the union is <code>[merged[-1].start, max(both ends)]</code>: <code>max</code>, because the new interval may end inside the last one.</li><li>Sorting first is what makes the previous two bullets true; without it, a later interval could reach back over several merged ones.</li></ul>
+<p><b>Relies on:</b> sorting by start. Decide once whether intervals that only touch (end == start) overlap; LeetCode's Merge Intervals says they do.</p></section>
+
+<section id="trace"><h2>Trace it. Predict the decisions.</h2>
+<p class="muted">Step runs the highlighted line. At a decision the stepper waits for your prediction. The numbers beside the code count how often each line has run.</p>
+<div id="stepper"></div></section>
+
+<section id="family"><h2>The family</h2><p>Sort, then sweep. The members differ in the sort key and in what the sweep keeps.</p><article class='variant'><h3>Merge (sort by start)</h3><p>The first traces. Inserting into an already sorted list skips the sort: add the intervals that end before the new one, merge the ones that overlap it, add the rest.</p><p class='probs'><a href='https://leetcode.com/problems/merge-intervals/' target='_blank' rel='noopener'>Merge Intervals</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/insert-interval/' target='_blank' rel='noopener'>Insert Interval</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Keep the most (sort by end)</h3><p>Keep an interval when it starts at or after the last kept end; count the others as removed. Ending first never hurts: swap it into any optimal answer.</p><p class='probs'><a href='https://leetcode.com/problems/non-overlapping-intervals/' target='_blank' rel='noopener'>Non-overlapping Intervals</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Any conflict at all?</h3><p>Sort by start; a conflict, if any, is between neighbours.</p><p class='probs'><a href='https://leetcode.com/problems/meeting-rooms/' target='_blank' rel='noopener'>Meeting Rooms</a> <span class='muted'>easy</span></p></article><article class='variant'><h3>How many at once (a heap of ends)</h3><p>The third trace. Equivalently, sort all starts and all ends and sweep: +1 at a start, −1 at an end; the peak is the answer.</p><p class='probs'><a href='https://leetcode.com/problems/meeting-rooms-ii/' target='_blank' rel='noopener'>Meeting Rooms II</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Intervals against queries</h3><p>Sort both. Sweep queries in order, pushing intervals that have started into a heap keyed by size, and popping the ones that ended before the query.</p><p class='probs'><a href='https://leetcode.com/problems/minimum-interval-to-include-each-query/' target='_blank' rel='noopener'>Minimum Interval to Include Each Query</a> <span class='muted'>hard</span></p></article></section>
+
+<section id="count"><h2>Count the work</h2>
+<p>Count how often each line runs; the line with the most runs decides the Big-O. Here that is <code>if merged and start &lt;= merged[-1][1]:</code>.</p>
+<p>The comparison runs once per interval: n runs at O(1). But one line runs once and costs more: <code>sorted(intervals)</code> is O(n log n). The decisive cost is runs × cost of one run, so the sort decides: O(n log n). The heap version does n pushes and up to n pops at O(log n) each: also O(n log n).</p>
+<table class="measure"><thead><tr><th>n</th><th>runs (measured)</th><th>bound: n</th><th>vs the row above</th><th>all lines</th></tr></thead><tbody><tr><td>16</td><td>16</td><td>16</td><td></td><td>52</td></tr><tr><td>32</td><td>32</td><td>32</td><td>×2.00</td><td>100</td></tr><tr><td>64</td><td>64</td><td>64</td><td>×2.00</td><td>196</td></tr><tr><td>128</td><td>128</td><td>128</td><td>×2.00</td><td>388</td></tr></tbody></table>
+<p class="muted">Measured by running the reference under Python's tracer on its worst inputs.</p>
+<p><b>Time:</b> O(n log n), for the sort. · <b>Extra space:</b> O(n) for the sorted copy and the output.</p></section>
+
+<section id="traps"><h2>Where it breaks</h2><ul><li><b>Comparing with the previous input interval</b> instead of the last merged one misses chains like [1, 10], [2, 3], [4, 5].</li><li><b><code>merged[-1][1] = end</code> instead of <code>max(...)</code></b> shrinks the merged interval when the new one sits inside it.</li><li><b>Sorting by end to merge</b> breaks the proof: an interval can then reach back over several merged ones.</li><li><b>Mixing <code>&lt;</code> and <code>&lt;=</code></b> decides whether touching intervals overlap. Read the problem: meetings [1, 5) and [5, 8) don't conflict.</li></ul></section>
+</div>
+
+<section id="check"><h2>Check it without the visual</h2>
+<p>Hide the lesson, then trace a fresh input and answer the transfer questions from memory. A practice check, not proof you'll remember it.</p>
+<button type="button" id="hide" class="primary">Hide the lesson and try</button>
+<div id="quiz" hidden></div></section>
+</main>
+<script id="data" type="application/json">{"traces":[{"label":"Merge [1,3] [8,10] [2,6] [9,12] [15,18]","about":"After sorting by start, each interval is compared with the last merged one only.","code":["def merge(intervals):","    intervals = sorted(intervals)","    merged = []","    for i, (start, end) in enumerate(intervals):","        if merged and start <= merged[-1][1]:","            merged[-1][1] = max(merged[-1][1], end)","        else:","            merged.append([start, end])","    return merged"],"steps":[{"line":2,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]",""],[8,10,"[8, 10]",""],[2,6,"[2, 6]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]",""],[2,6,"[2, 6]",""],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"intervals changed"},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]",""],[2,6,"[2, 6]",""],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"merged = []"},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","cur"],[2,6,"[2, 6]",""],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"i = 0 · start = 1 · end = 3"},{"line":8,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","cur"],[2,6,"[2, 6]",""],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"Nothing merged yet: [1, 3] starts the list."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","cur"],[2,6,"[2, 6]",""],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,3,"[1, 3]","ok"]],"lo":0,"hi":18}],"say":"merged: [] → [[1, 3]]"},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","cur"],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,3,"[1, 3]","ok"]],"lo":0,"hi":18}],"say":"i: 0 → 1 · start: 1 → 2 · end: 3 → 6","ask":{"q":"[2, 6] against the last merged [1, 3]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"extend the last","why":"Overlap means the new start is at or before the last merged end."}},{"line":6,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","cur"],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,3,"[1, 3]","ok"]],"lo":0,"hi":18}],"say":"2 ≤ 3: [2, 6] overlaps [1, 3]."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","cur"],[8,10,"[8, 10]",""],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]","ok"]],"lo":0,"hi":18}],"say":"Extended the last merged interval to [1, 6]."},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","cur"],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]","ok"]],"lo":0,"hi":18}],"say":"i: 1 → 2 · start: 2 → 8 · end: 6 → 10","ask":{"q":"[8, 10] against the last merged [1, 6]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"start a new one","why":"Overlap means the new start is at or before the last merged end."}},{"line":8,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","cur"],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]","ok"]],"lo":0,"hi":18}],"say":"8 > 6: a gap, so [8, 10] starts a new merged interval."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","cur"],[9,12,"[9, 12]",""],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,10,"[8, 10]","ok"]],"lo":0,"hi":18}],"say":"merged: [[1, 6]] → [[1, 6], [8, 10]]"},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","cur"],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,10,"[8, 10]","ok"]],"lo":0,"hi":18}],"say":"i: 2 → 3 · start: 8 → 9 · end: 10 → 12","ask":{"q":"[9, 12] against the last merged [8, 10]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"extend the last","why":"Overlap means the new start is at or before the last merged end."}},{"line":6,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","cur"],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,10,"[8, 10]","ok"]],"lo":0,"hi":18}],"say":"9 ≤ 10: [9, 12] overlaps [8, 10]."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","cur"],[15,18,"[15, 18]",""]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]","ok"]],"lo":0,"hi":18}],"say":"Extended the last merged interval to [8, 12]."},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","done"],[15,18,"[15, 18]","cur"]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]","ok"]],"lo":0,"hi":18}],"say":"i: 3 → 4 · start: 9 → 15 · end: 12 → 18","ask":{"q":"[15, 18] against the last merged [8, 12]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"start a new one","why":"Overlap means the new start is at or before the last merged end."}},{"line":8,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","done"],[15,18,"[15, 18]","cur"]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]","ok"]],"lo":0,"hi":18}],"say":"15 > 12: a gap, so [15, 18] starts a new merged interval."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","done"],[15,18,"[15, 18]","cur"]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]",""],[15,18,"[15, 18]","ok"]],"lo":0,"hi":18}],"say":"merged: [[1, 6], [8, 12]] → [[1, 6], [8, 12], [15, 18]]"},{"line":9,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","done"],[15,18,"[15, 18]","cur"]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]",""],[15,18,"[15, 18]","ok"]],"lo":0,"hi":18}],"say":""},{"line":9,"ret":true,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,3,"[1, 3]","done"],[2,6,"[2, 6]","done"],[8,10,"[8, 10]","done"],[9,12,"[9, 12]","done"],[15,18,"[15, 18]","cur"]],"lo":0,"hi":18},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,6,"[1, 6]",""],[8,12,"[8, 12]",""],[15,18,"[15, 18]","ok"]],"lo":0,"hi":18}],"say":"Returns [[1, 6], [8, 12], [15, 18]]."}],"rows":[{"at":4,"cells":["[1, 3]","none","append","[[1, 3]]"]},{"at":7,"cells":["[2, 6]","[1, 3]","extend","[[1, 6]]"]},{"at":10,"cells":["[8, 10]","[1, 6]","append","[[1, 6], [8, 10]]"]},{"at":13,"cells":["[9, 12]","[8, 10]","extend","[[1, 6], [8, 12]]"]},{"at":16,"cells":["[15, 18]","[8, 12]","append","[[1, 6], [8, 12], [15, 18]]"]}],"cols":["interval","last merged","so","merged after"],"result":"[[1, 6], [8, 12], [15, 18]]"},{"label":"Touching ends, and one inside another","about":"[1, 4] and [4, 5] touch, which counts as overlap here; [2, 3] sits inside [1, 4], so max() keeps the end at 4.","code":["def merge(intervals):","    intervals = sorted(intervals)","    merged = []","    for i, (start, end) in enumerate(intervals):","        if merged and start <= merged[-1][1]:","            merged[-1][1] = max(merged[-1][1], end)","        else:","            merged.append([start, end])","    return merged"],"steps":[{"line":2,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]",""],[4,5,"[4, 5]",""],[2,3,"[2, 3]",""]],"lo":0,"hi":5},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]",""],[2,3,"[2, 3]",""],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"intervals: [[1, 4], [4, 5], [2, 3]] → [[1, 4], [2, 3], [4, 5]]"},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]",""],[2,3,"[2, 3]",""],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"merged = []"},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","cur"],[2,3,"[2, 3]",""],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"i = 0 · start = 1 · end = 4"},{"line":8,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","cur"],[2,3,"[2, 3]",""],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"list","name":"merged so far","items":[],"note":"","cls":{}}],"say":"Nothing merged yet: [1, 4] starts the list."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","cur"],[2,3,"[2, 3]",""],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"merged: [] → [[1, 4]]"},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","cur"],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"i: 0 → 1 · start: 1 → 2 · end: 4 → 3","ask":{"q":"[2, 3] against the last merged [1, 4]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"extend the last","why":"Overlap means the new start is at or before the last merged end."}},{"line":6,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","cur"],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"2 ≤ 4: [2, 3] overlaps [1, 4]."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","cur"],[4,5,"[4, 5]",""]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"Extended the last merged interval to [1, 4]."},{"line":5,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","done"],[4,5,"[4, 5]","cur"]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"i: 1 → 2 · start: 2 → 4 · end: 3 → 5","ask":{"q":"[4, 5] against the last merged [1, 4]: extend it or start a new one?","options":["extend the last","start a new one"],"answer":"extend the last","why":"Overlap means the new start is at or before the last merged end."}},{"line":6,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","done"],[4,5,"[4, 5]","cur"]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,4,"[1, 4]","ok"]],"lo":0,"hi":5}],"say":"4 ≤ 4: [4, 5] overlaps [1, 4]."},{"line":4,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","done"],[4,5,"[4, 5]","cur"]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,5,"[1, 5]","ok"]],"lo":0,"hi":5}],"say":"Extended the last merged interval to [1, 5]."},{"line":9,"ret":false,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","done"],[4,5,"[4, 5]","cur"]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,5,"[1, 5]","ok"]],"lo":0,"hi":5}],"say":""},{"line":9,"ret":true,"views":[{"t":"bars","name":"intervals, sorted by start (blue: this one)","spans":[[1,4,"[1, 4]","done"],[2,3,"[2, 3]","done"],[4,5,"[4, 5]","cur"]],"lo":0,"hi":5},{"t":"bars","name":"merged so far (green: the last, the one to compare with)","spans":[[1,5,"[1, 5]","ok"]],"lo":0,"hi":5}],"say":"Returns [[1, 5]]."}],"rows":[{"at":4,"cells":["[1, 4]","none","append","[[1, 4]]"]},{"at":7,"cells":["[2, 3]","[1, 4]","extend","[[1, 4]]"]},{"at":10,"cells":["[4, 5]","[1, 4]","extend","[[1, 5]]"]}],"cols":["interval","last merged","so","merged after"],"result":"[[1, 5]]"},{"label":"Meeting rooms","about":"A min-heap of end times holds one entry per room in use. The root is the room that frees first.","code":["def min_rooms(meetings):","    ends = []","    for start, end in sorted(meetings):","        if ends and ends[0] <= start:","            heapq.heappop(ends)","        heapq.heappush(ends, end)","    return len(ends)"],"steps":[{"line":2,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)",""],[5,10,"[5, 10)",""],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":[],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["start","None"],["rooms in use","0"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)",""],[5,10,"[5, 10)",""],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":[],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["start","None"],["rooms in use","0"]]}],"say":"ends = []"},{"line":4,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","cur"],[5,10,"[5, 10)",""],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":[],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["start","0"],["rooms in use","0"]]}],"say":"start = 0 · end = 30"},{"line":6,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","cur"],[5,10,"[5, 10)",""],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":[],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["start","0"],["rooms in use","0"]]}],"say":"The first meeting opens the first room."},{"line":3,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","cur"],[5,10,"[5, 10)",""],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","0"],["rooms in use","1"]]}],"say":"ends: [] → [30]"},{"line":4,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","cur"],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","5"],["rooms in use","1"]]}],"say":"start: 0 → 5 · end: 30 → 10","ask":{"q":"A meeting starts at 5; the earliest end in use is 30. Reuse that room?","options":["yes: pop it, then push this end","no: push this end as a new room"],"answer":"no: push this end as a new room","why":"Only the earliest-ending room can be free; if it isn't, none is."}},{"line":6,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","cur"],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","5"],["rooms in use","1"]]}],"say":"No room is free at 5: open another."},{"line":3,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","cur"],[10,15,"[10, 15)",""],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["10","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","5"],["rooms in use","2"]]}],"say":"ends: [30] → [10, 30]"},{"line":4,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","cur"],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["10","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","10"],["rooms in use","2"]]}],"say":"start: 5 → 10 · end: 10 → 15","ask":{"q":"A meeting starts at 10; the earliest end in use is 10. Reuse that room?","options":["yes: pop it, then push this end","no: push this end as a new room"],"answer":"yes: pop it, then push this end","why":"Only the earliest-ending room can be free; if it isn't, none is."}},{"line":5,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","cur"],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["10","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","10"],["rooms in use","2"]]}],"say":"The room ending at 10 is free by 10: reuse it."},{"line":6,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","cur"],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","10"],["rooms in use","1"]]}],"say":"ends: [10, 30] → [30]"},{"line":3,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","cur"],[15,20,"[15, 20)",""]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["15","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","10"],["rooms in use","2"]]}],"say":"ends: [30] → [15, 30]"},{"line":4,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["15","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","2"]]}],"say":"start: 10 → 15 · end: 15 → 20","ask":{"q":"A meeting starts at 15; the earliest end in use is 15. Reuse that room?","options":["yes: pop it, then push this end","no: push this end as a new room"],"answer":"yes: pop it, then push this end","why":"Only the earliest-ending room can be free; if it isn't, none is."}},{"line":5,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["15","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","2"]]}],"say":"The room ending at 15 is free by 15: reuse it."},{"line":6,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","1"]]}],"say":"ends: [15, 30] → [30]"},{"line":3,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["20","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","2"]]}],"say":"ends: [30] → [20, 30]"},{"line":7,"ret":false,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["20","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","2"]]}],"say":""},{"line":7,"ret":true,"views":[{"t":"bars","name":"meetings, sorted by start (blue: this one)","spans":[[0,30,"[0, 30)","done"],[5,10,"[5, 10)","done"],[10,15,"[10, 15)","done"],[15,20,"[15, 20)","cur"]],"lo":0,"hi":30},{"t":"array","name":"ends: min-heap of end times, one per room in use","items":["20","30"],"labels":null,"ptr":{},"cls":{"0":"ok"}},{"t":"vars","items":[["start","15"],["rooms in use","2"]]}],"say":"Returns 2."}],"rows":[{"at":4,"cells":["[0, 30]","[]","","1"]},{"at":7,"cells":["[5, 10]","[30]","","2"]},{"at":11,"cells":["[10, 15]","[30]","","2"]},{"at":15,"cells":["[15, 20]","[30]","","2"]}],"cols":["meeting","ends before","","rooms"],"result":"2"}],"spot":{"idea":["Interval problems (meetings, ranges, bookings, balloons) ask how intervals **overlap**. Unsorted, any interval might overlap any other: n² pairs. **Sorted by start**, an interval that doesn't overlap the last merged one can't overlap anything earlier either, so one sweep with one comparison per interval is enough.","What you sort by depends on the question. **By start** to merge or insert. **By end** to keep the most non-overlapping intervals (the one that ends first leaves the most room: a greedy exchange argument). For **how many at once**, sort the starts and keep a min-heap of end times, or sweep +1/−1 events."],"questions":[["When do two intervals overlap?","`a.start <= b.end and b.start <= a.end`. Check whether touching ends count."],["What should they be sorted by?","Start for merging; end for keeping the most; both event lists for counting."],["Whom do I compare with?","The last kept interval, not the previous one in the input."],["Do I need how many overlap at a moment?","A heap of end times, or a sweep of +1 at starts and −1 at ends."]],"cases":[{"text":"Merge all overlapping intervals.","options":["Sort by start, extend or append against the last merged","Sort by end, keep the earliest ending","Union-find"],"answer":0,"why":"Sorted by start, each interval either extends the last merged one or begins a new one."},{"text":"Remove the fewest intervals so the rest don't overlap.","options":["Sort by start and merge","Sort by end, keep each that starts after the last kept end","Dynamic programming over subsets"],"answer":1,"why":"Keeping the interval that ends first leaves the most room for the rest (an exchange argument); the removed count is n − kept."},{"text":"The fewest meeting rooms for a list of meetings.","options":["Sort by start; a min-heap of end times","Merge the intervals","Binary search"],"answer":0,"why":"The heap holds the rooms in use; if the earliest end is before a new start, that room is reused."},{"text":"Can one person attend all these meetings?","options":["Sort by start and check neighbours","A heap","BFS"],"answer":0,"why":"After sorting, a conflict, if any, is between neighbours."},{"text":"Insert a new interval into a sorted, non-overlapping list.","options":["Three phases: before it, overlapping it (merge), after it","Sort everything again","A trie"],"answer":0,"why":"The list is already sorted, so one O(n) pass adds the ones before, merges the overlapping ones, adds the rest."},{"text":"Sum of nums[l..r] for many (l, r) queries.","options":["Interval merging","Prefix sums","A heap"],"answer":1,"why":"These ranges are queries over an array, not intervals to combine: prefix sums."}],"near_misses":[["Range sum queries.","Ranges over an array: prefix sums, not interval sweeps."],["Activities with weights (maximize total weight).","Sorting by end isn't enough: weighted interval scheduling is DP with binary search."],["Overlapping windows of a string.","Sliding window: the window moves over the input, it isn't an input interval."]]},"check":{"text":"Merge [[5, 7], [1, 2], [2, 4], [6, 9], [11, 12]]. What does merge return, and how many times does it extend rather than append?","fields":[{"label":"Return value","answer":"[[1, 4], [5, 9], [11, 12]]"},{"label":"Times it extends","answer":"2"}],"questions":[{"q":"Keep the most non-overlapping intervals from [1, 10], [2, 3], [4, 5]. Which sort makes a one-pass greedy correct?","options":["By start: keep [1, 10] first","By end: keep [2, 3], then [4, 5]","By length"],"answer":1,"why":"Taking the interval that ends first leaves the most room; [1, 10] would block both others."},{"q":"Meetings [1, 5) and [5, 8): one room or two?","options":["One: the first ends as the second starts","Two: they touch"],"answer":0,"why":"Half-open meetings that touch don't overlap, which is why the heap test is `ends[0] <= start`."}],"own":{"prompt":"Why does sorting by start let you compare each interval with only the last merged one?","model":"After sorting by start, every earlier merged interval ends before the last merged one begins, and the new interval starts no earlier than the last merged one. So if the new interval doesn't reach the last merged interval, it can't reach any earlier one; if it does, the union just extends the last end to the larger of the two. One comparison per interval, so the sweep is O(n) and the sort dominates at O(n log n)."}}}</script>
+<script>"use strict";
+// The stepper and the checks of a built explainer page; scripts/build_explainer.py inlines this file.
+// Everything shown comes from the JSON in #data, recorded by running the spec's Python. The page keeps its state in
+// memory only (the learning app serves it sandboxed, where storage throws), and nothing takes focus on load.
+const DATA = JSON.parse(document.getElementById("data").textContent);
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else if (k.startsWith("on")) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  node.append(...kids.filter((x) => x !== null && x !== undefined && x !== false));
+  return node;
+}
+// Answers compare as tokens: "(0, 5) (0, 4)", "(0,5),(0,4)" and "[0, 5, 0, 4]" are the same answer.
+const norm = (s) => String(s).toLowerCase().replace(/[\s'"()[\]{},;]+/g, ",").replace(/^,+|,+$/g, "");
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text = "") {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+// --- theme ---------------------------------------------------------------------------------------------------------
+document.getElementById("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// --- multiple choice: the recognition cases and the transfer questions ---------------------------------------------
+function choice(item, record) {
+  const box = el("div", {class: "choice"}, el("p", {class: "q", text: item.text || item.q}));
+  const options = el("div", {class: "options"});
+  const said = el("p", {class: "said", role: "status"});
+  let first = true;
+  item.options.forEach((label, i) => {
+    options.append(el("button", {type: "button", text: label, onclick: (e) => {
+      const right = i === item.answer;
+      e.target.classList.add(right ? "right" : "wrong");
+      said.textContent = (right ? "Yes. " : "Not this one. ") + (right ? item.why : (item.miss?.[i] || "Look for what the method relies on, and try again."));
+      said.className = "said " + (right ? "right" : "wrong");
+      if (first && record) record(right);
+      first = false;
+      if (right) options.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    }}));
+  });
+  box.append(options, said);
+  return box;
+}
+(function cases() {
+  const host = document.getElementById("cases");
+  const score = el("p", {class: "muted", role: "status"});
+  let tried = 0, right = 0;
+  const record = (ok) => {
+    tried += 1; right += ok ? 1 : 0;
+    score.textContent = `First pick right: ${right} of ${tried}` + (tried === DATA.spot.cases.length ? ` (all ${tried} cases).` : ".");
+  };
+  DATA.spot.cases.forEach((c) => host.append(choice(c, record)));
+  host.append(score);
+})();
+
+// --- views: pure functions of one step's state ----------------------------------------------------------------------
+function changed(view, prev) {  // indexes or names whose value differs from the same view one step back
+  if (!prev || prev.t !== view.t || prev.name !== view.name) return new Set();
+  const out = new Set();
+  if (view.t === "array") view.items.forEach((x, i) => { if (prev.items[i] !== x) out.add(String(i)); });
+  if (view.t === "vars") view.items.forEach(([k, v]) => { const p = prev.items.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  if (view.t === "map") view.entries.forEach(([k, v]) => { const p = prev.entries.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  return out;
+}
+const VIEWS = {
+  array(v, chg) {
+    const row = el("div", {class: "cells"});
+    v.items.forEach((x, i) => {
+      const ptrs = Object.entries(v.ptr).filter(([, j]) => j === i).map(([k]) => k).join(" ");
+      row.append(el("div", {class: `cell ${v.cls[i] || ""} ${chg.has(String(i)) ? "chg" : ""}`},
+        el("span", {class: "idx", text: v.labels ? v.labels[i] : String(i)}), el("span", {class: "val", text: x}),
+        el("span", {class: "ptr", text: ptrs})));
+    });
+    const past = Object.entries(v.ptr).filter(([, j]) => j >= v.items.length || j < 0);
+    if (past.length) row.append(el("div", {class: "cell ghost"}, el("span", {class: "idx", text: String(v.items.length)}),
+      el("span", {class: "val", text: "·"}), el("span", {class: "ptr", text: past.map(([k]) => k).join(" ")})));
+    return row;
+  },
+  list(v) {
+    const row = el("div", {class: "chips"});
+    if (!v.items.length) row.append(el("span", {class: "muted", text: "empty"}));
+    v.items.forEach((x, i) => row.append(el("span", {class: `chip ${v.cls[i] || ""}`, text: x})));
+    if (v.note) row.append(el("span", {class: "muted note", text: v.note}));
+    return row;
+  },
+  map(v, chg) {
+    const t = el("table", {class: "kv"});
+    if (!v.entries.length) t.append(el("tr", {}, el("td", {class: "muted", text: "empty"})));
+    v.entries.forEach(([k, x]) => t.append(el("tr", {class: `${k === v.hl ? "cur" : ""} ${chg.has(k) ? "chg" : ""}`},
+      el("td", {text: k}), el("td", {text: x}))));
+    return t;
+  },
+  vars(v, chg) {
+    const row = el("div", {class: "chips"});
+    v.items.forEach(([k, x]) => row.append(el("span", {class: `var ${chg.has(k) ? "chg" : ""}`}, el("b", {text: k}), " = ", x)));
+    return row;
+  },
+  grid(v) {
+    const t = el("table", {class: "grid"});
+    if (v.colh) t.append(el("tr", {}, v.rowh ? el("th") : null, ...v.colh.map((h) => el("th", {text: String(h)}))));
+    v.cells.forEach((row, r) => t.append(el("tr", {}, v.rowh ? el("th", {text: String(v.rowh[r])}) : null,
+      ...row.map((x, c) => el("td", {class: v.cls[`${r},${c}`] || "", text: x})))));
+    return t;
+  },
+  graph(v) {
+    const U = 64, R = 17, pad = 30;
+    const [vw, vh] = [(v.w - 1) * U + 2 * pad, (v.h - 1) * U + 2 * pad + 14];  // drawn at natural size, never wider than its box
+    const s = svg("svg", {viewBox: `${-pad} ${-pad} ${vw} ${vh}`, width: vw, height: vh, class: "graph", role: "img"});
+    const at = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+    if (v.directed) {
+      const marker = svg("marker", {id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "9", markerHeight: "9",
+        markerUnits: "userSpaceOnUse", orient: "auto-start-reverse"});
+      marker.append(svg("path", {d: "M0,0 L10,5 L0,10 z", class: "arrowhead"}));
+      const defs = svg("defs");
+      defs.append(marker);
+      s.append(defs);
+    }
+    for (const e of v.edges) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) continue;
+      const [x1, y1, x2, y2] = [a.x * U, a.y * U, b.x * U, b.y * U];
+      const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const [ux, uy] = [(x2 - x1) / d, (y2 - y1) / d];
+      s.append(svg("line", {x1: x1 + ux * R, y1: y1 + uy * R, x2: x2 - ux * (R + 2), y2: y2 - uy * (R + 2),
+        class: `edge ${e.cls || ""}`, ...(v.directed ? {"marker-end": "url(#arrow)"} : {})}));
+      if (e.label !== undefined && e.label !== "") {
+        s.append(svg("text", {x: (x1 + x2) / 2 - uy * 10, y: (y1 + y2) / 2 + ux * 10 + 4, class: "elabel"}, String(e.label)));
+      }
+    }
+    for (const n of v.nodes) {
+      const wide = Math.max(2 * R, 8 * String(n.label).length + 12);  // a long label gets a pill, not a circle
+      s.append(wide > 2 * R
+        ? svg("rect", {x: n.x * U - wide / 2, y: n.y * U - R, width: wide, height: 2 * R, rx: R, class: `node ${n.cls || ""}`})
+        : svg("circle", {cx: n.x * U, cy: n.y * U, r: R, class: `node ${n.cls || ""}`}));
+      s.append(svg("text", {x: n.x * U, y: n.y * U + 4, class: "nlabel"}, String(n.label)));
+      if (n.tag) s.append(svg("text", {x: n.x * U, y: n.y * U + R + 13, class: "ntag"}, String(n.tag)));
+    }
+    return s;
+  },
+  bars(v) {
+    const W = 320, rowH = 22, span = Math.max(1, v.hi - v.lo);
+    const s = svg("svg", {viewBox: `0 0 ${W + 20} ${v.spans.length * rowH + 26}`, width: W + 20, height: v.spans.length * rowH + 26, class: "bars", role: "img"});
+    const x = (t) => 10 + ((t - v.lo) / span) * W;
+    v.spans.forEach(([a, b, label, cls], i) => {
+      s.append(svg("rect", {x: x(a), y: i * rowH + 4, width: Math.max(3, x(b) - x(a)), height: rowH - 8, rx: 3, class: `span ${cls || ""}`}));
+      const text = label || `[${a}, ${b}]`, room = 7 * text.length;  // right of the bar, else left of it, else inside
+      const [tx, anchor] = x(b) + 4 + room <= W + 20 ? [x(b) + 4, "start"] : x(a) - 4 - room >= 0 ? [x(a) - 4, "end"] : [(x(a) + x(b)) / 2, "middle"];
+      s.append(svg("text", {x: tx, y: i * rowH + rowH / 2 + 4, class: "slabel", "text-anchor": anchor}, text));
+    });
+    const axis = v.spans.length * rowH + 8;
+    s.append(svg("line", {x1: x(v.lo), y1: axis, x2: x(v.hi), y2: axis, class: "axis"}));
+    for (let t = v.lo; t <= v.hi; t += Math.max(1, Math.ceil(span / 10))) {
+      s.append(svg("text", {x: x(t), y: axis + 14, class: "tick"}, String(t)));
+    }
+    return s;
+  },
+  text(v) { return el("p", {text: v.text}); },
+};
+function drawViews(step, prev) {
+  const box = el("div", {class: "views"});
+  step.views.forEach((v, i) => {
+    const before = prev?.views[i];
+    box.append(el("figure", {class: `view v-${v.t}`}, v.name ? el("figcaption", {text: v.name}) : null, VIEWS[v.t](v, changed(v, before))));
+  });
+  return box;
+}
+
+// --- the stepper ------------------------------------------------------------------------------------------------------
+(function stepper() {
+  const host = document.getElementById("stepper");
+  const states = DATA.traces.map(() => ({k: 0, answers: {}}));
+  let current = 0, timer = null;
+  const picker = el("div", {class: "picker", role: "group", "aria-label": "Input"});
+  DATA.traces.forEach((t, i) => picker.append(el("button", {type: "button", text: t.label, onclick: () => { stop(); current = i; draw(); }})));
+  const about = el("p", {class: "about"});
+  const back = el("button", {type: "button", text: "Back", onclick: () => go(-1)});
+  const step = el("button", {type: "button", class: "primary", text: "Step", onclick: () => go(1)});
+  const play = el("button", {type: "button", text: "Play", onclick: () => (timer ? stop() : start())});
+  const reset = el("button", {type: "button", text: "Reset", onclick: () => { stop(); states[current] = {k: 0, answers: {}}; draw(); }});
+  const end = el("button", {type: "button", text: "End", onclick: () => { stop(); while (canStep()) S().k += 1; draw(); }});
+  const where = el("span", {class: "muted where"});
+  const say = el("p", {class: "say", "aria-live": "polite"});
+  const ask = el("div", {class: "ask"});
+  const stage = el("div", {class: "stage"});
+  const code = el("ol", {class: "code"});
+  const table = el("table", {class: "history"});
+  const record = el("p", {class: "muted"});
+  host.append(picker, about, el("div", {class: "controls"}, back, step, play, reset, end, where), say, ask,
+    el("div", {class: "split"}, stage, el("div", {class: "side"}, el("h3", {text: "Python · how often each line has run"}), code)),
+    el("h3", {text: "History"}), el("div", {class: "scroll"}, table), record);
+  if (DATA.traces.length < 2) picker.hidden = true;
+
+  const T = () => DATA.traces[current];
+  const S = () => states[current];
+  const pending = () => T().steps[S().k].ask && !S().answers[S().k];
+  const canStep = () => S().k < T().steps.length - 1 && !pending();
+  function go(d) {
+    if (d > 0 && !canStep()) return;
+    S().k = Math.max(0, Math.min(T().steps.length - 1, S().k + d));
+    draw();
+  }
+  function start() {
+    play.textContent = "Pause";
+    timer = setInterval(() => { if (canStep()) go(1); else stop(); }, 650);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    play.textContent = "Play";
+  }
+  function drawAsk(s, k) {
+    ask.replaceChildren();
+    if (!s.ask) return;
+    const a = s.ask, given = S().answers[k];
+    ask.append(el("p", {class: "q"}, el("b", {text: "Predict: "}), a.q));
+    const reveal = (value) => {
+      S().answers[k] = {value, right: norm(value) === norm(a.answer)};
+      draw();
+    };
+    if (!given) {
+      if (a.options) {
+        ask.append(el("div", {class: "options"}, ...a.options.map((o) => el("button", {type: "button", text: String(o), onclick: () => reveal(String(o))}))));
+      } else {
+        const input = el("input", {type: "text", "aria-label": "Your prediction", autocomplete: "off"});
+        const form = el("form", {class: "fill", onsubmit: (e) => { e.preventDefault(); if (input.value.trim()) reveal(input.value.trim()); }},
+          input, el("button", {type: "submit", text: "Check"}));
+        ask.append(form);
+      }
+      return;
+    }
+    ask.append(el("p", {class: `said ${given.right ? "right" : "wrong"}`},
+      given.right ? `You said ${given.value}. Right.` : `You said ${given.value}. It was ${a.answer}.`, a.why ? " " + a.why : ""));
+  }
+  function draw() {
+    const t = T(), k = S().k, s = t.steps[k];
+    picker.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === current)));
+    about.textContent = t.about;
+    back.disabled = k === 0;
+    step.disabled = !canStep();
+    end.disabled = !canStep();
+    where.textContent = `Step ${k + 1} of ${t.steps.length}` + (pending() ? " · predict to go on" : "");
+    say.textContent = s.say || "";
+    drawAsk(s, k);
+    stage.replaceChildren(drawViews(s, t.steps[k - 1]));
+    const runs = {};
+    for (let i = 0; i < k; i++) if (!t.steps[i].ret) runs[t.steps[i].line] = (runs[t.steps[i].line] || 0) + 1;
+    code.replaceChildren(...t.code.map((line, i) => el("li", {class: i + 1 === s.line ? (s.ret ? "cur ret" : "cur") : ""},
+      el("span", {class: "runs", text: runs[i + 1] ? String(runs[i + 1]) : ""}), el("code", {text: line || " "}))));
+    table.replaceChildren(el("tr", {}, ...t.cols.map((c) => el("th", {text: c}))),
+      ...t.rows.filter((r) => r.at <= k).map((r) => el("tr", {}, ...r.cells.map((c) => el("td", {text: c})))));
+    if (!t.rows.some((r) => r.at <= k)) table.append(el("tr", {}, el("td", {class: "muted", colspan: String(t.cols.length || 1), text: "Rows appear as you step."})));
+    const given = Object.values(S().answers);
+    record.textContent = given.length ? `Predictions on this input: ${given.filter((g) => g.right).length} of ${given.length} right.` : "";
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || document.body.classList.contains("checking")) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > innerHeight) return;  // only while the stepper is on screen
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(-1); }
+  });
+  draw();
+})();
+
+// --- the check with the lesson hidden -----------------------------------------------------------------------------------
+(function check() {
+  const c = DATA.check, quiz = document.getElementById("quiz"), hide = document.getElementById("hide");
+  const inputs = c.fields.map((f) => el("input", {type: "text", autocomplete: "off", "aria-label": f.label}));
+  const marks = c.fields.map(() => el("span", {class: "mark", role: "status"}));
+  const fields = el("div", {class: "fields"}, ...c.fields.map((f, i) => el("label", {}, f.label, inputs[i], marks[i])));
+  const checkBtn = el("button", {type: "button", class: "primary", text: "Check my trace", onclick: () => {
+    c.fields.forEach((f, i) => {
+      const ok = norm(inputs[i].value) === norm(f.answer);
+      marks[i].textContent = ok ? "Right." : `It was ${f.answer}.`;
+      marks[i].className = "mark " + (ok ? "right" : "wrong");
+    });
+  }});
+  const own = el("textarea", {rows: "4", "aria-label": "In your own words"});
+  const model = el("p", {class: "model", hidden: ""}, c.own.model);
+  quiz.append(el("p", {class: "muted", text: "The traces, code, plan card and history are hidden. Work on paper if you like."}),
+    el("h3", {text: "Trace a fresh input"}), el("p", {text: c.text}), fields, checkBtn,
+    el("h3", {text: "Transfer"}), ...c.questions.map((q) => choice(q)),
+    el("h3", {text: "In your own words"}), el("p", {text: c.own.prompt}), own,
+    el("button", {type: "button", text: "Compare with the reasoning", onclick: () => { model.hidden = false; }}), model,
+    el("p", {}, el("button", {type: "button", class: "ghost", text: "Return to the lesson", onclick: () => {
+      document.body.classList.remove("checking"); quiz.hidden = true; hide.hidden = false;
+    }})));
+  hide.onclick = () => {
+    document.body.classList.add("checking");
+    quiz.hidden = false;
+    hide.hidden = true;
+    document.getElementById("check").scrollIntoView({block: "start"});
+  };
+})();
+</script>
+</body>
+</html>

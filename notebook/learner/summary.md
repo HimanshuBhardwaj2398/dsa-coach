@@ -1,19 +1,32 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-17 by coach.py snapshot · skill 1.0.1
+DSA COACH LEARNER SUMMARY · generated 2026-11-18 by coach.py snapshot · skill 1.0.1
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
-Plan: day 19 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
+Plan: day 20 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
 Focus: Stack (learning)
 
 Patterns started (status, attempted/solved/retained/ready of target):
 - Arrays & Hashing: practicing, 8/1/0/0 of 9
 - Two Pointers: learning, 3/0/0/0 of 5
 - Sliding Window: learning, 4/0/0/0 of 6
+- Prefix Sums: exploring, 0/0/0/0 of 3
 - Stack: learning, 1/0/0/0 of 7
 - Binary Search: practicing, 2/1/0/0 of 7
+- Linked List: exploring, 0/0/0/0 of 11
+- Trees: exploring, 0/0/0/0 of 15
 - Heap / Priority Queue: exploring, 0/0/0/0 of 7
+- Backtracking: exploring, 0/0/0/0 of 9
+- Graphs: exploring, 0/0/0/0 of 13
+- Tries: exploring, 0/0/0/0 of 3
+- Intervals: exploring, 0/0/0/0 of 6
+- Greedy: exploring, 0/0/0/0 of 8
+- 1-D Dynamic Programming: exploring, 0/0/0/0 of 12
+- 2-D Dynamic Programming: exploring, 0/0/0/0 of 11
+- Advanced Graphs: exploring, 0/0/0/0 of 6
+- Math & Geometry: exploring, 0/0/0/0 of 8
+- Bit Manipulation: exploring, 0/0/0/0 of 7
 Other concepts: python-collections
 
-Due today: 16 re-solve(s) [valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings, product-of-array-except-self], 0 card(s), 7 draft card(s), 0 inbox delta(s)
+Due today: 17 re-solve(s) [valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings, product-of-array-except-self], 1 card(s), 7 draft card(s), 0 inbox delta(s)
 Weak spots (30 days): boundary×2, comp×1, process×1
 Calibration: avg confidence before unaided solves 3.0, before other attempts 3.5; high-confidence misses: a0018
 Last session: 2026-11-17: Parked contains-duplicate; solved search-in-rotated-sorted-array at rung 1 (sorted-half test, <= edge, duplicates follow-up); feedback f0014-f0018
@@ -31,9 +44,9 @@ Recent questions:
 - 2026-11-11 heap: Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.
 
 Next steps:
-1. Re-solve from a blank page: valid-anagram, group-anagrams. Also due after these: 14.
-2. Solve daily-temperatures unaided to move Stack forward.
-3. Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).
-4. Behind plan: start Prefix Sums (planned for week 2).
+1. Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 14.
+2. Quiz: 1 due card(s), about 2 minutes (`coach.py quiz`).
+3. Solve daily-temperatures unaided to move Stack forward.
+4. Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).
 
 Coach rules: attempt before answers; predict before reveal; credit only delayed unaided success; log everything with coach.py.

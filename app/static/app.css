@@ -110,7 +110,10 @@ article h2 { font-size: 15px; margin: 22px 0 6px; }
 .explainer { margin: 16px 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
 .explainer > .hint:first-child { margin-top: 0; }
 .explainer .button + button { margin-left: 8px; }
-.improve label { display: block; font-weight: 500; }
+.improve label, .answer label { display: block; font-weight: 500; }
+.answer { margin-top: 14px; }
+.answer textarea { margin-top: 4px; }
+.answer .actions { margin-top: 8px; }
 table.problems { border-collapse: collapse; width: 100%; font-size: 13px; }
 table.problems td, table.problems th { padding: 7px 6px; border-bottom: 1px solid var(--line); text-align: left; }
 table.problems .tag { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--accent); }

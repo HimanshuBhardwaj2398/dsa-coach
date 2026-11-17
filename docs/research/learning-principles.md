@@ -62,10 +62,10 @@ Sources: Oakley and Sejnowski's Coursera course and Oakley's *A Mind for Numbers
 George Polya, 1945. Part I sets out four phases and how a teacher should help. Part III is a short dictionary of heuristics.
 
 **Four phases:** understand the problem, devise a plan, carry out the plan, look back.
-- *In the skill:* the solve protocol has four stages, one for each phase. Until 0.8.0 it had eight stages grouped under these phases; the finer steps (brute force, counting, finding repeated work, the plan card) are now teaching moves inside stage 2, asked one at a time.
+- *In the skill:* the solve protocol has three stages, one for each of the last three phases. Until 0.8.0 it had eight stages grouped under these phases; the finer steps (brute force, counting, finding repeated work, the plan card) are now teaching moves inside stage 1, asked one at a time. From 0.8.0 to 1.0.1 a fourth stage, Understand, came first; 1.1.0 dropped it at the learner's request (f0015–f0017).
 
 **Understand: the unknown, the data, the condition.** Draw a figure; introduce notation.
-- *In the skill:* stage 1 names all three before predicting outputs.
+- *In the skill:* not a stage since 1.1.0: he reads the problem on LeetCode. The questions stay in the table in `references/protocol.md`, for when his first method shows a misread. The restatement it replaced had just caught one (he had LC 153's goal in mind), so watch for misreads in the record.
 
 **Plan: questions that point toward a solution.**
 - Have you seen a problem with the same unknown?
@@ -74,11 +74,11 @@ George Polya, 1945. Part I sets out four phases and how a teacher should help. P
 - *In the skill:* the question table in `references/protocol.md`, with DSA examples. A sorted input invites two pointers or binary search; n ≤ 20 invites backtracking.
 
 **Carry out: check each step.**
-- *In the skill:* stage 3 checks each step against the invariant.
+- *In the skill:* stage 2 checks each step against the invariant.
 
 **Look back.** Check the result another way, see it at a glance, and use the result or the method for another problem.
 - Polya notes that even fairly good students skip this phase, and miss an important and instructive part of the work.
-- *In the skill:* stage 4 asks why the solution works, in one sentence. It then asks one rotating question: another approach and its trade-off, a changed constraint, or another problem the method solves.
+- *In the skill:* stage 3. He traces an edge case and states the complexity; the coach gives pointers toward why it works and the lesson, plus one rotating question on a first medium or hard solve (another approach and its trade-off, a changed constraint, or another problem the method solves). He answers in a few words or says he knows, and the coach gives the answer (1.1.0, f0018: it had asked him to write all three).
 
 **How to help.**
 - "The teacher should help, but not too much and not too little, so that the student shall have a reasonable share of the work."

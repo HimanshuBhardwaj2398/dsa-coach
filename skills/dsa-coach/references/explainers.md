@@ -1,6 +1,18 @@
 # Interactive explainers
 
-Build an explainer when a pattern is new to him, when a question or a prediction error shows a misconception, or when he asks to see something. When he asks for more examples or more animation of a pattern he has already seen, offer one problem to attempt first, and build more only for what the attempt shows he's missing. More watching feels like progress but adds little (an illusion of competence). If he still wants it, build it. The reference example is the "Sliding Window, Derived" page saved in `notebook/concepts/sliding-window/`.
+Every pattern has an explainer saved before he reaches it, so learn mode opens a finished page instead of building one in the session. The algorithm patterns are built from specs (below); Arrays & Hashing, Sliding Window, Stack and Binary Search are hand-built pages of the same depth. Build or revise one when a pattern has none, when a question or a prediction error shows a misconception, or when he asks to see something. When he asks for more examples or more animation of a pattern he has already seen, offer one problem to attempt first, and build more only for what the attempt shows he's missing. More watching feels like progress but adds little (an illusion of competence). If he still wants it, build it.
+
+## What an explainer teaches
+
+The pattern, not one problem (f0010, f0013): where it applies, how to recognize it, and why its moves are safe. The Binary Search page (v2) set the standard. A built page has these sections, in this order:
+
+1. **Spot it.** What the pattern is for, the three or four questions he asks himself, six recognition cases ("which fits?", with a near-miss or two among them, each wrong pick explained) and "looks like it, isn't".
+2. **The parts.** Names before the run (pre-training), the plan card, what stays true, why each move is safe, and what it relies on.
+3. **Trace it.** The stepper on 2–3 curated inputs, one of them an edge case or a contrasting algorithm, with predictions at decision points.
+4. **The family.** The variants, what changes in each, and the problems (from `assets/problems.json`) each one solves.
+5. **Count the work.** Runs × cost, the line that decides, and a table of counts measured on growing inputs against the stated bound.
+6. **Where it breaks.** The usual bugs, one line each.
+7. **Check it without the visual.** The lesson is hidden: a fresh trace to write down, two transfer questions, and the core idea in his own words, compared with a model answer. Save his words as the Core idea and add a `trace` card so the check repeats days later.
 
 ## What the evidence says, in one paragraph
 
@@ -45,32 +57,35 @@ Completion must depend on answers, not clicks: in one e-textbook, a quarter of s
 
 Build the (i, j) state-space grid first and reuse it: it shows brute force as every cell, hashing as answering a column at once, two pointers as row and column eliminations, the sliding window as a monotone staircase, and 2-D or interval DP as the table itself.
 
-## Trace-first build pipeline
+## Specs: the build pipeline
 
-No frame comes from imagination. Splitting execution from rendering (the LLM writes a Python tracker that emits a JSON trace, and a fixed renderer draws it) raised LLM visualization success from 82.5% to 99.8% on 200 LeetCode tasks.
+No frame comes from imagination. Splitting execution from rendering (the LLM writes a Python tracker that emits a JSON trace, and a fixed renderer draws it) raised LLM visualization success from 82.5% to 99.8% on 200 LeetCode tasks. Here the tracker is Python's own tracer and the renderer is the shared stepper in `assets/explainer/`.
 
-1. **Reference.** Write `reference.py` with the real algorithm. Record a step at each meaningful event: a small full snapshot of the state, the operation that produced it (compare, push, move-left, record), the line number, a narration string, and an optional prediction prompt with its answer.
-2. **Oracle check.** Compare the reference with a brute-force solution on small generated inputs: empty, single element, duplicates, negatives, no answer.
-3. **Invariant checks.** Assert the invariant at every step (window valid, stack monotone, heap property, each DP cell equal to its brute-force value). Every visual claim is an assertion.
-4. **Renderer.** Views are pure functions of the step record. Precompute traces for 3–5 curated inputs and embed them as JSON in the page.
-5. **Your-own-input mode (optional).** A JavaScript port may run live inputs, but it must be checked against the Python trace on every step's values. Line counts alone are a weak check: `max(best, r - l)` and `max(best, r - l + 1)` run every line the same number of times and give different answers.
-6. **Page check.** If a browser is available, step through the built page and compare the displayed state with the trace, then look at it once at phone width. In the dsa-coach repo, `python3 tests/browser/check_explainers.py` opens every saved page the way the learning app serves it.
+A pattern's page is built from `notebook/concepts/<slug>/spec.py`:
+
+```bash
+python3 <skill-dir>/scripts/build_explainer.py notebook/concepts/<slug>/spec.py   # writes <slug>-explainer.html beside it
+```
+
+The spec holds the words of each section (`SPOT`, `PARTS`, `FAMILY`, `TRAPS`, `CHECK`) and the code:
+
+- **`REFERENCE`** and any other traced function: plain, simple Python, the code he would write. The build runs each traced input with `sys.settrace`; one step is one line about to run, and the stepper shows real locals and real run counts.
+- **`view(S)`** returns the views for one step (`V.array`, `V.items`, `V.mapping`, `V.vars`, `V.grid`, `V.graph`, `V.bars`), from `S.v` (the frame's locals), `S.stack` and `S.trace[:S.index]` (what came before). `say(S, N)` narrates the line `S` ran; `row(S, N)` adds a history row.
+- **`PREDICT`**, keyed by a line's text: the question, the options (or none, for a value he types), and the answer, computed from the state.
+- **`ORACLE`**: the reference against brute force on at least 20 generated inputs, edge cases included. **`INVARIANT(S)`**: asserted at every step. **`COUNT`**: the line that decides, worst-case inputs at growing sizes, and a bound the measured runs must not pass.
+
+The build fails on a mismatch with brute force, a broken invariant, a count over its bound, or a prediction whose answer isn't among its options. Specs run 200–350 lines; copy the closest one. `tests/test_explainers.py` builds every spec; `python3 tests/browser/check_explainers.py` opens every saved page the way the learning app serves it.
 
 When you can't execute code, generate the page from a JavaScript step generator that checks its own invariants and shows a visible "invariant violated at step k" badge, and say the trace wasn't verified against Python.
 
 ## Output and saving
 
-- In Claude, publish the page as an artifact when possible: a single HTML file, inline CSS and JS, scripts only from the allowed CDNs. Keep the URL.
-- Elsewhere (ChatGPT, Codex), write a single HTML file he can open in a browser.
-- The saved file is a whole page that needs nothing from its host: `<!doctype html>`, a `<title>`, inline CSS and JS, and its own colours for light and dark. A widget written for a chat host is a fragment: wrap it in a page before saving. The learning app serves the file sandboxed, where `localStorage` and cookies throw, so keep state in memory or put storage inside `try`/`catch`. Nothing takes focus or scrolls while the page loads.
+- The saved file is a whole page that needs nothing from its host: `<!doctype html>`, a `<title>`, inline CSS and JS, and its own colours for light and dark. A built page is all of that already. A widget written for a chat host is a fragment: wrap it in a page before saving. The learning app serves the file sandboxed, where `localStorage` and cookies throw, so keep state in memory or put storage inside `try`/`catch`. Nothing takes focus or scrolls while the page loads.
+- In Claude, you may also publish the page as an artifact; keep the URL. Elsewhere (ChatGPT, Codex), write the HTML file he can open in a browser.
 - Always save the file to `notebook/concepts/<slug>/` and run:
 
 ```bash
 coach.py artifact add --concept <slug> --title "<page title>" --file <path> [--url <published url>] [--version 1]
 ```
 
-- When a follow-up question changes a page, bump the version, add a line to the concept's changelog in `concepts/<slug>/notes.md`, and register the new version.
-
-## Later (build step 2)
-
-A reusable component library (grid, tape, tree, graph, trace table, code panel with live counts, player controls, prediction prompts) will live in `assets/` so pages are assembled from tested parts. Until then, reuse the structure of the sliding-window page.
+- When a follow-up question changes a page, edit the spec (or the page, for a hand-built one), rebuild, bump the version, add a line to the concept's changelog in `concepts/<slug>/notes.md`, and register the new version.

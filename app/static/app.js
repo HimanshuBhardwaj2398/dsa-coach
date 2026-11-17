@@ -1,7 +1,7 @@
 "use strict";
 // The learning app's page: Today (the live solve, what's due, what's next), the Map, and a pattern's Learn page.
 // Everything shown comes from /api/map; the page writes nothing. Sections: helpers, loading and routing, the three
-// views, the explainer handoff, the old drafts, and the wiring at the end.
+// views (Today carries the box for a stage answer), the explainer handoff, the old drafts, and the wiring at the end.
 
 const $ = (id) => document.getElementById(id);
 const elem = (tag, text = "", className = "") => Object.assign(document.createElement(tag), {textContent: text, className});
@@ -100,6 +100,9 @@ function liveNote(live) {  // a solve left from an earlier day is his to decide 
     ? `Untouched for ${plural(live.idle_days, "day")}. Tell the coach in chat: resume it, park it or drop it.`
     : "Ask for checks and hints in your coach chat.";
 }
+function answerPrompt(live, text) {  // his answer for the stage he is in, as a message for the coach chat
+  return `My answer for stage ${live.stage} (${live.stage_name}) on ${live.title}:\n\n${text}`;
+}
 function byWeek(patterns) {
   const weeks = new Map();
   for (const p of patterns) {
@@ -123,6 +126,11 @@ function list(items) {
     ul.append(li);
   }
   return ul;
+}
+function submitOnCmdEnter(textarea, form) {  // ⌘Enter or Ctrl+Enter sends a form, as in the coach chat
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
+  });
 }
 
 // --- loading and routing -----------------------------------------------------------
@@ -153,7 +161,7 @@ function renderToday() {
     const title = elem("h1", `Solving ${live.title}`);
     if (live.labeled) title.append(elem("span", ` · ${live.pattern_name}`, "muted"));  // naming it is hint rung 3
     page.append(section(title, elem("p", live.line), link("Open on LeetCode", live.url, true),
-      elem("p", liveNote(live), live.idle_days ? "nudge" : "hint")));
+      elem("p", liveNote(live), live.idle_days ? "nudge" : "hint"), answerForm(live)));
   } else {
     const next = section(elem("h1", "Next up"), elem("p", mapData.next_text));
     if (mapData.next_url) next.append(link("Open on LeetCode", mapData.next_url, true));
@@ -182,6 +190,39 @@ function renderToday() {
   if (!today.length && !later.length && !counts.length) dueBox.append(elem("p", live ? "Nothing else due." : "Nothing due.", "muted"));
   page.append(dueBox);
   return page;
+}
+
+// He types a stage answer beside LeetCode; the page copies it as a message for the coach chat and saves nothing.
+// The text is kept in memory for this solve, so a redraw (a visit to the Map, coming back to the tab) doesn't wipe it.
+let answerDraft = {session: "", text: ""};
+function answerForm(live) {
+  const form = elem("form", "", "answer");
+  const text = Object.assign(elem("textarea"), {rows: 4, maxLength: 4000, required: true,
+    placeholder: "Your method, its count, a plan, an edge case: whatever this stage asks."});
+  if (answerDraft.session === live.session_id) text.value = answerDraft.text;
+  text.oninput = () => { answerDraft = {session: live.session_id, text: text.value}; };
+  const label = elem("label", `Your answer · stage ${live.stage}, ${live.stage_name}`);
+  label.append(text);
+  const status = elem("p", "Copies it for your coach chat. ⌘Enter works too.", "hint");
+  status.setAttribute("role", "status");
+  const actions = elem("div", "", "actions");
+  actions.append(Object.assign(elem("button", "Copy for the coach", "primary"), {type: "submit"}));
+  form.append(label, actions, status);
+  submitOnCmdEnter(text, form);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const prompt = answerPrompt(live, text.value.trim());
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch {
+      openHandoff(prompt);  // the clipboard is blocked: the message waits in the handoff, to copy by hand
+      return;
+    }
+    text.value = "";
+    answerDraft = {session: live.session_id, text: ""};
+    status.textContent = "Copied. Paste it into your coach chat.";
+  };
+  return form;
 }
 
 // --- the map ----------------------------------------------------------------------
@@ -266,6 +307,7 @@ function improveForm(p, box) {
   actions.append(Object.assign(elem("button", "Make the prompt", "primary"), {type: "submit"}),
     button("Cancel", () => box.replaceWith(explainerBlock(p)), "ghost"));
   form.append(label, elem("p", "Attempting one problem first often shows what the page is really missing.", "hint"), actions);
+  submitOnCmdEnter(text, form);
   form.onsubmit = (e) => {  // the feedback now lives in the prompt, where he can still edit it
     e.preventDefault();
     openHandoff(explainerPrompt(p, text.value.trim()));

@@ -20,7 +20,7 @@ Guidance that helps a novice hurts someone who already knows the material (the e
 
 ## Polya's questions
 
-General questions he can ask himself on any problem, grouped by the four phases of the solve protocol. When he's stuck, first ask which of them he would ask himself; if he can't use one, asking it for him is hint rung 1. Keep coming back to the same few until he asks them unprompted, because Polya's aim is a learner who no longer needs the teacher.
+General questions he can ask himself on any problem, grouped by Polya's four phases. The solve protocol has a stage for each of the last three; the Understand questions are for when his method shows he misread the problem. When he's stuck, first ask which of them he would ask himself; if he can't use one, asking it for him is hint rung 1. Keep coming back to the same few until he asks them unprompted, because Polya's aim is a learner who no longer needs the teacher.
 
 | Phase | Question | In DSA terms |
 |---|---|---|
@@ -39,27 +39,26 @@ General questions he can ask himself on any problem, grouped by the four phases 
 
 ## Stage prompts for the solve protocol
 
-Four stages, one current question at a time. When he asks for help thinking, ask one question for his stage: pick the move below that fits his last answer, and don't hand over this problem's data structure, invariant or code unless you record that rung.
+Three stages, one current question at a time. A solve starts at stage 1: he has read the problem and its examples on LeetCode. When he asks for help thinking, ask one question for his stage: pick the move below that fits his last answer, and don't hand over this problem's data structure, invariant or code unless you record that rung.
 
 | Stage | Ask first | Gate before moving on |
 |---|---|---|
-| 1 Understand | "What is the unknown, what is given, and what must hold? Restate it in one sentence. What do these two inputs return? What about an empty or single-element input?" | Correct outputs for his own examples |
-| 2 Find an approach | "If speed didn't matter, how would you get the answer?" | A method that works, its count compared with the constraints, and, when it is too slow, an improvement with its reason; a short plan traced on one example |
-| 3 Build it | "What from your plan needs a variable, and what does it hold before the first step?" | Code that follows the plan, each step checked against the invariant |
-| 4 Check and finish | "Trace the edge case as if there's a bug. What's the complexity? Why does it work, in one sentence?" Then, on a first solve of a medium or a hard, one of: "Another way to solve it, and the trade-off?", "What if <constraint> changed?", "What other problem does this solve?" | Tests pass; complexity and the one-sentence reason stated; a one-line lesson |
+| 1 Find an approach | "If speed didn't matter, how would you get the answer?" | A method that works, its count compared with the constraints, and, when it is too slow, an improvement with its reason; a short plan traced on one example |
+| 2 Build it | "What from your plan needs a variable, and what does it hold before the first step?" | Code that follows the plan, each step checked against the invariant |
+| 3 Check and finish | "Trace an edge case the examples don't show, as if there's a bug. What's the complexity?" Then one-line pointers from you: toward why it works, toward the lesson, and on a first solve of a medium or a hard one of "another way and its trade-off", "what if <constraint> changed", "what else this solves". He answers in a few words or says he knows; you give the answer in a line | Tests pass; complexity stated; the lesson agreed |
 
-**Moves for stage 2**, in roughly this order, skipping any his answers already cover:
+**Moves for stage 1**, in roughly this order, skipping any his answers already cover:
 1. *Find something that works.* "If speed didn't matter, what could you try?" Too abstract: "Solve this tiny input by hand. What did you do?" Separate listing candidates from checking one.
 2. *Count concretely.* "Pick one action your method repeats. When does it happen?" Trace a small case, count that action, then say how the count depends on n. When iterations do different amounts of work, add the amounts; two loops don't automatically mean n². Count hidden work (slicing, copying, `in` on a list). Memory is a separate count. Run any trace you present as evidence.
 3. *Connect the count to the limit.* "As the input grows, which part grows fastest? Does that fit these constraints?" Big-O comes after the count means something. A traced case supports the argument; it doesn't prove the bound.
 4. *Find a reason to improve.* "What did you calculate more than once?" or "Which candidates can you safely stop checking?" The change comes from that observation or a property of the input. Ask why it stays correct, then count again. If the simple method fits, don't push an optimization.
 5. *Keep a short plan.* What is remembered, what one step does, why it is safe, and a hand trace of one example (the plan card, references/plan-card.md). The pattern's name, its cue and the datum it relies on can follow the reasoning.
 
-**Moves for stage 3**, one at a time, for where he is stuck: "What information from your plan needs a variable?" · "What should those variables mean before the first step?" · "Take one action from your plan. What must the program read or update?" · "What makes the next iteration or call move forward, and when does it stop?" · "Where is the answer at that point?" Let him write one meaningful part and trace it. Subgoal comments help when they bridge a gap; they aren't required.
+**Moves for stage 2**, one at a time, for where he is stuck: "What information from your plan needs a variable?" · "What should those variables mean before the first step?" · "Take one action from your plan. What must the program read or update?" · "What makes the next iteration or call move forward, and when does it stop?" · "Where is the answer at that point?" Let him write one meaningful part and trace it. Subgoal comments help when they bridge a gap; they aren't required.
 
 A general explanation of counting or of turning a plan into code, on a separate toy example followed by his prediction, is not a hint for this problem. Anything that reveals this problem's method counts at the rung it gives away.
 
-Predicting outputs before coding raised correct completion from 53% to 76% in a CS1 study, and explicit stages with "which stage are you in?" check-ins raised self-directed work, so keep the examples in stage 1 and the short plan in stage 2 even when he wants to skip them.
+Until 1.1.0 a solve began with an Understand stage: restating the problem and predicting outputs for its examples, which raised correct completion from 53% to 76% in a CS1 study. He found it repeated what LeetCode's page already shows (feedback f0015–f0017), so it was dropped. What it caught stays covered: a misread shows in his first method (stage 1), and the edge case that isn't on the page is traced in stage 3. Explicit stages with "which stage are you in?" check-ins raised self-directed work, so keep the short plan in stage 1 even when he wants to skip it.
 
 ## Modes in detail
 
@@ -73,8 +72,8 @@ The fast way in. Don't report status, propose a plan or ask what he wants. `coac
 | `resolve` | Review mode, from a blank page: a re-solve in code or a plan-only check, as `check` says |
 | `cards` | Quiz mode, one card at a time |
 | `new` with `first: true` | Link the problem, then the first-step probe |
-| `new` with `block: true` | Link the problem and name its pattern, then stage 1 of the solve protocol |
-| `new` with `block: false` | Link the problem without naming the pattern, then stage 1; he classifies it in stage 2 |
+| `new` with `block: true` | Link the problem and name its pattern, then stage 1 of the solve protocol (Find an approach) |
+| `new` with `block: false` | Link the problem without naming the pattern, then stage 1, where he classifies it |
 | `new` with `problem: null` | Pick an unattempted problem from that NeetCode section, then as above |
 | `none` | Offer a mock or an unlabeled mixed set |
 
@@ -83,7 +82,7 @@ For a problem, run `coach.py solve start --problem SLUG` before the first prompt
 `block` is true for a pattern's first three problems, its learning block. After that, `next` rotates new problems across the patterns he has started (least recently practised first) and starts a new pattern when its week arrives. Naming the pattern then would skip the choice an interview makes him take. Problem links are `https://leetcode.com/problems/<slug>/`. After each item, log it (`solve end` for a problem) and offer the next one in a line.
 
 **What he says during a solve.**
-- "Done with this stage": check that stage's output, save his answer with `solve note`, then `solve stage N+1`. After stage 4, check the look-back answers and end the solve with the outcome and lesson he gives (SKILL.md, End).
+- "Done with this stage": check that stage's output, save his answer with `solve note`, then `solve stage N+1`. After stage 3, end the solve with the outcome and the lesson you agreed on (SKILL.md, End).
 - "I'm stuck": the next rung (`solve hint`).
 - "Check my code": look at his LeetCode code and results (SKILL.md, Seeing his work), name an edge case that fails or that he should run, and leave the fix to him.
 - "My block is over": `solve break`, then the stuck-block options in SKILL.md.
@@ -94,7 +93,7 @@ Cards are settled when they are written. After a solve that was hard somewhere, 
 ### learn
 
 1. First-step probe.
-2. Low mastery: a worked example on the canonical problem, written as the plan card plus a step-through explainer with prediction prompts (references/explainers.md). Then he closes it and explains it back in his own words, and you save that, in his words, as the Core idea in `concepts/<slug>/notes.md`. Recall, not rereading, is what makes it stick.
+2. Low mastery: a worked example on the canonical problem, written as the plan card, then the pattern's saved explainer (`notebook/concepts/<slug>/`; references/explainers.md), section by section with its predictions. Then he closes it and explains it back in his own words, and you save that, in his words, as the Core idea in `concepts/<slug>/notes.md`. Recall, not rereading, is what makes it stick.
 3. A faded example: the same pattern on a second problem with parts of the plan card left blank for him.
 4. One solo problem from the NeetCode section for that pattern, with the hint ladder.
 5. Write 2–3 retrieval cards with him (keep, edit or drop); log the attempt with `--mode learn` and the technique used.
@@ -121,7 +120,7 @@ The solve protocol in SKILL.md. Before giving any verdict on his code, run it ag
 
 ### explain
 
-Follow references/explainers.md. Save the file to `notebook/concepts/<slug>/`, register it with `artifact add`, and schedule a check with the visual hidden for a later session (a card of type `trace`).
+Every pattern has a saved explainer: open it. To build or revise one, follow references/explainers.md (a spec and `build_explainer.py`). Save the file to `notebook/concepts/<slug>/`, register it with `artifact add`, and schedule a check with the visual hidden for a later session (a card of type `trace`).
 
 ### mock
 

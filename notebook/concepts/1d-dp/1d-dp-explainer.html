@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1-D Dynamic Programming, explained</title>
+<style>/* Built explainer pages: the learning app's palette, light and dark, readable at phone width. */
+:root {
+  --bg: oklch(98.6% 0.003 250); --chrome: oklch(96.4% 0.005 250); --raise: oklch(93.6% 0.007 250);
+  --line: oklch(89.5% 0.008 250); --fg: oklch(24% 0.012 255); --muted: oklch(50% 0.014 255);
+  --accent: oklch(51% 0.13 252); --accent-soft: oklch(93% 0.035 252); --on-accent: oklch(98.5% 0.006 252);
+  --ok: oklch(50% 0.12 152); --ok-soft: oklch(94.5% 0.035 152); --fail: oklch(52% 0.17 27); --fail-soft: oklch(95% 0.03 27);
+  --nudge: oklch(52% 0.11 70); --nudge-soft: oklch(95.5% 0.04 80);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+    --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+    --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+    --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+    --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(20.5% 0.008 260); --chrome: oklch(17.8% 0.008 260); --raise: oklch(27% 0.01 260);
+  --line: oklch(30% 0.01 260); --fg: oklch(91% 0.008 250); --muted: oklch(68% 0.012 250);
+  --accent: oklch(74% 0.11 250); --accent-soft: oklch(31% 0.05 252); --on-accent: oklch(19% 0.02 252);
+  --ok: oklch(77% 0.13 152); --ok-soft: oklch(29% 0.05 152); --fail: oklch(73% 0.14 27); --fail-soft: oklch(29% 0.05 27);
+  --nudge: oklch(81% 0.11 80); --nudge-soft: oklch(29% 0.04 80); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+p code, li code, dd code, td code { background: var(--chrome); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  font: inherit; font-weight: 500; padding: 5px 12px; min-height: 32px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--raise); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+input, textarea {
+  font: inherit; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg);
+}
+textarea { width: 100%; resize: vertical; }
+
+.bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); }
+.bar .brand { font-weight: 700; font-size: 13px; color: var(--muted); }
+.bar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.bar nav a { padding: 3px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bar nav a:hover { color: var(--fg); background: var(--raise); }
+main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+section { margin: 28px 0; scroll-margin-top: 56px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 18px 0 6px; }
+h2 { font-size: 22px; margin: 0 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+.pitch { font-size: 17px; color: var(--muted); margin: 0; }
+ol.questions li, #spot ul li, #traps li, #parts ul li { margin: 6px 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--chrome); }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; }
+.card dt { font-weight: 600; }
+.card dd { margin: 0; }
+.invariant { margin-top: 12px; border-color: var(--ok); background: var(--ok-soft); }
+
+.choice { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.choice .q { margin: 0 0 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.options button { text-align: left; }
+.options button.right { border-color: var(--ok); background: var(--ok-soft); }
+.options button.wrong { border-color: var(--fail); background: var(--fail-soft); }
+.said { margin: 8px 0 0; }
+.said.right, .mark.right { color: var(--ok); }
+.said.wrong, .mark.wrong { color: var(--fail); }
+
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.about { margin: 4px 0 8px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.where { margin-left: 6px; font-size: 13px; }
+.say { min-height: 1.6em; margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--chrome); border-radius: 0 6px 6px 0; }
+.ask:not(:empty) { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--nudge); border-radius: 8px; background: var(--nudge-soft); }
+.ask .q { margin: 0 0 8px; }
+.ask .fill { display: flex; gap: 6px; flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.views { display: flex; flex-wrap: wrap; gap: 12px; }
+.view { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; overflow-x: auto; }
+.view figcaption { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.v-graph, .v-bars { flex-basis: 100%; }
+
+.cells { display: flex; gap: 3px; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 34px; }
+.cell .idx { font-size: 11px; color: var(--muted); }
+.cell .val { display: block; min-width: 34px; padding: 5px 6px; text-align: center; font-family: var(--mono); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 5px; background: var(--bg); white-space: nowrap; }
+.cell .ptr { min-height: 1.3em; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cell.ghost .val { border-style: dashed; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .var { font-family: var(--mono); font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.chips .note { font-size: 12px; }
+table.kv, table.grid { border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+table.kv td, table.grid td, table.grid th { border: 1px solid var(--line); padding: 3px 8px; text-align: center; }
+table.grid th { color: var(--muted); font-weight: 500; background: var(--chrome); }
+
+/* one meaning per class in every view: cur = acting now, win = inside the live range, ok = answer or kept,
+   done = finished or ruled out, front = waiting its turn, bad = rejected */
+.cur .val, .chip.cur, td.cur, tr.cur td { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.win .val, .chip.win, td.win { background: var(--accent-soft); }
+.ok .val, .chip.ok, td.ok, tr.ok td { border-color: var(--ok); background: var(--ok-soft); }
+.done .val, .chip.done, td.done { color: var(--muted); background: var(--chrome); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--muted) 50%, transparent); }
+.front .val, .chip.front, td.front { border-color: var(--nudge); background: var(--nudge-soft); }
+.bad .val, .chip.bad, td.bad { border-color: var(--fail); background: var(--fail-soft); }
+.chg .val, .var.chg, tr.chg td { outline: 2px solid var(--nudge); outline-offset: -1px; }
+
+svg.graph, svg.bars { display: block; max-width: 100%; height: auto; }
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.edge.cur { stroke: var(--accent); stroke-width: 3.5; }
+.edge.ok { stroke: var(--ok); stroke-width: 3.5; }
+.edge.done { stroke-dasharray: 4 4; stroke: var(--muted); }
+.edge.front { stroke: var(--nudge); }
+.arrowhead { fill: var(--muted); }
+.node { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.node.cur { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.node.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.node.done { fill: var(--chrome); stroke: var(--line); }
+.node.front { fill: var(--nudge-soft); stroke: var(--nudge); }
+.node.win { fill: var(--accent-soft); }
+.node.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.nlabel { text-anchor: middle; font: 600 13px var(--mono); fill: var(--fg); }
+.ntag { text-anchor: middle; font: 700 11px system-ui, sans-serif; fill: var(--accent); }
+.elabel { text-anchor: middle; font: 12px var(--mono); fill: var(--muted); }
+.span { fill: var(--raise); stroke: var(--muted); }
+.span.cur { fill: var(--accent-soft); stroke: var(--accent); }
+.span.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.span.done { fill: var(--chrome); stroke: var(--line); }
+.span.bad { fill: var(--fail-soft); stroke: var(--fail); }
+.slabel, .tick { font: 11px var(--mono); fill: var(--muted); }
+.tick { text-anchor: middle; }
+.axis { stroke: var(--muted); }
+
+.side h3 { margin-top: 0; font-size: 13px; color: var(--muted); }
+ol.code { list-style: none; margin: 0; padding: 6px 0; background: var(--chrome); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; overflow-x: auto; }
+ol.code li { display: flex; gap: 8px; padding: 0 10px 0 0; white-space: pre; }
+ol.code li .runs { flex: 0 0 34px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+ol.code li.cur { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+ol.code li.ret { background: var(--ok-soft); box-shadow: inset 3px 0 var(--ok); }
+.scroll { overflow-x: auto; }
+table.history, table.measure { border-collapse: collapse; font-size: 13px; }
+table.history th, table.history td, table.measure th, table.measure td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; font-family: var(--mono); }
+table.history th, table.measure th { font-family: inherit; color: var(--muted); font-weight: 600; }
+
+.variant { padding: 10px 14px; margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; }
+.variant h3 { margin-top: 0; }
+.variant .probs { margin-bottom: 0; }
+pre.code { background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+
+body.checking .lesson { display: none; }
+.fields { display: grid; gap: 10px; margin: 8px 0 12px; }
+.fields label { display: grid; gap: 4px; font-weight: 500; }
+.fields input { max-width: 420px; }
+.mark { font-weight: 400; font-size: 14px; }
+.model { padding: 10px 12px; border-left: 3px solid var(--ok); background: var(--ok-soft); border-radius: 0 6px 6px 0; }
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+  .bar .brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="brand">DSA notebook</span>
+<nav><a href="#spot">Spot it</a><a href="#parts">Parts</a><a href="#trace">Trace</a><a href="#family">Family</a><a href="#count">Count</a><a href="#check">Check</a></nav>
+<button type="button" id="theme" class="ghost" aria-label="Switch light or dark theme">◐</button></header>
+<main>
+<div class="lesson">
+<section class="hero"><h1>1-D Dynamic Programming, explained</h1><p class="pitch">Name the subproblem, write how it is built from smaller ones, and fill a table in an order where every cell it reads is already there. Each subproblem is solved once.</p></section>
+
+<section id="spot"><h2>Spot it</h2><p>Dynamic programming fits when a problem asks for a <b>best value or a count</b>, its answer can be built from the answers to <b>smaller versions</b> of itself, and those smaller versions <b>repeat</b> (plain recursion would solve them again and again). Then solve each one once and keep it in a table.</p><p>Write it in five lines before coding (SRTBOT, from MIT 6.006): the <b>S</b>ubproblem in words ('<code>dp[i]</code> = the most loot from houses 0..i'), the <b>R</b>elation between subproblems, a <b>T</b>opological order to fill them in, the <b>B</b>ase cases, the <b>O</b>riginal problem's cell, and the <b>T</b>ime. Most 1-D problems read either the last one or two cells (take or skip), or every earlier cell (best over all choices).</p>
+<h3>Ask yourself</h3><ol class="questions"><li><b>What is dp[i], in words?</b> 'The most loot from the first i houses', 'the fewest coins for amount i'.</li><li><b>What is the last decision?</b> Rob house i or not; which coin was used last; where the last word starts.</li><li><b>Which cells does dp[i] read?</b> Only smaller ones, so filling left to right works.</li><li><b>Count or best?</b> Counts add over the choices; best takes max or min.</li></ol>
+<h3>Which fits?</h3><p class="muted">Pick what you would reach for. A wrong pick shows the gap; pick again to move on.</p>
+<div id="cases"></div>
+<h3>Looks like it, isn't</h3><ul><li><b>All combinations or paths themselves.</b> Exponential output: backtracking. DP only counts or optimises.</li><li><b>A greedy choice with an exchange argument.</b> Jump Game needs only the farthest reach; DP would work but is slower.</li><li><b>Two sequences, or a grid.</b> Two indices: 2-D DP.</li></ul></section>
+
+<section id="parts"><h2>The parts</h2>
+<div class="cards"><div class="card"><h3>Names</h3><dl><dt><code>dp[i + 2]</code></dt><dd>the most loot from houses 0..i (two padding cells at the front stand for 'no houses')</dd><dt><code>dp[i + 1]</code></dt><dd>skip house i: the best from houses 0..i − 1</dd><dt><code>dp[i] + money</code></dt><dd>rob house i: it adds to the best from houses 0..i − 2</dd></dl></div>
+<div class="card"><h3>Your plan card</h3><dl><dt>Subproblem</dt><dd><code>dp[i + 2]</code> = the most loot from houses 0..i.</dd><dt>Relation</dt><dd><code>dp[i + 2] = max(dp[i + 1], dp[i] + nums[i])</code>: skip or rob.</dd><dt>Order</dt><dd>left to right: each cell reads the two before it.</dd><dt>Base, answer</dt><dd><code>dp[0] = dp[1] = 0</code> (no houses); the answer is <code>dp[-1]</code>.</dd></dl></div></div>
+<div class="card invariant"><h3>What stays true</h3><p>Before house i, every cell dp[0..i + 1] holds the true best for its prefix.</p></div>
+<h3>Why each move is safe</h3><ul><li>In any best plan for houses 0..i, house i is robbed or it isn't. Not robbed: the rest is a best plan for 0..i − 1. Robbed: house i − 1 isn't, so the rest is a best plan for 0..i − 2.</li><li>Both of those cells were filled earlier, so <code>max</code> of the two choices is the best for 0..i.</li><li>Each cell is filled once from two lookups: O(n), where plain recursion branches twice per house: O(2ⁿ).</li></ul>
+<p><b>Relies on:</b> optimal substructure (a best plan's parts are best plans) and overlapping subproblems. If the choice at i depended on more than the last two houses, the state would need more.</p></section>
+
+<section id="trace"><h2>Trace it. Predict the decisions.</h2>
+<p class="muted">Step runs the highlighted line. At a decision the stepper waits for your prediction. The numbers beside the code count how often each line has run.</p>
+<div id="stepper"></div></section>
+
+<section id="family"><h2>The family</h2><p>Name the subproblem and the last decision. The members differ in how many earlier cells a cell reads.</p><article class='variant'><h3>Take or skip: read the last one or two</h3><p>The first traces. Climbing stairs adds the two before (a count). House Robber II runs twice, without the first house and without the last, because they are neighbours.</p><p class='probs'><a href='https://leetcode.com/problems/climbing-stairs/' target='_blank' rel='noopener'>Climbing Stairs</a> <span class='muted'>easy</span> · <a href='https://leetcode.com/problems/min-cost-climbing-stairs/' target='_blank' rel='noopener'>Min Cost Climbing Stairs</a> <span class='muted'>easy</span> · <a href='https://leetcode.com/problems/house-robber/' target='_blank' rel='noopener'>House Robber</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/house-robber-ii/' target='_blank' rel='noopener'>House Robber II</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Best over choices: read one cell per option</h3><p>The coin trace. Word Break: dp[i] is true when some word ends at i after a true dp[j]. Decode Ways adds dp[i − 1] (one digit) and dp[i − 2] (two digits) when they are valid. Counting ordered sums (Combination Sum IV) loops amounts outside, choices inside.</p><p class='probs'><a href='https://leetcode.com/problems/coin-change/' target='_blank' rel='noopener'>Coin Change</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/word-break/' target='_blank' rel='noopener'>Word Break</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/decode-ways/' target='_blank' rel='noopener'>Decode Ways</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/combination-sum-iv/' target='_blank' rel='noopener'>Combination Sum IV</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Best ending here: read every earlier cell</h3><p>LIS: <code>dp[i] = 1 + max(dp[j])</code> over j &lt; i with smaller values. Maximum product keeps the largest and the smallest product ending at i.</p><p class='probs'><a href='https://leetcode.com/problems/longest-increasing-subsequence/' target='_blank' rel='noopener'>Longest Increasing Subsequence</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/maximum-product-subarray/' target='_blank' rel='noopener'>Maximum Product Subarray</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Reachable sums</h3><p>Partition Equal Subset Sum: a set (or boolean row) of sums reachable with the items so far; each item adds itself to every sum already there.</p><p class='probs'><a href='https://leetcode.com/problems/partition-equal-subset-sum/' target='_blank' rel='noopener'>Partition Equal Subset Sum</a> <span class='muted'>medium</span></p></article><article class='variant'><h3>Palindromes by centre</h3><p>Not a left-to-right table: expand around each of the 2n − 1 centres while the ends match. O(n²) time, O(1) space.</p><p class='probs'><a href='https://leetcode.com/problems/longest-palindromic-substring/' target='_blank' rel='noopener'>Longest Palindromic Substring</a> <span class='muted'>medium</span> · <a href='https://leetcode.com/problems/palindromic-substrings/' target='_blank' rel='noopener'>Palindromic Substrings</a> <span class='muted'>medium</span></p></article></section>
+
+<section id="count"><h2>Count the work</h2>
+<p>Count how often each line runs; the line with the most runs decides the Big-O. Here that is <code>dp[i + 2] = max(dp[i + 1], dp[i] + money)</code>.</p>
+<p>Each cell is written once, from two reads: n runs at O(1). The coin table writes <code>amount</code> cells and tries each coin for each, so its inner line runs amount × coins times: O(amount × coins). Plain recursion without the table branches at every cell: O(2ⁿ) for the houses.</p>
+<table class="measure"><thead><tr><th>n</th><th>runs (measured)</th><th>bound: n</th><th>vs the row above</th><th>all lines</th></tr></thead><tbody><tr><td>16</td><td>16</td><td>16</td><td></td><td>35</td></tr><tr><td>32</td><td>32</td><td>32</td><td>×2.00</td><td>67</td></tr><tr><td>64</td><td>64</td><td>64</td><td>×2.00</td><td>131</td></tr><tr><td>128</td><td>128</td><td>128</td><td>×2.00</td><td>259</td></tr></tbody></table>
+<p class="muted">Measured by running the reference under Python's tracer on its worst inputs.</p>
+<p><b>Time:</b> O(n) for House Robber; O(amount × coins) for Coin Change. · <b>Extra space:</b> O(n) for the table, O(1) if you keep only the last two cells.</p></section>
+
+<section id="traps"><h2>Where it breaks</h2><ul><li><b>No subproblem written in words</b> is how wrong relations happen. Write <code>dp[i] = ...</code> in a sentence first.</li><li><b>Reading a cell that isn't filled yet</b> means the order is wrong for the relation.</li><li><b>Base cases that don't mean anything</b> like <code>dp[0] = 1</code> for coins without saying 'one way to make 0'.</li><li><b>Loop order for counting</b> amounts outside, coins inside counts ordered sequences (Combination Sum IV); coins outside counts combinations (Coin Change II).</li></ul></section>
+</div>
+
+<section id="check"><h2>Check it without the visual</h2>
+<p>Hide the lesson, then trace a fresh input and answer the transfer questions from memory. A practice check, not proof you'll remember it.</p>
+<button type="button" id="hide" class="primary">Hide the lesson and try</button>
+<div id="quiz" hidden></div></section>
+</main>
+<script id="data" type="application/json">{"traces":[{"label":"Rob [2, 7, 9, 3, 1]","about":"Each cell is filled once from the two cells before it (light). The green answer cell sits at the end.","code":["def rob(nums):","    dp = [0] * (len(nums) + 2)","    for i, money in enumerate(nums):","        dp[i + 2] = max(dp[i + 1], dp[i] + money)","    return dp[-1]"],"steps":[{"line":2,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{},"cls":{"0":"","1":"","2":"","3":"","4":""}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{},"cls":{"0":"","1":"","2":"","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","0","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{}}],"say":"dp = [0, 0, 0, 0, 0, 0, 0]"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":0},"cls":{"0":"cur","1":"","2":"","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","0","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"1":"win","0":"win","2":"cur"}}],"say":"i = 0 · money = 2","ask":{"q":"House 0 holds 2. Skip: 0. Rob: 0 + 2. What is the new cell?","options":null,"answer":"2","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":0},"cls":{"0":"cur","1":"","2":"","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"1":"win","0":"win","2":"cur"}}],"say":"Skip house 0: 0. Rob it: 0 + 2 = 2. Keep 2."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":1},"cls":{"0":"done","1":"cur","2":"","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"2":"win","1":"win","3":"cur"}}],"say":"i: 0 → 1 · money: 2 → 7","ask":{"q":"House 1 holds 7. Skip: 2. Rob: 0 + 7. What is the new cell?","options":null,"answer":"7","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":1},"cls":{"0":"done","1":"cur","2":"","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"2":"win","1":"win","3":"cur"}}],"say":"Skip house 1: 2. Rob it: 0 + 7 = 7. Keep 7."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":2},"cls":{"0":"done","1":"done","2":"cur","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"3":"win","2":"win","4":"cur"}}],"say":"i: 1 → 2 · money: 7 → 9","ask":{"q":"House 2 holds 9. Skip: 7. Rob: 2 + 9. What is the new cell?","options":null,"answer":"11","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":2},"cls":{"0":"done","1":"done","2":"cur","3":"","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"3":"win","2":"win","4":"cur"}}],"say":"Skip house 2: 7. Rob it: 2 + 9 = 11. Keep 11."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":"i: 2 → 3 · money: 9 → 3"},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur","4":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","11","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":"Skip house 3: 11. Rob it: 7 + 3 = 10. Keep 11."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":4},"cls":{"0":"done","1":"done","2":"done","3":"done","4":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","11","0"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"5":"win","4":"win","6":"cur"}}],"say":"i: 3 → 4 · money: 3 → 1"},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":4},"cls":{"0":"done","1":"done","2":"done","3":"done","4":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","11","12"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"5":"win","4":"win","6":"cur"}}],"say":"Skip house 4: 11. Rob it: 11 + 1 = 12. Keep 12."},{"line":5,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":4},"cls":{"0":"done","1":"done","2":"done","3":"done","4":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","11","12"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"5":"win","4":"win","6":"cur"}}],"say":""},{"line":5,"ret":true,"views":[{"t":"array","name":"nums: money in each house","items":["2","7","9","3","1"],"labels":null,"ptr":{"i":4},"cls":{"0":"done","1":"done","2":"done","3":"done","4":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","7","11","11","12"],"labels":["none","none","0..0","0..1","0..2","0..3","0..4"],"ptr":{},"cls":{"5":"win","4":"win","6":"cur"}}],"say":"Returns 12."}],"rows":[{"at":3,"cells":["0","2","0","2","2"]},{"at":5,"cells":["1","7","2","7","7"]},{"at":7,"cells":["2","9","7","11","11"]},{"at":9,"cells":["3","3","11","10","11"]},{"at":11,"cells":["4","1","11","12","12"]}],"cols":["house","money","skip","rob","best"],"result":"12"},{"label":"Rob [2, 1, 1, 2]: every other house fails","about":"Taking houses 0 and 2, or 1 and 3, gives 3. The best skips two in a row: 2 + 2.","code":["def rob(nums):","    dp = [0] * (len(nums) + 2)","    for i, money in enumerate(nums):","        dp[i + 2] = max(dp[i + 1], dp[i] + money)","    return dp[-1]"],"steps":[{"line":2,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{},"cls":{"0":"","1":"","2":"","3":""}}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{},"cls":{"0":"","1":"","2":"","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{}}],"say":"dp = [0, 0, 0, 0, 0, 0]"},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":0},"cls":{"0":"cur","1":"","2":"","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","0","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"1":"win","0":"win","2":"cur"}}],"say":"i = 0 · money = 2","ask":{"q":"House 0 holds 2. Skip: 0. Rob: 0 + 2. What is the new cell?","options":null,"answer":"2","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":0},"cls":{"0":"cur","1":"","2":"","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"1":"win","0":"win","2":"cur"}}],"say":"Skip house 0: 0. Rob it: 0 + 2 = 2. Keep 2."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":1},"cls":{"0":"done","1":"cur","2":"","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","0","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"2":"win","1":"win","3":"cur"}}],"say":"i: 0 → 1 · money: 2 → 1","ask":{"q":"House 1 holds 1. Skip: 2. Rob: 0 + 1. What is the new cell?","options":null,"answer":"2","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":1},"cls":{"0":"done","1":"cur","2":"","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"2":"win","1":"win","3":"cur"}}],"say":"Skip house 1: 2. Rob it: 0 + 1 = 1. Keep 2."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":2},"cls":{"0":"done","1":"done","2":"cur","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","0","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"3":"win","2":"win","4":"cur"}}],"say":"i: 1 → 2","ask":{"q":"House 2 holds 1. Skip: 2. Rob: 2 + 1. What is the new cell?","options":null,"answer":"3","why":"The larger of the two choices."}},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":2},"cls":{"0":"done","1":"done","2":"cur","3":""}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","3","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"3":"win","2":"win","4":"cur"}}],"say":"Skip house 2: 2. Rob it: 2 + 1 = 3. Keep 3."},{"line":4,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","3","0"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":"i: 2 → 3 · money: 1 → 2"},{"line":3,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","3","4"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":"Skip house 3: 3. Rob it: 2 + 2 = 4. Keep 4."},{"line":5,"ret":false,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","3","4"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":""},{"line":5,"ret":true,"views":[{"t":"array","name":"nums: money in each house","items":["2","1","1","2"],"labels":null,"ptr":{"i":3},"cls":{"0":"done","1":"done","2":"done","3":"cur"}},{"t":"array","name":"dp: best loot from the houses named above each cell","items":["0","0","2","2","3","4"],"labels":["none","none","0..0","0..1","0..2","0..3"],"ptr":{},"cls":{"4":"win","3":"win","5":"cur"}}],"say":"Returns 4."}],"rows":[{"at":3,"cells":["0","2","0","2","2"]},{"at":5,"cells":["1","1","2","1","2"]},{"at":7,"cells":["2","1","2","3","3"]},{"at":9,"cells":["3","2","3","4","4"]}],"cols":["house","money","skip","rob","best"],"result":"4"},{"label":"Coins [1, 3, 4], amount 6","about":"Largest-first would take 4 + 1 + 1. The table tries every last coin and finds 3 + 3.","code":["def coin_change(coins, amount):","    dp = [0] + [amount + 1] * amount","    for a in range(1, amount + 1):","        for c in coins:","            if c <= a:","                dp[a] = min(dp[a], dp[a - c] + 1)","    return dp[amount] if dp[amount] <= amount else -1"],"steps":[{"line":2,"ret":false,"views":[{"t":"vars","items":[["coins","[1, 3, 4]"],["amount","6"]]}],"say":"Ready. Step runs the highlighted line."},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","∞","∞","∞","∞","∞","∞"],"labels":null,"ptr":{},"cls":{}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","None"]]}],"say":"dp = [0, 7, 7, 7, 7, 7, 7]"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","∞","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","None"]]}],"say":"a = 1"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","∞","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1,"a − c":0},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c = 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","∞","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1,"a − c":0},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1,"a − c":0},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[0] + 1 = 1, against ∞. dp[1] = 1."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":1},"cls":{"2":"done","3":"done","4":"done","5":"done","6":"done","1":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"a: 1 → 2"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2,"a − c":1},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c: 4 → 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","∞","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2,"a − c":1},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2,"a − c":1},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[1] + 1 = 2, against ∞. dp[2] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":""},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":2},"cls":{"3":"done","4":"done","5":"done","6":"done","2":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":3},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"a: 2 → 3"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":2},"cls":{"4":"done","5":"done","6":"done","3":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c: 4 → 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","∞","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":2},"cls":{"4":"done","5":"done","6":"done","3":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"","ask":{"q":"Amount 3, coin 1: dp[2] = 2. Does this coin improve dp[3] (now ∞)?","options":["yes","no"],"answer":"yes","why":"It improves when the smaller amount plus this one coin beats the best found so far."}},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","3","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":2},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[2] + 1 = 3, against ∞. dp[3] = 3."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","3","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":0},"cls":{"4":"done","5":"done","6":"done","3":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","3","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":0},"cls":{"4":"done","5":"done","6":"done","3":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"","ask":{"q":"Amount 3, coin 3: dp[0] = 0. Does this coin improve dp[3] (now 3)?","options":["yes","no"],"answer":"yes","why":"It improves when the smaller amount plus this one coin beats the best found so far."}},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":3,"a − c":0},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"Last coin 3: dp[0] + 1 = 1, against 3. dp[3] = 1."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":3},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":3},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":3},"cls":{"4":"done","5":"done","6":"done","3":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":0},"cls":{"5":"done","6":"done","4":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"a: 3 → 4"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":3},"cls":{"5":"done","6":"done","4":"cur","3":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c: 4 → 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","∞","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":3},"cls":{"5":"done","6":"done","4":"cur","3":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"","ask":{"q":"Amount 4, coin 1: dp[3] = 1. Does this coin improve dp[4] (now ∞)?","options":["yes","no"],"answer":"yes","why":"It improves when the smaller amount plus this one coin beats the best found so far."}},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":3},"cls":{"5":"done","6":"done","4":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[3] + 1 = 2, against ∞. dp[4] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":1},"cls":{"5":"done","6":"done","4":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":1},"cls":{"5":"done","6":"done","4":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"","ask":{"q":"Amount 4, coin 3: dp[1] = 1. Does this coin improve dp[4] (now 2)?","options":["yes","no"],"answer":"no","why":"It improves when the smaller amount plus this one coin beats the best found so far."}},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":1},"cls":{"5":"done","6":"done","4":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"Last coin 3: dp[1] + 1 = 2, against 2. dp[4] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":0},"cls":{"5":"done","6":"done","4":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","2","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":0},"cls":{"5":"done","6":"done","4":"cur","0":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":0},"cls":{"5":"done","6":"done","4":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"Last coin 4: dp[0] + 1 = 1, against 2. dp[4] = 1."},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","∞","∞"],"labels":null,"ptr":{"a":4,"a − c":0},"cls":{"5":"done","6":"done","4":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","∞","∞"],"labels":null,"ptr":{"a":5,"a − c":1},"cls":{"6":"done","5":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"a: 4 → 5"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","∞","∞"],"labels":null,"ptr":{"a":5,"a − c":4},"cls":{"6":"done","5":"cur","4":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c: 4 → 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","∞","∞"],"labels":null,"ptr":{"a":5,"a − c":4},"cls":{"6":"done","5":"cur","4":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":4},"cls":{"6":"done","5":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[4] + 1 = 2, against ∞. dp[5] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":2},"cls":{"6":"done","5":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":2},"cls":{"6":"done","5":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":2},"cls":{"6":"done","5":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"Last coin 3: dp[2] + 1 = 3, against 2. dp[5] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":1},"cls":{"6":"done","5":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":1},"cls":{"6":"done","5":"cur","1":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":1},"cls":{"6":"done","5":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"Last coin 4: dp[1] + 1 = 2, against 2. dp[5] = 2."},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":5,"a − c":1},"cls":{"6":"done","5":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"a: 5 → 6"},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":6,"a − c":5},"cls":{"6":"cur","5":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"c: 4 → 1"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","∞"],"labels":null,"ptr":{"a":6,"a − c":5},"cls":{"6":"cur","5":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","3"],"labels":null,"ptr":{"a":6,"a − c":5},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","1"]]}],"say":"Last coin 1: dp[5] + 1 = 3, against ∞. dp[6] = 3."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","3"],"labels":null,"ptr":{"a":6,"a − c":3},"cls":{"6":"cur","3":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"c: 1 → 3"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","3"],"labels":null,"ptr":{"a":6,"a − c":3},"cls":{"6":"cur","3":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":3},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","3"]]}],"say":"Last coin 3: dp[3] + 1 = 2, against 3. dp[6] = 2."},{"line":5,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"c: 3 → 4"},{"line":6,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur","2":"win"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":4,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"Last coin 4: dp[2] + 1 = 3, against 2. dp[6] = 2."},{"line":3,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":7,"ret":false,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":""},{"line":7,"ret":true,"views":[{"t":"array","name":"dp[a]: fewest coins for amount a (∞: not yet possible)","items":["0","1","2","1","1","2","2"],"labels":null,"ptr":{"a":6,"a − c":2},"cls":{"6":"cur"}},{"t":"vars","items":[["coins","[1, 3, 4]"],["c","4"]]}],"say":"Returns 2."}],"rows":[{"at":11,"cells":["1","1"]},{"at":20,"cells":["2","2"]},{"at":30,"cells":["3","1"]},{"at":41,"cells":["4","1"]},{"at":52,"cells":["5","2"]},{"at":63,"cells":["6","2"]}],"cols":["amount","fewest coins"],"result":"2"}],"spot":{"idea":["Dynamic programming fits when a problem asks for a **best value or a count**, its answer can be built from the answers to **smaller versions** of itself, and those smaller versions **repeat** (plain recursion would solve them again and again). Then solve each one once and keep it in a table.","Write it in five lines before coding (SRTBOT, from MIT 6.006): the **S**ubproblem in words ('`dp[i]` = the most loot from houses 0..i'), the **R**elation between subproblems, a **T**opological order to fill them in, the **B**ase cases, the **O**riginal problem's cell, and the **T**ime. Most 1-D problems read either the last one or two cells (take or skip), or every earlier cell (best over all choices)."],"questions":[["What is dp[i], in words?","'The most loot from the first i houses', 'the fewest coins for amount i'."],["What is the last decision?","Rob house i or not; which coin was used last; where the last word starts."],["Which cells does dp[i] read?","Only smaller ones, so filling left to right works."],["Count or best?","Counts add over the choices; best takes max or min."]],"cases":[{"text":"The most money from houses in a row without robbing two neighbours.","options":["DP: rob i plus dp[i − 2], or skip and keep dp[i − 1]","Greedy: take every other house","Backtracking"],"answer":0,"why":"Two choices per house, each building on a smaller prefix; every-other-house fails on [2, 1, 1, 2]."},{"text":"The fewest coins to make an amount, with arbitrary coin values.","options":["Greedy: largest coin first","DP over amounts: 1 + min over coins of dp[amount − coin]","Binary search"],"answer":1,"why":"The last coin is one of the coins; the rest is a smaller amount solved the same way."},{"text":"List every way to climb n stairs.","options":["DP","Backtracking","Two pointers"],"answer":1,"why":"Listing them all is exponential output: backtracking. Counting them is DP."},{"text":"Can a string be split into dictionary words?","options":["DP over prefixes: dp[i] true if some word ends at i after a true dp[j]","A trie only","A stack"],"answer":0,"why":"The last word ends at i; the prefix before it is a smaller instance of the same question."},{"text":"The longest strictly increasing subsequence.","options":["DP: dp[i] = 1 + max dp[j] over j < i with nums[j] < nums[i]","Sliding window","Sort the array"],"answer":0,"why":"Best ending at i reads every earlier cell: O(n²), or O(n log n) with patience sorting."},{"text":"The largest product of a contiguous subarray.","options":["Track both the largest and smallest product ending at i","Prefix sums","A heap"],"answer":0,"why":"A negative number swaps them, so keep both: two numbers per step."}],"near_misses":[["All combinations or paths themselves.","Exponential output: backtracking. DP only counts or optimises."],["A greedy choice with an exchange argument.","Jump Game needs only the farthest reach; DP would work but is slower."],["Two sequences, or a grid.","Two indices: 2-D DP."]]},"check":{"text":"Run rob on [4, 1, 2, 7, 5, 3, 1]. Write the dp cells for houses 0..6 (leave out the two padding cells), and the return value.","fields":[{"label":"dp for houses 0..6","answer":"[4, 4, 6, 11, 11, 14, 14]"},{"label":"Return value","answer":"14"}],"questions":[{"q":"Climbing stairs with steps of 1, 2 or 3: which cells does dp[i] read?","options":["dp[i − 1] only","dp[i − 1], dp[i − 2] and dp[i − 3], added","Every earlier cell, max"],"answer":1,"why":"The last step was 1, 2 or 3; the count adds the ways for each."},{"q":"Coin change says 'fewest coins' but someone writes greedy largest-first. Which input breaks it?","options":["coins [1, 5, 10], amount 15","coins [1, 3, 4], amount 6","coins [2], amount 4"],"answer":1,"why":"Largest-first gives 4 + 1 + 1 = 3 coins; 3 + 3 = 2."}],"own":{"prompt":"How do you turn a problem into a DP table, and why is it faster than plain recursion?","model":"Write the subproblem in words (dp[i] = the most loot from houses 0..i), find the last decision (rob house i or not), and turn that into a relation over smaller cells. Fill the table in an order where every cell it reads is already filled, set base cases that mean something, and read the answer from the right cell. Plain recursion solves the same subproblems many times over; the table solves each once, so the time is cells × work per cell."}}}</script>
+<script>"use strict";
+// The stepper and the checks of a built explainer page; scripts/build_explainer.py inlines this file.
+// Everything shown comes from the JSON in #data, recorded by running the spec's Python. The page keeps its state in
+// memory only (the learning app serves it sandboxed, where storage throws), and nothing takes focus on load.
+const DATA = JSON.parse(document.getElementById("data").textContent);
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else if (k.startsWith("on")) node[k] = v;
+    else node.setAttribute(k, v);
+  }
+  node.append(...kids.filter((x) => x !== null && x !== undefined && x !== false));
+  return node;
+}
+// Answers compare as tokens: "(0, 5) (0, 4)", "(0,5),(0,4)" and "[0, 5, 0, 4]" are the same answer.
+const norm = (s) => String(s).toLowerCase().replace(/[\s'"()[\]{},;]+/g, ",").replace(/^,+|,+$/g, "");
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text = "") {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+// --- theme ---------------------------------------------------------------------------------------------------------
+document.getElementById("theme").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+};
+
+// --- multiple choice: the recognition cases and the transfer questions ---------------------------------------------
+function choice(item, record) {
+  const box = el("div", {class: "choice"}, el("p", {class: "q", text: item.text || item.q}));
+  const options = el("div", {class: "options"});
+  const said = el("p", {class: "said", role: "status"});
+  let first = true;
+  item.options.forEach((label, i) => {
+    options.append(el("button", {type: "button", text: label, onclick: (e) => {
+      const right = i === item.answer;
+      e.target.classList.add(right ? "right" : "wrong");
+      said.textContent = (right ? "Yes. " : "Not this one. ") + (right ? item.why : (item.miss?.[i] || "Look for what the method relies on, and try again."));
+      said.className = "said " + (right ? "right" : "wrong");
+      if (first && record) record(right);
+      first = false;
+      if (right) options.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    }}));
+  });
+  box.append(options, said);
+  return box;
+}
+(function cases() {
+  const host = document.getElementById("cases");
+  const score = el("p", {class: "muted", role: "status"});
+  let tried = 0, right = 0;
+  const record = (ok) => {
+    tried += 1; right += ok ? 1 : 0;
+    score.textContent = `First pick right: ${right} of ${tried}` + (tried === DATA.spot.cases.length ? ` (all ${tried} cases).` : ".");
+  };
+  DATA.spot.cases.forEach((c) => host.append(choice(c, record)));
+  host.append(score);
+})();
+
+// --- views: pure functions of one step's state ----------------------------------------------------------------------
+function changed(view, prev) {  // indexes or names whose value differs from the same view one step back
+  if (!prev || prev.t !== view.t || prev.name !== view.name) return new Set();
+  const out = new Set();
+  if (view.t === "array") view.items.forEach((x, i) => { if (prev.items[i] !== x) out.add(String(i)); });
+  if (view.t === "vars") view.items.forEach(([k, v]) => { const p = prev.items.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  if (view.t === "map") view.entries.forEach(([k, v]) => { const p = prev.entries.find((x) => x[0] === k); if (!p || p[1] !== v) out.add(k); });
+  return out;
+}
+const VIEWS = {
+  array(v, chg) {
+    const row = el("div", {class: "cells"});
+    v.items.forEach((x, i) => {
+      const ptrs = Object.entries(v.ptr).filter(([, j]) => j === i).map(([k]) => k).join(" ");
+      row.append(el("div", {class: `cell ${v.cls[i] || ""} ${chg.has(String(i)) ? "chg" : ""}`},
+        el("span", {class: "idx", text: v.labels ? v.labels[i] : String(i)}), el("span", {class: "val", text: x}),
+        el("span", {class: "ptr", text: ptrs})));
+    });
+    const past = Object.entries(v.ptr).filter(([, j]) => j >= v.items.length || j < 0);
+    if (past.length) row.append(el("div", {class: "cell ghost"}, el("span", {class: "idx", text: String(v.items.length)}),
+      el("span", {class: "val", text: "·"}), el("span", {class: "ptr", text: past.map(([k]) => k).join(" ")})));
+    return row;
+  },
+  list(v) {
+    const row = el("div", {class: "chips"});
+    if (!v.items.length) row.append(el("span", {class: "muted", text: "empty"}));
+    v.items.forEach((x, i) => row.append(el("span", {class: `chip ${v.cls[i] || ""}`, text: x})));
+    if (v.note) row.append(el("span", {class: "muted note", text: v.note}));
+    return row;
+  },
+  map(v, chg) {
+    const t = el("table", {class: "kv"});
+    if (!v.entries.length) t.append(el("tr", {}, el("td", {class: "muted", text: "empty"})));
+    v.entries.forEach(([k, x]) => t.append(el("tr", {class: `${k === v.hl ? "cur" : ""} ${chg.has(k) ? "chg" : ""}`},
+      el("td", {text: k}), el("td", {text: x}))));
+    return t;
+  },
+  vars(v, chg) {
+    const row = el("div", {class: "chips"});
+    v.items.forEach(([k, x]) => row.append(el("span", {class: `var ${chg.has(k) ? "chg" : ""}`}, el("b", {text: k}), " = ", x)));
+    return row;
+  },
+  grid(v) {
+    const t = el("table", {class: "grid"});
+    if (v.colh) t.append(el("tr", {}, v.rowh ? el("th") : null, ...v.colh.map((h) => el("th", {text: String(h)}))));
+    v.cells.forEach((row, r) => t.append(el("tr", {}, v.rowh ? el("th", {text: String(v.rowh[r])}) : null,
+      ...row.map((x, c) => el("td", {class: v.cls[`${r},${c}`] || "", text: x})))));
+    return t;
+  },
+  graph(v) {
+    const U = 64, R = 17, pad = 30;
+    const [vw, vh] = [(v.w - 1) * U + 2 * pad, (v.h - 1) * U + 2 * pad + 14];  // drawn at natural size, never wider than its box
+    const s = svg("svg", {viewBox: `${-pad} ${-pad} ${vw} ${vh}`, width: vw, height: vh, class: "graph", role: "img"});
+    const at = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+    if (v.directed) {
+      const marker = svg("marker", {id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "9", markerHeight: "9",
+        markerUnits: "userSpaceOnUse", orient: "auto-start-reverse"});
+      marker.append(svg("path", {d: "M0,0 L10,5 L0,10 z", class: "arrowhead"}));
+      const defs = svg("defs");
+      defs.append(marker);
+      s.append(defs);
+    }
+    for (const e of v.edges) {
+      const a = at[e.a], b = at[e.b];
+      if (!a || !b) continue;
+      const [x1, y1, x2, y2] = [a.x * U, a.y * U, b.x * U, b.y * U];
+      const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const [ux, uy] = [(x2 - x1) / d, (y2 - y1) / d];
+      s.append(svg("line", {x1: x1 + ux * R, y1: y1 + uy * R, x2: x2 - ux * (R + 2), y2: y2 - uy * (R + 2),
+        class: `edge ${e.cls || ""}`, ...(v.directed ? {"marker-end": "url(#arrow)"} : {})}));
+      if (e.label !== undefined && e.label !== "") {
+        s.append(svg("text", {x: (x1 + x2) / 2 - uy * 10, y: (y1 + y2) / 2 + ux * 10 + 4, class: "elabel"}, String(e.label)));
+      }
+    }
+    for (const n of v.nodes) {
+      const wide = Math.max(2 * R, 8 * String(n.label).length + 12);  // a long label gets a pill, not a circle
+      s.append(wide > 2 * R
+        ? svg("rect", {x: n.x * U - wide / 2, y: n.y * U - R, width: wide, height: 2 * R, rx: R, class: `node ${n.cls || ""}`})
+        : svg("circle", {cx: n.x * U, cy: n.y * U, r: R, class: `node ${n.cls || ""}`}));
+      s.append(svg("text", {x: n.x * U, y: n.y * U + 4, class: "nlabel"}, String(n.label)));
+      if (n.tag) s.append(svg("text", {x: n.x * U, y: n.y * U + R + 13, class: "ntag"}, String(n.tag)));
+    }
+    return s;
+  },
+  bars(v) {
+    const W = 320, rowH = 22, span = Math.max(1, v.hi - v.lo);
+    const s = svg("svg", {viewBox: `0 0 ${W + 20} ${v.spans.length * rowH + 26}`, width: W + 20, height: v.spans.length * rowH + 26, class: "bars", role: "img"});
+    const x = (t) => 10 + ((t - v.lo) / span) * W;
+    v.spans.forEach(([a, b, label, cls], i) => {
+      s.append(svg("rect", {x: x(a), y: i * rowH + 4, width: Math.max(3, x(b) - x(a)), height: rowH - 8, rx: 3, class: `span ${cls || ""}`}));
+      const text = label || `[${a}, ${b}]`, room = 7 * text.length;  // right of the bar, else left of it, else inside
+      const [tx, anchor] = x(b) + 4 + room <= W + 20 ? [x(b) + 4, "start"] : x(a) - 4 - room >= 0 ? [x(a) - 4, "end"] : [(x(a) + x(b)) / 2, "middle"];
+      s.append(svg("text", {x: tx, y: i * rowH + rowH / 2 + 4, class: "slabel", "text-anchor": anchor}, text));
+    });
+    const axis = v.spans.length * rowH + 8;
+    s.append(svg("line", {x1: x(v.lo), y1: axis, x2: x(v.hi), y2: axis, class: "axis"}));
+    for (let t = v.lo; t <= v.hi; t += Math.max(1, Math.ceil(span / 10))) {
+      s.append(svg("text", {x: x(t), y: axis + 14, class: "tick"}, String(t)));
+    }
+    return s;
+  },
+  text(v) { return el("p", {text: v.text}); },
+};
+function drawViews(step, prev) {
+  const box = el("div", {class: "views"});
+  step.views.forEach((v, i) => {
+    const before = prev?.views[i];
+    box.append(el("figure", {class: `view v-${v.t}`}, v.name ? el("figcaption", {text: v.name}) : null, VIEWS[v.t](v, changed(v, before))));
+  });
+  return box;
+}
+
+// --- the stepper ------------------------------------------------------------------------------------------------------
+(function stepper() {
+  const host = document.getElementById("stepper");
+  const states = DATA.traces.map(() => ({k: 0, answers: {}}));
+  let current = 0, timer = null;
+  const picker = el("div", {class: "picker", role: "group", "aria-label": "Input"});
+  DATA.traces.forEach((t, i) => picker.append(el("button", {type: "button", text: t.label, onclick: () => { stop(); current = i; draw(); }})));
+  const about = el("p", {class: "about"});
+  const back = el("button", {type: "button", text: "Back", onclick: () => go(-1)});
+  const step = el("button", {type: "button", class: "primary", text: "Step", onclick: () => go(1)});
+  const play = el("button", {type: "button", text: "Play", onclick: () => (timer ? stop() : start())});
+  const reset = el("button", {type: "button", text: "Reset", onclick: () => { stop(); states[current] = {k: 0, answers: {}}; draw(); }});
+  const end = el("button", {type: "button", text: "End", onclick: () => { stop(); while (canStep()) S().k += 1; draw(); }});
+  const where = el("span", {class: "muted where"});
+  const say = el("p", {class: "say", "aria-live": "polite"});
+  const ask = el("div", {class: "ask"});
+  const stage = el("div", {class: "stage"});
+  const code = el("ol", {class: "code"});
+  const table = el("table", {class: "history"});
+  const record = el("p", {class: "muted"});
+  host.append(picker, about, el("div", {class: "controls"}, back, step, play, reset, end, where), say, ask,
+    el("div", {class: "split"}, stage, el("div", {class: "side"}, el("h3", {text: "Python · how often each line has run"}), code)),
+    el("h3", {text: "History"}), el("div", {class: "scroll"}, table), record);
+  if (DATA.traces.length < 2) picker.hidden = true;
+
+  const T = () => DATA.traces[current];
+  const S = () => states[current];
+  const pending = () => T().steps[S().k].ask && !S().answers[S().k];
+  const canStep = () => S().k < T().steps.length - 1 && !pending();
+  function go(d) {
+    if (d > 0 && !canStep()) return;
+    S().k = Math.max(0, Math.min(T().steps.length - 1, S().k + d));
+    draw();
+  }
+  function start() {
+    play.textContent = "Pause";
+    timer = setInterval(() => { if (canStep()) go(1); else stop(); }, 650);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    play.textContent = "Play";
+  }
+  function drawAsk(s, k) {
+    ask.replaceChildren();
+    if (!s.ask) return;
+    const a = s.ask, given = S().answers[k];
+    ask.append(el("p", {class: "q"}, el("b", {text: "Predict: "}), a.q));
+    const reveal = (value) => {
+      S().answers[k] = {value, right: norm(value) === norm(a.answer)};
+      draw();
+    };
+    if (!given) {
+      if (a.options) {
+        ask.append(el("div", {class: "options"}, ...a.options.map((o) => el("button", {type: "button", text: String(o), onclick: () => reveal(String(o))}))));
+      } else {
+        const input = el("input", {type: "text", "aria-label": "Your prediction", autocomplete: "off"});
+        const form = el("form", {class: "fill", onsubmit: (e) => { e.preventDefault(); if (input.value.trim()) reveal(input.value.trim()); }},
+          input, el("button", {type: "submit", text: "Check"}));
+        ask.append(form);
+      }
+      return;
+    }
+    ask.append(el("p", {class: `said ${given.right ? "right" : "wrong"}`},
+      given.right ? `You said ${given.value}. Right.` : `You said ${given.value}. It was ${a.answer}.`, a.why ? " " + a.why : ""));
+  }
+  function draw() {
+    const t = T(), k = S().k, s = t.steps[k];
+    picker.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === current)));
+    about.textContent = t.about;
+    back.disabled = k === 0;
+    step.disabled = !canStep();
+    end.disabled = !canStep();
+    where.textContent = `Step ${k + 1} of ${t.steps.length}` + (pending() ? " · predict to go on" : "");
+    say.textContent = s.say || "";
+    drawAsk(s, k);
+    stage.replaceChildren(drawViews(s, t.steps[k - 1]));
+    const runs = {};
+    for (let i = 0; i < k; i++) if (!t.steps[i].ret) runs[t.steps[i].line] = (runs[t.steps[i].line] || 0) + 1;
+    code.replaceChildren(...t.code.map((line, i) => el("li", {class: i + 1 === s.line ? (s.ret ? "cur ret" : "cur") : ""},
+      el("span", {class: "runs", text: runs[i + 1] ? String(runs[i + 1]) : ""}), el("code", {text: line || " "}))));
+    table.replaceChildren(el("tr", {}, ...t.cols.map((c) => el("th", {text: c}))),
+      ...t.rows.filter((r) => r.at <= k).map((r) => el("tr", {}, ...r.cells.map((c) => el("td", {text: c})))));
+    if (!t.rows.some((r) => r.at <= k)) table.append(el("tr", {}, el("td", {class: "muted", colspan: String(t.cols.length || 1), text: "Rows appear as you step."})));
+    const given = Object.values(S().answers);
+    record.textContent = given.length ? `Predictions on this input: ${given.filter((g) => g.right).length} of ${given.length} right.` : "";
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || document.body.classList.contains("checking")) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > innerHeight) return;  // only while the stepper is on screen
+    if (e.key === "ArrowRight") { e.preventDefault(); stop(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); stop(); go(-1); }
+  });
+  draw();
+})();
+
+// --- the check with the lesson hidden -----------------------------------------------------------------------------------
+(function check() {
+  const c = DATA.check, quiz = document.getElementById("quiz"), hide = document.getElementById("hide");
+  const inputs = c.fields.map((f) => el("input", {type: "text", autocomplete: "off", "aria-label": f.label}));
+  const marks = c.fields.map(() => el("span", {class: "mark", role: "status"}));
+  const fields = el("div", {class: "fields"}, ...c.fields.map((f, i) => el("label", {}, f.label, inputs[i], marks[i])));
+  const checkBtn = el("button", {type: "button", class: "primary", text: "Check my trace", onclick: () => {
+    c.fields.forEach((f, i) => {
+      const ok = norm(inputs[i].value) === norm(f.answer);
+      marks[i].textContent = ok ? "Right." : `It was ${f.answer}.`;
+      marks[i].className = "mark " + (ok ? "right" : "wrong");
+    });
+  }});
+  const own = el("textarea", {rows: "4", "aria-label": "In your own words"});
+  const model = el("p", {class: "model", hidden: ""}, c.own.model);
+  quiz.append(el("p", {class: "muted", text: "The traces, code, plan card and history are hidden. Work on paper if you like."}),
+    el("h3", {text: "Trace a fresh input"}), el("p", {text: c.text}), fields, checkBtn,
+    el("h3", {text: "Transfer"}), ...c.questions.map((q) => choice(q)),
+    el("h3", {text: "In your own words"}), el("p", {text: c.own.prompt}), own,
+    el("button", {type: "button", text: "Compare with the reasoning", onclick: () => { model.hidden = false; }}), model,
+    el("p", {}, el("button", {type: "button", class: "ghost", text: "Return to the lesson", onclick: () => {
+      document.body.classList.remove("checking"); quiz.hidden = true; hide.hidden = false;
+    }})));
+  hide.onclick = () => {
+    document.body.classList.add("checking");
+    quiz.hidden = false;
+    hide.hidden = true;
+    document.getElementById("check").scrollIntoView({block: "start"});
+  };
+})();
+</script>
+</body>
+</html>
