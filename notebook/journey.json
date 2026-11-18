@@ -1,6 +1,6 @@
 {
   "generated": "2026-11-18",
-  "skill_version": "1.0.1",
+  "skill_version": "1.1.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
   "targets": [
@@ -106,7 +106,7 @@
       "retained": 0,
       "ready": 0,
       "status": "practicing",
-      "last_activity": "2026-11-17",
+      "last_activity": "2026-11-18",
       "last_attempt": "2026-11-17",
       "next_problem": "koko-eating-bananas"
     },
@@ -801,7 +801,7 @@
     "minutes": 90,
     "minutes_7d": 70,
     "sessions": 4,
-    "questions": 7,
+    "questions": 8,
     "cards_active": 1,
     "cards_held": 0,
     "cards_draft": 7,
@@ -852,13 +852,6 @@
   ],
   "questions": [
     {
-      "id": "q0003",
-      "date": "2026-10-29",
-      "concept": "sliding-window",
-      "text": "What does it mean to increment have only when a character's count reaches the required count?",
-      "source": "cli"
-    },
-    {
       "id": "q0004",
       "date": "2026-11-05",
       "concept": "stack",
@@ -884,6 +877,13 @@
       "date": "2026-11-17",
       "concept": "binary-search",
       "text": "Rotated search: when we say left and right half, is mid in both?",
+      "source": "cli"
+    },
+    {
+      "id": "q0008",
+      "date": "2026-11-18",
+      "concept": "binary-search",
+      "text": "How do I choose < vs <= in the loop and where equality goes in the comparisons, across plain binary search and rotated arrays (find minimum, find target)? Wants a basic template and what changes per case.",
       "source": "cli"
     }
   ],
@@ -942,10 +942,10 @@
       "title": "Binary Search, explained",
       "url": null,
       "file": "concepts/binary-search/binary-search-explainer.html",
-      "version": 2,
+      "version": 3,
       "created": "2026-11-16",
-      "updated": "2026-11-16",
-      "note": "Broadened recognition of candidate spaces and monotone predicates; added minimum-speed answer-space trace, six recognition cases, and hidden transfer checks in response to q0006. Preserved the array walkthrough.",
+      "updated": "2026-11-18",
+      "note": "Added Choose the loop (four questions, pairing rules, three templates checked in Python, the family table, where each = comes from in rotated arrays, LC 153 behind a spoiler), a loop lab over 480 Python-run variants, Where it breaks, and a guard question in the check (q0008).",
       "source": "cli"
     },
     {

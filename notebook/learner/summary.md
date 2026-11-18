@@ -1,4 +1,4 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-18 by coach.py snapshot · skill 1.0.1
+DSA COACH LEARNER SUMMARY · generated 2026-11-18 by coach.py snapshot · skill 1.1.0
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
 Plan: day 20 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
@@ -39,9 +39,9 @@ Stated preferences (formatting defaults only, not evidence):
 - Time complexity: count how often each line runs, from real runs, then derive the Big-O in one short method used the same way everywhere (stated 2026-11-05 after Stack, Derived v2: liked the counting, wanted it cleaner). Preferred; untested on delayed outcomes.
 
 Recent questions:
+- 2026-11-18 binary-search: How do I choose < vs <= in the loop and where equality goes in the comparisons, across plain binary search and rotated arrays (find minimum,
 - 2026-11-17 binary-search: Rotated search: when we say left and right half, is mid in both?
 - 2026-11-16 binary-search: This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we shou
-- 2026-11-11 heap: Help me understand heap data structure and prepare for coding interviews; requested an interactive visualization.
 
 Next steps:
 1. Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 14.

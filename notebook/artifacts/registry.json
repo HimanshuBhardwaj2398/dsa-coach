@@ -53,10 +53,10 @@
     "title": "Binary Search, explained",
     "url": null,
     "file": "concepts/binary-search/binary-search-explainer.html",
-    "version": 2,
+    "version": 3,
     "created": "2026-11-16",
-    "updated": "2026-11-16",
-    "note": "Broadened recognition of candidate spaces and monotone predicates; added minimum-speed answer-space trace, six recognition cases, and hidden transfer checks in response to q0006. Preserved the array walkthrough.",
+    "updated": "2026-11-18",
+    "note": "Added Choose the loop (four questions, pairing rules, three templates checked in Python, the family table, where each = comes from in rotated arrays, LC 153 behind a spoiler), a loop lab over 480 Python-run variants, Where it breaks, and a guard question in the check (q0008).",
     "source": "cli"
   },
   {
