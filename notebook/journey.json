@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-18",
+  "generated": "2026-11-21",
   "skill_version": "1.1.0",
   "learner": "Himanshu",
   "goal": "Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head",
@@ -11,9 +11,9 @@
   "plan": {
     "start_date": "2026-10-30",
     "target_date": "2027-01-28",
-    "day": 20,
+    "day": 23,
     "total_days": 90,
-    "week": 3,
+    "week": 4,
     "plan_weeks": 12,
     "phase": "Foundations",
     "weekly_hours": 11
@@ -351,12 +351,11 @@
       "next_problem": "softmax-and-cross-entropy"
     }
   ],
-  "behind": [],
-  "this_week": [
+  "behind": [
     "machine-coding"
   ],
+  "this_week": [],
   "ahead": [
-    "trees",
     "heap",
     "backtracking",
     "graphs",
@@ -648,7 +647,7 @@
         "problem": "valid-anagram",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -656,7 +655,7 @@
         "problem": "group-anagrams",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -664,7 +663,7 @@
         "problem": "top-k-frequent-elements",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -672,7 +671,7 @@
         "problem": "encode-and-decode-strings",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -680,7 +679,7 @@
         "problem": "product-of-array-except-self",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -688,7 +687,7 @@
         "problem": "longest-consecutive-sequence",
         "pattern": "arrays-hashing",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -696,7 +695,7 @@
         "problem": "valid-palindrome",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -704,7 +703,7 @@
         "problem": "3sum",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -712,7 +711,7 @@
         "problem": "container-with-most-water",
         "pattern": "two-pointers",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -720,7 +719,7 @@
         "problem": "best-time-to-buy-and-sell-stock",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -728,7 +727,7 @@
         "problem": "longest-substring-without-repeating-characters",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -736,7 +735,7 @@
         "problem": "longest-repeating-character-replacement",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -744,7 +743,7 @@
         "problem": "minimum-window-substring",
         "pattern": "sliding-window",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -752,7 +751,7 @@
         "problem": "valid-parentheses",
         "pattern": "stack",
         "due": "2026-11-06",
-        "overdue_days": 12,
+        "overdue_days": 15,
         "status": "learning",
         "check": "code"
       },
@@ -760,7 +759,7 @@
         "problem": "binary-search",
         "pattern": "binary-search",
         "due": "2026-11-07",
-        "overdue_days": 11,
+        "overdue_days": 14,
         "status": "learning",
         "check": "code"
       },
@@ -768,7 +767,7 @@
         "problem": "two-sum",
         "pattern": "arrays-hashing",
         "due": "2026-11-08",
-        "overdue_days": 10,
+        "overdue_days": 13,
         "status": "practicing",
         "check": "code"
       },
@@ -776,8 +775,16 @@
         "problem": "contains-duplicate",
         "pattern": "arrays-hashing",
         "due": "2026-11-18",
-        "overdue_days": 0,
+        "overdue_days": 3,
         "status": "learning",
+        "check": "code"
+      },
+      {
+        "problem": "search-in-rotated-sorted-array",
+        "pattern": "binary-search",
+        "due": "2026-11-20",
+        "overdue_days": 1,
+        "status": "practicing",
         "check": "code"
       }
     ],
@@ -1152,11 +1159,11 @@
     "python-collections"
   ],
   "next_steps": [
-    "Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 14.",
+    "Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 15.",
     "Quiz: 1 due card(s), about 2 minutes (`coach.py quiz`).",
     "Solve daily-temperatures unaided to move Stack forward.",
     "Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).",
-    "This week's plan: start Machine Coding (LLD).",
+    "Behind plan: start Machine Coding (LLD) (planned for week 3).",
     "Revisit high-confidence miss a0018 (contains-duplicate)."
   ]
 }

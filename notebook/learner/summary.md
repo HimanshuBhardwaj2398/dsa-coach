@@ -1,7 +1,7 @@
-DSA COACH LEARNER SUMMARY · generated 2026-11-18 by coach.py snapshot · skill 1.1.0
+DSA COACH LEARNER SUMMARY · generated 2026-11-21 by coach.py snapshot · skill 1.1.0
 Learner: Himanshu · Goal: Ace coding and DSA interviews for AI engineer roles, and get better at planning programs in my head
 Targets: Indian product companies and GCCs, Global / US remote AI roles, AI startups
-Plan: day 20 of 90, week 3 of 12, phase Foundations, target date 2027-01-28
+Plan: day 23 of 90, week 4 of 12, phase Foundations, target date 2027-01-28
 Focus: Stack (learning)
 
 Patterns started (status, attempted/solved/retained/ready of target):
@@ -26,7 +26,7 @@ Patterns started (status, attempted/solved/retained/ready of target):
 - Bit Manipulation: exploring, 0/0/0/0 of 7
 Other concepts: python-collections
 
-Due today: 17 re-solve(s) [valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings, product-of-array-except-self], 1 card(s), 7 draft card(s), 0 inbox delta(s)
+Due today: 18 re-solve(s) [valid-anagram, group-anagrams, top-k-frequent-elements, encode-and-decode-strings, product-of-array-except-self], 1 card(s), 7 draft card(s), 0 inbox delta(s)
 Weak spots (30 days): boundary×2, comp×1, process×1
 Calibration: avg confidence before unaided solves 3.0, before other attempts 3.5; high-confidence misses: a0018
 Last session: 2026-11-17: Parked contains-duplicate; solved search-in-rotated-sorted-array at rung 1 (sorted-half test, <= edge, duplicates follow-up); feedback f0014-f0018
@@ -44,7 +44,7 @@ Recent questions:
 - 2026-11-16 binary-search: This binary search artifact is specifically focused on one question of finding a target in an ascending order arranged list, i think we shou
 
 Next steps:
-1. Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 14.
+1. Re-solve from a blank page: valid-anagram, group-anagrams, top-k-frequent-elements. Also due after these: 15.
 2. Quiz: 1 due card(s), about 2 minutes (`coach.py quiz`).
 3. Solve daily-temperatures unaided to move Stack forward.
 4. Approve, edit or retire 7 draft card(s) (`coach.py card list --drafts`).
