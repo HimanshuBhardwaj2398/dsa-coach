@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linked lists field guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday learning: a study guide that is also a working lab bench
+   IDEA a lab poster: one live experiment on top, reference panels below
+   PICTURE the playground: the same data as an array and as a chain of nodes, costs counted live
+   COLOUR oxford blue band, white panels, magenta for the cost that matters, cobalt for pointers
+   TYPE Red Hat Display headings, Red Hat Text body, Red Hat Mono code
+   LAYOUT laptop: band with title + playground full width; phone: title, playground, controls stacked */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#070f26);--ink:light-dark(#10182e,#e8ecf7);--soft:light-dark(#4a5572,#a9b3cc);--panel:light-dark(#f2f4fa,#0f1b3d);--line:light-dark(#d5dbe9,#24345f);--band:#0b1f4b;--mag:#e0115f;--magbg:light-dark(#fde7ef,#3a0d22);--cob:light-dark(#2348b8,#8ea8ff);--cobbg:light-dark(#e6ecfb,#152a63);--ok:light-dark(#127a4a,#5fd39a)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Red Hat Text",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Red Hat Display",system-ui,sans-serif;letter-spacing:-.02em;line-height:1.1;margin:0}
+h1{font-size:clamp(32px,5vw,50px);text-wrap:balance}
+h2{font-size:clamp(26px,3.4vw,34px);margin-bottom:10px;text-wrap:balance}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 12px;max-width:70ch}
+a{color:var(--cob)}
+code,pre,.mono{font-family:"Red Hat Mono",ui-monospace,monospace}
+code{font-size:.92em;overflow-wrap:anywhere}
+.wrap{max-width:1240px;margin:0 auto}
+.band{padding-block:clamp(28px,4vw,60px);padding-left:max(5vw,16px);padding-right:max(5vw,16px)}
+.top{background:var(--band);color:#fff}
+.top .lede{color:#c9d4f2;font-size:17px;max-width:62ch;margin-top:12px}
+.lab{margin-top:24px;background:var(--bg);color:var(--ink);border-radius:14px;padding:clamp(16px,2.4vw,28px)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.lbl{font-size:13px;color:var(--soft);font-weight:600;margin:0 0 6px}
+.track{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 2px 14px}
+.cell{flex:none;width:58px;text-align:center}
+.cell b{display:block;height:52px;line-height:52px;border:1.5px solid var(--line);border-right-width:0;font:500 18px "Red Hat Mono",monospace;background:var(--panel);transition:background .2s,color .2s}
+.cell:last-child b{border-right-width:1.5px}
+.cell.cap b{background:transparent;border-style:dashed;color:transparent}
+.cell span{font-size:13px;color:var(--soft)}
+.cell.hit b{background:var(--magbg);color:var(--mag)}
+.node{flex:none;display:flex;border:1.5px solid var(--cob);border-radius:8px;overflow:hidden;background:var(--bg);transition:background .2s}
+.node b{width:52px;height:52px;line-height:52px;text-align:center;font:500 18px "Red Hat Mono",monospace}
+.node i{width:24px;background:var(--cobbg);border-left:1.5px solid var(--cob);display:grid;place-items:center;font-style:normal;color:var(--cob);font-size:13px}
+.node.walk{background:var(--cobbg)}
+.node.hit{background:var(--magbg)}
+.node.hit b{color:var(--mag)}
+.arr{flex:none;width:30px;height:2px;background:var(--cob);position:relative;margin:0 2px}
+.arr::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid var(--cob);border-right:0}
+.tag{flex:none;font:500 13px "Red Hat Mono",monospace;color:var(--soft);padding:0 8px}
+.costs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-top:6px}
+.cost{background:var(--panel);border-radius:10px;padding:14px 16px}
+.cost .n{font:700 clamp(30px,4vw,40px)/1 "Red Hat Display",sans-serif;white-space:nowrap}
+.cost.win .n{color:var(--mag)}
+.cost p{margin:6px 0 0;font-size:14px;color:var(--soft)}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;align-items:end}
+.ctrls label{display:grid;gap:4px;font-size:13px;color:var(--soft);font-weight:600}
+input[type=number]{font:16px "Red Hat Mono",monospace;width:96px;height:44px;padding:0 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button{font:600 15px "Red Hat Text",sans-serif;min-height:44px;padding:0 14px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--cob)}
+button:active{transform:translateY(1px)}
+button.pri{background:var(--cob);border-color:var(--cob);color:light-dark(#fff,#071233)}
+:focus-visible{outline:3px solid var(--mag);outline-offset:2px}
+.err{color:var(--mag);font-size:14px;min-height:22px;margin:8px 0 0}
+.say{font-size:15px;margin:10px 0 0;color:var(--ink)}
+.ctrls label.chk{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--ink);font-size:15px}
+.chk input{width:20px;height:20px;margin:0;accent-color:var(--mag)}
+.pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:12px 14px;border:1.5px dashed var(--mag);border-radius:10px}
+.pick[hidden]{display:none}
+.pick span{font-weight:600;margin-right:4px}
+nav.scroll{display:flex;gap:6px;overflow-x:auto;padding:10px max(5vw,16px);border-bottom:1px solid var(--line);background:var(--bg)}
+nav a{flex:none;text-decoration:none;color:var(--ink);font-weight:600;font-size:15px;padding:8px 12px;border-radius:8px}
+nav a:hover{background:var(--panel)}
+@media(min-width:900px){nav.scroll{position:sticky;top:0;z-index:5}}
+section.band{border-bottom:1px solid var(--line)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start}
+.panel{background:var(--panel);border-radius:12px;padding:18px 20px}
+pre{background:var(--panel);border-radius:10px;padding:16px 18px;margin:0;font-size:14px;line-height:1.55;overflow-x:auto}
+.code{position:relative}
+.copy{position:absolute;top:8px;right:8px;min-height:36px;font-size:13px;padding:0 10px;background:var(--bg)}
+.kinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.kinds .panel p{font-size:15px;margin:0}
+.mem{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin:8px 0 6px}
+.m{border:1.5px solid var(--line);border-radius:6px;padding:6px 4px;text-align:center;font:13px/1.3 "Red Hat Mono",monospace;color:var(--soft);min-height:62px}
+.m b{display:block;font-size:17px;color:var(--ink);font-weight:500}
+.m.a{background:var(--magbg);border-color:var(--mag)}
+.m.l{background:var(--cobbg);border-color:var(--cob)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"Red Hat Display",sans-serif;font-size:15px}
+td.w{color:var(--mag);font-weight:600}
+.nw{white-space:nowrap}
+.uses{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:12px;margin-top:16px}
+.use{border:1.5px solid var(--line);border-radius:12px;padding:16px 18px}
+.use h3{font-size:18px}
+.use p{font-size:15px;margin:0 0 6px}
+.use .why{color:var(--cob);font-weight:600}
+.pats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;margin-top:16px}
+.pat p{font-size:15px}
+.prog{display:flex;align-items:center;gap:14px;margin:14px 0 6px;flex-wrap:wrap}
+.bar{flex:1 1 220px;height:12px;background:var(--panel);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mag);width:0;transition:width .3s}
+.stage{margin-top:22px}
+.stage>p{color:var(--soft);font-size:15px}
+.q{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 14px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.q input{width:22px;height:22px;margin:4px 0 0;accent-color:var(--mag)}
+.q a{font-weight:600;text-decoration:none;color:var(--ink)}
+.q a:hover{color:var(--cob)}
+.q .meta{font-size:14px;color:var(--soft)}
+.q details{grid-column:2/4;font-size:15px}
+.q summary{cursor:pointer;color:var(--cob);font-size:14px;font-weight:600;width:max-content}
+.q.done a{text-decoration:line-through;color:var(--soft)}
+.pill{font-size:13px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.E{background:light-dark(#dcf3e7,#0e3a26);color:var(--ok)}
+.M{background:var(--cobbg);color:var(--cob)}
+.H{background:var(--magbg);color:var(--mag)}
+.checks details{border:1.5px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:10px}
+.checks summary{cursor:pointer;font-weight:600}
+.checks details p{margin:10px 0 0}
+.res li{margin-bottom:8px}
+footer{padding:24px max(5vw,16px);color:var(--soft);font-size:14px}
+@media(max-width:760px){.two,.kinds{grid-template-columns:minmax(0,1fr)}.mem{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:600px){table{font-size:13px}th,td{padding:6px 4px}.cell{width:48px}.node b{width:42px}.arr{width:20px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="band top">
+<div class="wrap">
+<h1>Linked lists, from pointers to practice</h1>
+<p class="lede">A linked list trades instant indexing for cheap restructuring. Pick an operation below, guess which side does less work, then see the counts for an array and a linked list holding the same data.</p>
+<div class="lab" id="lab">
+<p class="lbl">Array (a dynamic array, like Python's list): one contiguous block, dashed cells are spare capacity</p>
+<div class="track" id="arrRow" aria-label="Array view"></div>
+<p class="lbl">Linked list: separate nodes joined by next pointers</p>
+<div class="track" id="llRow" aria-label="Linked list view"></div>
+<div class="costs">
+<div class="cost" id="cA"><p class="lbl" style="margin:0">Array cost</p><div class="n" id="nA">–</div><p id="tA">Pick an operation to compare.</p></div>
+<div class="cost" id="cL"><p class="lbl" style="margin:0">Linked list cost</p><div class="n" id="nL">–</div><p id="tL">Hops follow next pointers. Writes change a pointer.</p></div>
+</div>
+<p class="say" id="say" aria-live="polite">Pick an operation. With Guess first on, you say which side does less work before the counts appear.</p>
+<div class="pick" id="pick" hidden><span>Less work:</span><button data-g="a">Array</button><button data-g="l">Linked list</button><button data-g="">About the same</button></div>
+<div class="ctrls">
+<label for="val">Value<input type="number" id="val" value="99"></label>
+<label for="idx">Index<input type="number" id="idx" value="2" min="0"></label>
+<button class="pri" data-op="head">Insert at head</button>
+<button data-op="at">Insert at index</button>
+<button data-op="append">Append</button>
+<button data-op="del">Delete at index</button>
+<button data-op="read">Read index</button>
+<button data-op="rev">Reverse</button>
+<button data-op="reset">Reset</button>
+<label class="chk" for="guess"><input type="checkbox" id="guess" checked>Guess first</label>
+</div>
+<p class="err" id="err" role="alert"></p>
+</div>
+</div>
+</header>
+
+<nav class="scroll" aria-label="Sections">
+<a href="#anatomy">Anatomy</a><a href="#compare">Array vs linked list</a><a href="#uses">Where it's used</a><a href="#patterns">Patterns</a><a href="#practice">Practice</a><a href="#checks">Check yourself</a><a href="#read">Read more</a>
+</nav>
+
+<section class="band" id="anatomy"><div class="wrap">
+<h2>A node is a value plus an address</h2>
+<div class="two">
+<div>
+<p>Each node stores its data and a reference to the next node. The list itself is only a reference to the first node, <code>head</code>. The last node points to <code>None</code>. There is no index and no block of memory, so every operation is about following and rewiring references.</p>
+<p>That's why linked list code comes down to two questions: <b>which node am I standing on</b>, and <b>which pointers change</b>. Draw the boxes and arrows before you code, and say which arrows move.</p>
+<p>Keeping a <code>tail</code> reference makes append O(1). Keeping a <code>size</code> counter makes <code>len()</code> O(1). Both cost one field each, and every operation has to keep them correct. That's the trade-off in miniature: extra state buys speed but adds invariants to maintain.</p>
+</div>
+<div class="code"><button class="copy" data-copy="impl">Copy</button>
+<pre id="impl"><code>class Node:
+    def __init__(self, val, next=None):
+        self.val = val
+        self.next = next
+
+class LinkedList:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+        self.size = 0
+
+    def prepend(self, val):          # O(1)
+        self.head = Node(val, self.head)
+        if self.tail is None:
+            self.tail = self.head
+        self.size += 1
+
+    def append(self, val):           # O(1) thanks to tail
+        node = Node(val)
+        if self.tail is None:
+            self.head = self.tail = node
+        else:
+            self.tail.next = node
+            self.tail = node
+        self.size += 1
+
+    def delete(self, val):           # O(n): find the node BEFORE it
+        dummy = Node(0, self.head)
+        prev = dummy
+        while prev.next and prev.next.val != val:
+            prev = prev.next
+        if prev.next is None:
+            return False
+        if prev.next is self.tail:
+            self.tail = None if prev is dummy else prev
+        prev.next = prev.next.next
+        self.head = dummy.next
+        self.size -= 1
+        return True
+
+    def __iter__(self):              # for x in my_list
+        node = self.head
+        while node:
+            yield node.val
+            node = node.next</code></pre></div>
+</div>
+<div class="kinds">
+<div class="panel"><h3>Singly linked</h3><p>Only <code>next</code>. Uses the least memory, but you can't step backwards. To delete a node you need the one before it.</p></div>
+<div class="panel"><h3>Doubly linked</h3><p>Has <code>prev</code> and <code>next</code>. You can remove any node you hold in O(1). Used by LRU caches, <code>deque</code>, and the Linux kernel's <code>list_head</code>.</p></div>
+<div class="panel"><h3>Circular</h3><p>The tail points back to the head. Good for round-robin scheduling and playlists on repeat. Loops need a stop condition other than <code>None</code>.</p></div>
+</div>
+</div></section>
+
+<section class="band" id="compare"><div class="wrap">
+<h2>Arrays win on reading, linked lists win on rewiring</h2>
+<div class="two">
+<div>
+<p class="lbl">Same 4 values in the same 16 memory cells</p>
+<p style="font-size:15px;margin-bottom:4px">Array: neighbours in memory. The address of <code>a[i]</code> is <code>start + i × size</code>.</p>
+<div class="mem" id="memA"></div>
+<p style="font-size:15px;margin:14px 0 4px">Linked list: scattered. Each node stores the address of the next one.</p>
+<div class="mem" id="memL"></div>
+<p style="font-size:14px;color:var(--soft);margin-top:10px">Walking the linked list means jumping 0x02 → 0x0D → 0x06 → 0x0B. Each jump can miss the CPU cache, while an array scan streams neighbouring cells in together.</p>
+</div>
+<div class="scroll">
+<table>
+<thead><tr><th>Operation</th><th>Array</th><th>Linked list</th></tr></thead>
+<tbody>
+<tr><td>Read item <code>i</code></td><td class="w nw">O(1)</td><td class="nw">O(n)</td></tr>
+<tr><td>Search by value</td><td class="nw">O(n)</td><td class="nw">O(n)</td></tr>
+<tr><td>Insert / delete at front</td><td class="nw">O(n)</td><td class="w nw">O(1)</td></tr>
+<tr><td>Append at end</td><td class="nw">O(1) amortized</td><td class="nw">O(1) with tail</td></tr>
+<tr><td>Insert after a node you already hold</td><td class="nw">O(n) shift</td><td class="w nw">O(1)</td></tr>
+<tr><td>Delete a node you already hold</td><td class="nw">O(n) shift</td><td class="w">O(1) if doubly linked. Singly linked must first find the node before it: O(n)</td></tr>
+<tr><td>Memory per item</td><td class="w">One slot, plus spare capacity</td><td>Value plus 1 or 2 pointers</td></tr>
+<tr><td>Cache friendliness</td><td class="w">Excellent</td><td>Poor</td></tr>
+<tr><td>Growing</td><td>Copy everything when full</td><td class="w">Add a node</td></tr>
+<tr><td>Binary search on sorted data</td><td class="w nw">O(log n)</td><td class="nw">O(n)</td></tr>
+</tbody></table>
+</div>
+</div>
+<div class="panel" style="margin-top:20px">
+<h3>What this means in Python</h3>
+<p style="margin:0">A Python <code>list</code> is a dynamic array of references, so <code>insert(0, x)</code> and <code>pop(0)</code> are O(n). <code>collections.deque</code> is a doubly linked list of 64-slot blocks, which gives O(1) at both ends and is the right queue for BFS. <code>OrderedDict</code> and <code>functools.lru_cache</code> pair a hash map with a doubly linked list. You rarely write a linked list in Python application code, but you use one all the time. The default rule: use a <code>list</code>, and reach for a linked structure when the work is mostly at the ends, or when you already hold a node and need to move it in O(1).</p>
+</div>
+</div></section>
+
+<section class="band" id="uses"><div class="wrap">
+<h2>Where linked lists actually run</h2>
+<p>Each of these needs O(1) restructuring at a position it already knows, which is the one thing arrays can't do cheaply.</p>
+<div class="uses" id="usesGrid"></div>
+</div></section>
+
+<section class="band" id="patterns"><div class="wrap">
+<h2>Five patterns cover most linked list problems</h2>
+<p>Learn these as moves, not as solutions to memorise. Almost every problem below combines two of them.</p>
+<div class="pats">
+<div class="pat"><h3>1. Dummy head</h3><p>Put a fake node before <code>head</code>, so that deleting or inserting at the front is no longer a special case. Return <code>dummy.next</code>.</p>
+<div class="code"><button class="copy" data-copy="p1">Copy</button><pre id="p1"><code>dummy = tail = Node(0)
+while a and b:
+    if a.val &lt;= b.val: tail.next, a = a, a.next
+    else:              tail.next, b = b, b.next
+    tail = tail.next
+tail.next = a or b
+return dummy.next          # merge two sorted lists</code></pre></div></div>
+<div class="pat"><h3>2. Reverse in place</h3><p>Three pointers, and the order matters: save <code>next</code> first, then flip, then advance. Reversing is also a building block for palindrome checks, reorder list and k-group problems.</p>
+<div class="code"><button class="copy" data-copy="p2">Copy</button><pre id="p2"><code>prev, cur = None, head
+while cur:
+    nxt = cur.next       # 1. remember the way forward
+    cur.next = prev      # 2. flip the arrow
+    prev, cur = cur, nxt # 3. step forward
+return prev</code></pre></div></div>
+<div class="pat"><h3>3. Fast and slow pointers</h3><p>Moving at 1 and 2 steps finds the middle and detects cycles (Floyd's algorithm). Once both pointers are inside a cycle, the gap between them shrinks by exactly 1 per step, so they're guaranteed to meet within μ + λ steps, where μ is the number of steps from head to the cycle's first node and λ is the cycle's length.</p>
+<div class="code"><button class="copy" data-copy="p3">Copy</button><pre id="p3"><code>slow = fast = head
+while fast and fast.next:   # guard both hops
+    slow, fast = slow.next, fast.next.next
+    if slow is fast:
+        return True         # cycle
+return False                # slow is the middle if no cycle</code></pre></div></div>
+<div class="pat"><h3>4. Fixed gap runner</h3><p>Move one pointer k steps ahead, then move both together. When the leader reaches the end, the follower is k from the end. This finds the nth node from the end in one pass.</p>
+<div class="code"><button class="copy" data-copy="p4">Copy</button><pre id="p4"><code>dummy = Node(0, head)
+lead = follow = dummy
+for _ in range(n + 1):
+    lead = lead.next
+while lead:
+    lead, follow = lead.next, follow.next
+follow.next = follow.next.next   # remove nth from end
+return dummy.next</code></pre></div></div>
+<div class="pat"><h3>5. Hash map plus doubly linked list</h3><p>The map finds a node in O(1), and the list moves or removes it in O(1). This is the design behind LRU caches. It's the pattern most relevant to architecture work, because it shows two simple structures combining to meet a requirement neither meets alone.</p>
+<div class="code"><button class="copy" data-copy="p5">Copy</button><pre id="p5"><code>def get(self, key):
+    if key not in self.map:
+        return -1
+    node = self.map[key]
+    self._unlink(node)       # O(1) thanks to node.prev
+    self._push_front(node)   # most recently used
+    return node.val</code></pre></div></div>
+<div class="pat"><h3>Loop discipline</h3><p>Before writing any <code>while</code>, answer four questions. What state am I tracking? What must be true to take the next step safely? That's the guard, and it should cover every <code>.next</code> you dereference. How do I exit early with the answer? What does a normal exit mean? The loop condition says <i>can I continue</i>, and the body says <i>did I find it</i>.</p></div>
+</div>
+</div></section>
+
+<section class="band" id="practice"><div class="wrap">
+<h2>Practice, in the order that builds skill</h2>
+<p>Each stage adds one move. The ticks are a checklist for this page and stay in this browser when it allows storage. Your real record is the notebook, so log each solve with the coach too.</p>
+<div class="prog"><div class="bar"><i id="barFill"></i></div><b id="progTxt" class="nw">0 of 0 solved</b><button id="clear" style="min-height:36px;font-size:13px">Clear ticks</button></div>
+<div id="stages"></div>
+</div></section>
+
+<section class="band checks" id="checks"><div class="wrap">
+<h2>Check yourself before an interview</h2>
+<p>Answer out loud first, then open each one to check.</p>
+<div id="qa"></div>
+</div></section>
+
+<section class="band res" id="read"><div class="wrap">
+<h2>Read more</h2>
+<p>Three sources, one job each. When you finish one, say its main idea out loud before moving on.</p>
+<ul>
+<li><a href="https://visualgo.net/en/list">VisuAlgo: linked list</a>. Step through insert, remove and search on singly and doubly linked lists, and on the stacks and deques built from them.</li>
+<li><a href="https://docs.python.org/3/library/collections.html#collections.deque">Python docs: collections.deque</a>. The linked structure you'll actually use in Python, and which of its operations are O(1).</li>
+<li><a href="https://en.wikipedia.org/wiki/Cycle_detection">Wikipedia: Cycle detection</a>. Floyd's algorithm with μ and λ, including why resetting one pointer to the start finds the cycle's first node (Linked List Cycle II).</li>
+</ul>
+</div></section>
+<footer>Study notes for linked lists. The problem links go to LeetCode.</footer>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const START=[12,7,30,45,18];
+let vals=START.slice();
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let timers=[];
+
+const capOf=n=>{let c=8;while(c<n)c*=2;return c};
+const draw=(hitA=[],walk=[],hitL=[],list=vals)=>{
+  const n=list.length,cap=capOf(n);
+  let a='';
+  for(let i=0;i<cap;i++){a+=i<n?`<div class="cell${hitA.includes(i)?' hit':''}"><b>${list[i]}</b><span>${i}</span></div>`:`<div class="cell cap"><b>·</b><span>${i}</span></div>`}
+  $('#arrRow').innerHTML=a;
+  let l='<span class="tag">head</span><div class="arr"></div>';
+  list.forEach((v,i)=>{l+=`<div class="node${hitL.includes(i)?' hit':walk.includes(i)?' walk':''}" id="nd${i}"><b>${v}</b><i>•</i></div><div class="arr"></div>`});
+  l+='<span class="tag">None</span>';
+  $('#llRow').innerHTML=l;
+};
+
+const animate=(path,target)=>{
+  timers.forEach(clearTimeout);timers=[];
+  if(reduce){path.forEach(i=>{const e=$('#nd'+i);if(e)e.classList.add('walk')});target.forEach(i=>{const e=$('#nd'+i);if(e)e.classList.add('hit')});return}
+  path.forEach((i,k)=>timers.push(setTimeout(()=>{const e=$('#nd'+i);if(e)e.classList.add('walk')},k*240)));
+  timers.push(setTimeout(()=>target.forEach(i=>{const e=$('#nd'+i);if(e)e.classList.add('hit')}),path.length*240));
+};
+
+const plural=(x,w)=>`${x} ${w}${x===1?'':'s'}`;
+let lastWin='';
+const show=(aN,aT,lN,lT,say,winner)=>{
+  $('#nA').textContent=aN;$('#tA').textContent=aT;
+  $('#nL').textContent=lN;$('#tL').textContent=lT;
+  $('#say').textContent=say;
+  $('#cA').classList.toggle('win',winner==='a');
+  $('#cL').classList.toggle('win',winner==='l');
+  lastWin=winner;
+};
+// who does less work: shifts and copies against hops; the constant pointer writes are left out
+const less=(arr,ll)=>arr<ll?'a':ll<arr?'l':'';
+
+const range=(a,b)=>{const r=[];for(let i=a;i<b;i++)r.push(i);return r};
+
+const problem=op=>{
+  const v=parseInt($('#val').value,10),i=parseInt($('#idx').value,10),n=vals.length;
+  if(['head','at','append'].includes(op)&&(isNaN(v)||Math.abs(v)>999))return 'Enter a value between -999 and 999.';
+  if(['at','del','read'].includes(op)&&isNaN(i))return 'Enter an index first.';
+  if(['head','at','append'].includes(op)&&n>=12)return 'The list is full at 12 items. Delete one or reset.';
+  if(op==='at'&&(i<0||i>n))return `For insert, the index must be between 0 and ${n}.`;
+  if((op==='del'||op==='read')&&(i<0||i>=n))return n?`The index must be between 0 and ${n-1}.`:'The list is empty. Insert something first.';
+  return '';
+};
+
+const run=op=>{
+  timers.forEach(clearTimeout);timers=[];
+  const bad=problem(op);
+  if(bad){$('#err').textContent=bad;return null}
+  $('#err').textContent='';
+  const v=parseInt($('#val').value,10),i=parseInt($('#idx').value,10),n=vals.length;
+  const grow=n===capOf(n);  // the block is full, so adding an item first copies all n into a bigger one
+  const copies=grow?n:0,copyNote=grow?` The block was full, so all ${n} items were first copied into a bigger one.`:'';
+  if(op==='head'){vals.unshift(v);draw(range(0,n+1),[],[0]);animate([],[0]);
+    show(plural(n,'shift')+(grow?` + ${n} copies`:''),`All ${n} items move one cell right to free index 0.`+copyNote,plural(2,'write'),'new.next = head, then head = new. No walking.','Linked list wins: O(1) against O(n). This is why deque.appendleft beats list.insert(0, x).',less(n+copies,0))}
+  else if(op==='append'){vals.push(v);draw([n],[],[n]);animate([],[n]);
+    show(grow?`${n} copies`:'0 shifts',grow?`The block was full, so all ${n} items are copied into a bigger one. The block grows by a fixed factor (Python's list adds about 1/8), so copies get rarer as it grows.`:'There\'s a spare cell at the end. Just write the value.',plural(2,'write'),'tail.next = new, then tail = new. Needs a tail pointer, otherwise n hops.',grow?'This append paid for a resize. Averaged over many appends, both are O(1).':'Both are O(1) amortized. The array occasionally pays for a resize.',less(copies,0))}
+  else if(op==='at'){vals.splice(i,0,v);const hops=Math.max(i-1,0),shifts=n-i;draw(range(i,n+1),[],[i]);animate(range(0,i),[i]);
+    show(plural(shifts,'shift')+(grow?` + ${n} copies`:''),(shifts?`Items ${i}…${n-1} each move one cell right.`:'Nothing sits after this index, so nothing moves.')+copyNote,`${plural(hops,'hop')} + 2 writes`,i?`Walk to node ${i-1}, then new.next = prev.next and prev.next = new.`:'No walk: new.next = head, then head = new.','In the middle both are O(n), for different reasons: the array shifts what comes after, the list walks to what comes before. A linked list is only O(1) if you already hold the node.',less(shifts+copies,hops))}
+  else if(op==='del'){const hops=Math.max(i-1,0),shifts=n-1-i,before=vals.slice();vals.splice(i,1);draw(range(i,n),[],[],before);animate(range(0,i),[i]);
+    timers.push(setTimeout(()=>draw(),reduce?700:i*240+700));
+    show(plural(shifts,'shift'),shifts?`Items after index ${i} each move one cell left.`:'It was the last item, so nothing moves.',`${plural(hops,'hop')} + 1 write`,i?'Walk to the node before, then prev.next = prev.next.next.':'No walk: head = head.next.','In a singly linked list you need the node before the one you delete, which is why the dummy-head pattern exists.',less(shifts,hops))}
+  else if(op==='read'){draw([i],[],[]);animate(range(0,i),[i]);
+    show('1 step',`Address = start + ${i} × size. One calculation, no matter how big n is.`,plural(i,'hop'),i?`Follow next ${plural(i,'time')} from head.`:'head is node 0, so no hops.',i<=1?'About the same this close to the head. From index 2 on the array wins, because random access is O(1) and the list must walk.':'Array wins: random access is O(1). The linked list must walk from the head.',i<=1?'':'a')}
+  else if(op==='rev'){vals.reverse();draw(range(0,n),[],range(0,n));animate([],range(0,n));
+    show(plural(Math.floor(n/2),'swap'),'Swap ends inward. Each swap writes 2 cells.',plural(n,'write'),'Flip each node\'s next pointer once, using prev / cur / nxt.','Both are O(n). The linked list version is the classic three-pointer interview move.','')}
+  else{vals=START.slice();draw();show('–','Pick an operation to compare.','–','Hops follow next pointers. Writes change a pointer.','Reset to 5 items.','')}
+  return lastWin;
+};
+
+const NAME={a:'the array',l:'the linked list','':'about the same'};
+let pending=null;
+const what=(op,i)=>({head:'insert at the head',at:`insert at index ${i}`,append:'append',del:`delete index ${i}`,read:`read index ${i}`,rev:'reverse the list'})[op];
+const ask=op=>{
+  $('#pick').hidden=true;pending=null;
+  if(op==='reset'||!$('#guess').checked){run(op);return}
+  const bad=problem(op);
+  if(bad){$('#err').textContent=bad;return}
+  $('#err').textContent='';pending=op;
+  show('?','Guess first.','?','Guess first.',`Before you see the counts: which side does less work to ${what(op,parseInt($('#idx').value,10))}?`,'');
+  $('#pick').hidden=false;$('#pick button').focus();
+};
+$('#pick').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||!pending)return;
+  const op=pending,g=b.dataset.g;pending=null;$('#pick').hidden=true;
+  const w=run(op);if(w===null)return;
+  $('#say').textContent=(g===w?'Right. ':`Not this time: you said ${NAME[g]}, and it's ${NAME[w]}. `)+$('#say').textContent;
+  const opBtn=document.querySelector(`[data-op="${op}"]`);if(opBtn)opBtn.focus();
+});
+$('#guess').addEventListener('change',()=>{if(!$('#guess').checked&&pending){$('#pick').hidden=true;pending=null;show('–','Pick an operation to compare.','–','Hops follow next pointers. Writes change a pointer.','Guess first is off. Pick an operation to see the counts.','')}});
+document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',()=>ask(b.dataset.op)));
+['#val','#idx'].forEach(s=>$(s).addEventListener('input',()=>{$('#err').textContent=''}));
+draw();
+
+const memA=['','','','','10','20','30','40','','','','','','','',''];
+$('#memA').innerHTML=memA.map((v,i)=>`<div class="m${v?' a':''}">0x${i.toString(16).toUpperCase().padStart(2,'0')}${v?`<b>${v}</b>`:''}</div>`).join('');
+const memL={2:['10','0D'],13:['20','06'],6:['30','0B'],11:['40','None']};
+$('#memL').innerHTML=range(0,16).map(i=>{const d=memL[i];return `<div class="m${d?' l':''}">0x${i.toString(16).toUpperCase().padStart(2,'0')}${d?`<b>${d[0]}</b>→${d[1]}`:''}</div>`}).join('');
+
+const USES=[
+['LRU caches','functools.lru_cache, OrderedDict, memcached\'s eviction lists, database buffer pools.','A hit moves that entry to the front, and eviction removes from the back. With a hash map pointing at nodes, both are O(1).'],
+['Memory allocators','malloc free lists, OS page frame lists.','Free chunks are threaded through the free memory itself, so tracking them costs no extra space, and freeing is a pointer splice.'],
+['Linux kernel','list_head is embedded in tasks, timers, devices and many other structures.','Objects join and leave many lists constantly. An intrusive doubly linked list does each change in O(1) with no allocation.'],
+['Hash table buckets','Separate chaining, e.g. Java HashMap before a bucket turns into a tree.','Colliding keys are added to a short chain without resizing anything.'],
+['Graphs','Adjacency lists for sparse graphs: social networks, road maps, dependency graphs.','Each vertex keeps only its real neighbours, so memory scales with edges, not vertices².'],
+['Queues and deques','Python collections.deque, BFS frontiers, task and message queues.','Work enters at one end and leaves at the other. Arrays would shift on every pop from the front.'],
+['Undo, redo and history','Editors, browser back and forward, design tools.','States form a chain, and stepping back or forward is a pointer move. A new action cuts off the redo tail in O(1).'],
+['Git and blockchains','Every commit or block stores a hash of its parent.','A chain linked by content hashes (merge commits make Git\'s a graph), so history can\'t be changed without breaking every link after it.'],
+['Round-robin scheduling','CPU run queues, playlists on repeat, turn order in games.','A circular list gives "next one, wrapping around" for free.']
+];
+$('#usesGrid').innerHTML=USES.map(u=>`<div class="use"><h3>${u[0]}</h3><p>${u[1]}</p><p class="why">${u[2]}</p></div>`).join('');
+
+const STAGES=[
+['Foundations: walk and rewire','Get comfortable moving a pointer and changing next without losing the rest of the list.',[
+[206,'Reverse Linked List','reverse-linked-list','E','Reverse in place','Three pointers: prev, cur, nxt. Save next before you flip. Also try it recursively.'],
+[21,'Merge Two Sorted Lists','merge-two-sorted-lists','E','Dummy head','Start from a dummy node and attach the smaller head each time. Attach the leftover at the end.'],
+[203,'Remove Linked List Elements','remove-linked-list-elements','E','Dummy head','The head itself might need removing. A dummy node makes that an ordinary case.'],
+[83,'Remove Duplicates from Sorted List','remove-duplicates-from-sorted-list','E','Walk','Only advance cur when the next value differs. Otherwise skip the next node.'],
+[707,'Design Linked List','design-linked-list','M','Implementation','Build your own class with get, addAtHead, addAtTail, addAtIndex and deleteAtIndex. Use a dummy head and a size counter.']]],
+['Two pointers: speed and gaps','The fast/slow and fixed-gap moves.',[
+[141,'Linked List Cycle','linked-list-cycle','E','Fast and slow','Fast moves 2, slow moves 1. Guard with fast and fast.next.'],
+[876,'Middle of the Linked List','middle-of-the-linked-list','E','Fast and slow','When fast reaches the end, slow is in the middle.'],
+[19,'Remove Nth Node From End of List','remove-nth-node-from-end-of-list','M','Fixed gap','Put the leader n+1 steps ahead of a dummy, then move both together.'],
+[160,'Intersection of Two Linked Lists','intersection-of-two-linked-lists','E','Two pointers','When a pointer reaches the end, switch it to the other list\'s head. Both then walk a + b + c steps and meet at the intersection.'],
+[142,'Linked List Cycle II','linked-list-cycle-ii','M','Floyd phase 2','After they meet, reset one pointer to head and step both by 1. Where they meet again is the cycle start, because the meeting time is a multiple of λ.'],
+[202,'Happy Number','happy-number','E','Floyd on numbers','The digit-square sequence is an implicit linked list. Detect a cycle without building any nodes.']]],
+['Pointer surgery: combine moves','Each of these is two patterns joined together.',[
+[234,'Palindrome Linked List','palindrome-linked-list','E','Middle + reverse','Find the middle, reverse the second half, then compare the two halves. Restoring the list afterwards is good practice.'],
+[143,'Reorder List','reorder-list','M','Middle + reverse + merge','Split at the middle, reverse the back half, then interleave the two halves.'],
+[24,'Swap Nodes in Pairs','swap-nodes-in-pairs','M','Dummy + rewiring','Draw the 3 pointers that change for each pair before coding.'],
+[328,'Odd Even Linked List','odd-even-linked-list','M','Two chains','Build an odd chain and an even chain at the same time, then join odd\'s tail to even\'s head.'],
+[61,'Rotate List','rotate-list','M','Length + ring','Get the length, join the tail to the head, then break the ring at the right spot. Take k mod length first.'],
+[2,'Add Two Numbers','add-two-numbers','M','Dummy + carry','Walk both lists with a carry. Keep looping while either list or the carry remains.'],
+[138,'Copy List with Random Pointer','copy-list-with-random-pointer','M','Hash map','Map each old node to its new node, then wire up next and random in a second pass. There\'s also an O(1)-space interleaving trick.'],
+[148,'Sort List','sort-list','M','Merge sort','Split with fast/slow, sort each half recursively, then merge. Linked lists suit merge sort well.']]],
+['Design: linked lists inside systems','Where interviews turn into architecture.',[
+[146,'LRU Cache','lru-cache','M','Map + doubly linked list','Use sentinel head and tail nodes. Write _remove(node) and _add_front(node) helpers, then get and put are just a few lines each.'],
+[1472,'Design Browser History','design-browser-history','M','Doubly linked list','visit drops the forward history. back and forward move a cursor by up to k steps.'],
+[287,'Find the Duplicate Number','find-the-duplicate-number','M','Floyd on an array','Treat i → nums[i] as a next pointer. The duplicate is where the cycle starts.']]],
+['Stretch','For after the rest feels routine.',[
+[23,'Merge k Sorted Lists','merge-k-sorted-lists','H','Heap + dummy','Push each list\'s head into a min-heap of (val, index, node), then pop and push the next node. Or merge in pairs.'],
+[25,'Reverse Nodes in k-Group','reverse-nodes-in-k-group','H','Reverse + reconnect','Check that k nodes remain, reverse that segment, then reconnect the previous group\'s tail to the new head.'],
+[460,'LFU Cache','lfu-cache','H','Map of doubly linked lists','One doubly linked list per frequency, plus a min-frequency pointer. This is LRU generalised.']]]
+];
+const DKEY='ll-guide-done';
+let done={};
+try{const s=localStorage.getItem(DKEY);if(s)done=JSON.parse(s)}catch(e){}
+const save=()=>{try{localStorage.setItem(DKEY,JSON.stringify(done))}catch(e){}};
+const DN={E:'Easy',M:'Medium',H:'Hard'};
+const renderStages=()=>{
+  $('#stages').innerHTML=STAGES.map(st=>`<div class="stage"><h3>${st[0]}</h3><p>${st[1]}</p>${st[2].map(q=>`<div class="q${done[q[0]]?' done':''}"><input type="checkbox" id="q${q[0]}" data-id="${q[0]}" aria-label="Mark ${q[1]} solved"${done[q[0]]?' checked':''}><div><a href="https://leetcode.com/problems/${q[2]}/">${q[0]}. ${q[1]}</a><div class="meta">${q[4]}</div></div><span class="pill ${q[3]}">${DN[q[3]]}</span><details><summary>Hint</summary>${q[5]}</details></div>`).join('')}</div>`).join('');
+  const all=STAGES.flatMap(s=>s[2]),c=all.filter(q=>done[q[0]]).length;
+  $('#progTxt').textContent=`${c} of ${all.length} solved`;
+  $('#barFill').style.width=(100*c/all.length)+'%';
+};
+$('#stages').addEventListener('change',e=>{const id=e.target.dataset.id;if(!id)return;if(e.target.checked)done[id]=true;else delete done[id];save();renderStages();const el=$('#q'+id);if(el)el.focus()});
+$('#clear').addEventListener('click',()=>{done={};save();renderStages()});
+renderStages();
+
+const QA=[
+['Why is lst.pop(0) slow in Python but deque.popleft() fast?','A list is a dynamic array, so removing index 0 shifts the remaining n − 1 references left, which is O(n). A deque is a doubly linked list of blocks, so popping the left end just moves a pointer: O(1).'],
+['You hold a pointer to a middle node of a singly linked list, but not the head. Can you delete it in O(1)?','Not in the usual sense, because you can\'t reach the previous node. The trick (LeetCode 237) is to copy next.val into this node and then skip next. It fails for the tail and changes node identity, so mention both caveats.'],
+['Why does an LRU cache use a doubly linked list rather than a singly linked one?','On a hit, the cache must remove the node from wherever it is. The hash map gives you the node in O(1), but a singly linked list would still need O(n) to find its predecessor. A prev pointer makes the removal O(1).'],
+['What is the time complexity of binary search on a sorted linked list?','O(n). Each "jump to the middle" means walking there, and those walks add up to n/2 + n/4 + … ≈ n. Sorted order only helps if you have random access, which is why skip lists add express lanes.'],
+['Inserting into the middle of 10,000 integers: why might an array still beat a linked list in practice?','The linked list first has to walk about 5,000 scattered nodes, missing the cache on many hops. The array\'s shift is one memmove over contiguous memory, which CPUs do very fast. Big-O hides constant factors and cache effects.'],
+['In Floyd\'s algorithm, why is the guard fast and fast.next, not just fast?','The body does fast.next.next, which is two dereferences. fast must exist for fast.next to work, and fast.next must exist for fast.next.next to work. slow needs no guard because it\'s always behind fast.'],
+['When would you choose a linked list for a new feature at work?','When the main operations are inserting or removing at known positions (both ends, or nodes you already hold through a map), the data changes constantly, and you don\'t need random access. Otherwise start with an array and measure. In Python, reach for deque or OrderedDict before writing nodes by hand.']
+];
+$('#qa').innerHTML=QA.map(q=>`<details><summary>${q[0]}</summary><p>${q[1]}</p></details>`).join('');
+
+document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{
+  const t=$('#'+b.dataset.copy).innerText;
+  try{await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(e){b.textContent='Select and copy'}
+  setTimeout(()=>{b.textContent='Copy'},1600);
+}));
+}
+</script>
+</body>
+</html>
